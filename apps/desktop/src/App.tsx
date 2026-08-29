@@ -1,6 +1,9 @@
 import { formatElapsedTime, useStopwatch } from "@repo/timer";
 
 import "./App.css";
+import { SkiaDial } from "./skia-dial";
+
+const dialSize = 300;
 
 function getRealtimeUrl(): string | undefined {
   const apiUrl = import.meta.env.VITE_API_URL;
@@ -33,15 +36,14 @@ function App() {
         </header>
 
         <div aria-label={formattedTime.label} className="timer-dial" role="timer">
-          <div aria-hidden="true" className="timer-dial__inner">
-            <div className="timer-readout">
-              <span>{formattedTime.minutes}</span>
-              <span className="timer-readout__separator">:</span>
-              <span>{formattedTime.seconds}</span>
-              <span className="timer-readout__hundredths">
-                .{formattedTime.hundredths}
-              </span>
-            </div>
+          <SkiaDial elapsedMs={elapsedMs} size={dialSize} />
+          <div aria-hidden="true" className="timer-readout">
+            <span>{formattedTime.minutes}</span>
+            <span className="timer-readout__separator">:</span>
+            <span>{formattedTime.seconds}</span>
+            <span className="timer-readout__hundredths">
+              .{formattedTime.hundredths}
+            </span>
           </div>
         </div>
 

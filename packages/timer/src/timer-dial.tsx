@@ -7,10 +7,11 @@ import {
   Skia,
   vec,
 } from "@shopify/react-native-skia";
-import { useMemo } from "react";
+import { type ComponentProps, useMemo } from "react";
 
 export interface TimerDialProps {
   elapsedMs: number;
+  secondProgress?: ComponentProps<typeof Path>["end"];
   size?: number;
 }
 
@@ -19,11 +20,16 @@ interface TickMark {
   start: ReturnType<typeof vec>;
 }
 
-export default function TimerDial({ elapsedMs, size = 300 }: TimerDialProps) {
+export default function TimerDial({
+  elapsedMs,
+  secondProgress: animatedSecondProgress,
+  size = 300,
+}: TimerDialProps) {
   const center = size / 2;
   const radius = size * 0.405;
   const strokeWidth = size * 0.025;
-  const secondProgress = (Math.max(0, elapsedMs) % 1000) / 1000;
+  const secondProgress =
+    animatedSecondProgress ?? (Math.max(0, elapsedMs) % 1000) / 1000;
 
   const progressPath = useMemo(() => {
     const pathBuilder = Skia.PathBuilder.Make();
@@ -37,11 +43,11 @@ export default function TimerDial({ elapsedMs, size = 300 }: TimerDialProps) {
         y: inset,
       },
       -90,
-      Math.min(secondProgress * 360, 359.999),
+      359.999,
     );
 
     return pathBuilder.detach();
-  }, [center, radius, secondProgress]);
+  }, [center, radius]);
 
   const tickMarks = useMemo<TickMark[]>(
     () =>
@@ -88,7 +94,9 @@ export default function TimerDial({ elapsedMs, size = 300 }: TimerDialProps) {
       ))}
       <Path
         color="#58f4c2"
+        end={secondProgress}
         path={progressPath}
+        start={0}
         strokeCap="round"
         strokeWidth={strokeWidth}
         style="stroke"

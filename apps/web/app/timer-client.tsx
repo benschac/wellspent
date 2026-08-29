@@ -12,8 +12,14 @@ const SkiaDial = dynamic(
   },
 );
 
-export function TimerClient() {
-  const { elapsedMs, isRunning, pause, reset, start } = useStopwatch();
+interface TimerClientProps {
+  realtimeUrl: string;
+}
+
+export function TimerClient({ realtimeUrl }: TimerClientProps) {
+  const { elapsedMs, isRunning, pause, reset, start } = useStopwatch({
+    realtimeUrl,
+  });
   const formattedTime = formatElapsedTime(elapsedMs);
 
   return (
