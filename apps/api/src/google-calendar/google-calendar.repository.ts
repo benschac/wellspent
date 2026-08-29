@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, eq, gt, sql } from "drizzle-orm";
+import { and, eq, gt, lt, lte, sql } from "drizzle-orm";
 import type { Database } from "@repo/database";
 import {
   googleCalendarConnections,
@@ -45,8 +45,7 @@ export class GoogleCalendarRepository {
         ),
       )
       .returning({
-        encryptedCodeVerifier:
-          googleCalendarOauthStates.encryptedCodeVerifier,
+        encryptedCodeVerifier: googleCalendarOauthStates.encryptedCodeVerifier,
         userId: googleCalendarOauthStates.userId,
       });
     return state;
@@ -163,7 +162,10 @@ export class GoogleCalendarRepository {
       });
   }
 
-  async updateSyncToken(subscriptionId: string, syncToken: string): Promise<void> {
+  async updateSyncToken(
+    subscriptionId: string,
+    syncToken: string,
+  ): Promise<void> {
     await this.database
       .update(googleCalendarSubscriptions)
       .set({ syncToken, updatedAt: new Date() })
@@ -267,54 +269,54 @@ export class GoogleCalendarRepository {
   }
 
   async recoverStaleJobs(): Promise<void> {
-    await this.database.execute(sql`
-      update google_calendar_jobs
-      set
-        status = 'pending',
-        locked_at = null,
-        locked_by = null,
-        updated_at = now()
-      where status = 'processing'
-        and locked_at < now() - interval '5 minutes'
-    `);
+    await this.database
+      .update(googleCalendarJobs)
+      .set({
+        status: "pending",
+        lockedAt: null,
+        lockedBy: null,
+        updatedAt: sql`now()`,
+      })
+      .where(
+        and(
+          eq(googleCalendarJobs.status, "processing"),
+          lt(googleCalendarJobs.lockedAt, sql`now() - interval '5 minutes'`),
+        ),
+      );
   }
 
   async claimNextJob(workerId: string): Promise<GoogleCalendarJob | undefined> {
-    const result = await this.database.execute(sql<GoogleCalendarJob>`
-      update google_calendar_jobs
-      set
-        status = 'processing',
-        locked_at = now(),
-        locked_by = ${workerId},
-        updated_at = now()
-      where id = (
-        select id
-        from google_calendar_jobs
-        where status = 'pending'
-          and available_at <= now()
-        order by available_at, created_at
-        limit 1
-        for update skip locked
-      )
-      returning
-        id,
-        connection_id as "connectionId",
-        job_type as "jobType",
-        dedupe_key as "dedupeKey",
-        payload,
-        status,
-        attempts,
-        available_at as "availableAt",
-        locked_at as "lockedAt",
-        locked_by as "lockedBy",
-        last_error as "lastError",
-        created_at as "createdAt",
-        updated_at as "updatedAt"
-    `);
-    return result.rows[0] as unknown as GoogleCalendarJob | undefined;
+    const nextJob = this.database.$with("next_job").as(
+      this.database
+        .select({ id: googleCalendarJobs.id })
+        .from(googleCalendarJobs)
+        .where(
+          and(
+            eq(googleCalendarJobs.status, "pending"),
+            lte(googleCalendarJobs.availableAt, sql`now()`),
+          ),
+        )
+        .orderBy(googleCalendarJobs.availableAt, googleCalendarJobs.createdAt)
+        .limit(1)
+        .for("update", { skipLocked: true }),
+    );
+
+    const [job] = await this.database
+      .with(nextJob)
+      .update(googleCalendarJobs)
+      .set({
+        status: "processing",
+        lockedAt: sql`now()`,
+        lockedBy: workerId,
+        updatedAt: sql`now()`,
+      })
+      .from(nextJob)
+      .where(eq(googleCalendarJobs.id, nextJob.id))
+      .returning();
+    return job;
   }
 
-  async completeJob(id: string): Promise<void> {
+  async completeJob(id: string, workerId: string): Promise<void> {
     await this.database
       .update(googleCalendarJobs)
       .set({
@@ -323,22 +325,33 @@ export class GoogleCalendarRepository {
         lockedBy: null,
         updatedAt: new Date(),
       })
-      .where(eq(googleCalendarJobs.id, id));
+      .where(
+        and(
+          eq(googleCalendarJobs.id, id),
+          eq(googleCalendarJobs.status, "processing"),
+          eq(googleCalendarJobs.lockedBy, workerId),
+        ),
+      );
   }
 
-  async failJob(id: string, message: string): Promise<void> {
-    await this.database.execute(sql`
-      update google_calendar_jobs
-      set
-        attempts = attempts + 1,
-        status = case when attempts + 1 >= 8 then 'dead' else 'pending' end,
-        available_at = now()
-          + least(power(2, attempts + 1), 300) * interval '1 second',
-        locked_at = null,
-        locked_by = null,
-        last_error = ${message.slice(0, 2000)},
-        updated_at = now()
-      where id = ${id}
-    `);
+  async failJob(id: string, workerId: string, message: string): Promise<void> {
+    await this.database
+      .update(googleCalendarJobs)
+      .set({
+        attempts: sql`${googleCalendarJobs.attempts} + 1`,
+        status: sql`case when ${googleCalendarJobs.attempts} + 1 >= 8 then 'dead' else 'pending' end`,
+        availableAt: sql`now() + least(power(2, ${googleCalendarJobs.attempts} + 1), 300) * interval '1 second'`,
+        lockedAt: null,
+        lockedBy: null,
+        lastError: message.slice(0, 2000),
+        updatedAt: sql`now()`,
+      })
+      .where(
+        and(
+          eq(googleCalendarJobs.id, id),
+          eq(googleCalendarJobs.status, "processing"),
+          eq(googleCalendarJobs.lockedBy, workerId),
+        ),
+      );
   }
 }

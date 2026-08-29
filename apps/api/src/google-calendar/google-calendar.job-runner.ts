@@ -75,12 +75,12 @@ export class GoogleCalendarJobRunner
             default:
               throw new Error(`Unsupported Google Calendar job: ${job.jobType}`);
           }
-          await this.repository.completeJob(job.id);
+          await this.repository.completeJob(job.id, this.workerId);
         } catch (error) {
           const message =
             error instanceof Error ? error.message : "Unknown job failure";
           this.logger.error(`Google Calendar job ${job.id} failed: ${message}`);
-          await this.repository.failJob(job.id, message);
+          await this.repository.failJob(job.id, this.workerId, message);
         }
       }
     } catch (error) {
