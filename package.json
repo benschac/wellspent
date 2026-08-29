@@ -6,18 +6,23 @@
   "engines": {
     "node": ">=22.0.0"
   },
+  "trustedDependencies": [
+    "@shopify/react-native-skia"
+  ],
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
   "scripts": {
     "build": "turbo run build",
+    "build:ios": "bun run --cwd apps/mobile build:ios",
     "db:check": "turbo run db:check --filter=@repo/database",
     "db:generate": "turbo run db:generate --filter=@repo/database",
     "db:migrate": "turbo run db:migrate --filter=@repo/database",
     "db:studio": "turbo run db:studio --filter=@repo/database",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
+    "skia:web": "turbo run skia:web",
     "typecheck": "turbo run typecheck"
   },
   "devDependencies": {

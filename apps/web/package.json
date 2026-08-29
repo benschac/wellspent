@@ -4,14 +4,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "next build",
-    "dev": "next dev --port 3000",
+    "build": "next build --webpack",
+    "dev": "next dev --webpack --port 3000",
     "lint": "eslint .",
+    "skia:web": "setup-skia-web public",
     "start": "next start --port 3000",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@repo/api-client": "workspace:*",
+    "@repo/timer": "workspace:*",
     "@shopify/react-native-skia": "2.6.2",
     "@t3-oss/env-nextjs": "0.13.11",
     "expo-sqlite": "~57.0.2",

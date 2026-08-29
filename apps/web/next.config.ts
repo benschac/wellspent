@@ -2,7 +2,30 @@ import "./app/env";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@repo/api-client", "@repo/api-contract"],
+  transpilePackages: ["@repo/api-client", "@repo/api-contract", "@repo/timer"],
+  webpack(config) {
+    config.resolve.extensions = [
+      ".web.mjs",
+      ".web.tsx",
+      ".web.ts",
+      ".web.jsx",
+      ".web.js",
+      ...config.resolve.extensions,
+    ];
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      "react-native-reanimated": false,
+      "react-native-reanimated/package.json": false,
+      "react-native/Libraries/Image/AssetRegistry": false,
+    };
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      path: false,
+    };
+
+    return config;
+  },
 };
 
 export default nextConfig;

@@ -1,0 +1,27 @@
+{
+  "name": "@repo/timer",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./skia": "./src/timer-dial.tsx"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@shopify/react-native-skia": "2.6.2"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "@types/react": "19.2.18",
+    "eslint": "9.39.1",
+    "typescript": "~6.0.3"
+  },
+  "peerDependencies": {
+    "react": ">=19.2.0"
+  }
+}

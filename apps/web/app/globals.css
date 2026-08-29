@@ -1,8 +1,8 @@
 :root {
+  background: #050b12;
+  color: #f5fbff;
   color-scheme: dark;
   font-family: Arial, Helvetica, sans-serif;
-  background: #07111f;
-  color: #f7fbff;
 }
 
 * {
@@ -13,84 +13,167 @@ body {
   margin: 0;
   min-height: 100vh;
   background:
-    radial-gradient(circle at 15% 15%, rgb(25 119 255 / 28%), transparent 32rem),
-    radial-gradient(circle at 85% 80%, rgb(54 211 153 / 18%), transparent 28rem),
-    #07111f;
+    radial-gradient(circle at 50% 15%, rgb(56 143 174 / 18%), transparent 32rem),
+    #050b12;
+}
+
+button {
+  font: inherit;
 }
 
 main {
   display: grid;
   min-height: 100vh;
+  padding: 40px 20px;
   place-items: center;
-  padding: 48px 24px;
 }
 
-.hero {
-  width: min(720px, 100%);
+.timer-shell {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  width: min(100%, 620px);
+}
+
+.timer-heading {
+  text-align: center;
 }
 
 .eyebrow {
-  color: #70a9ff;
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  margin: 0 0 18px;
+  color: #58f4c2;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  margin: 0 0 12px;
   text-transform: uppercase;
 }
 
 h1 {
-  font-size: clamp(3rem, 10vw, 6.5rem);
-  letter-spacing: -0.07em;
-  line-height: 0.92;
+  font-size: clamp(2.5rem, 8vw, 4.75rem);
+  letter-spacing: -0.065em;
+  line-height: 0.98;
   margin: 0;
-  max-width: 11ch;
 }
 
 .lede {
-  color: #a9b9cc;
-  font-size: clamp(1.05rem, 2.5vw, 1.3rem);
-  line-height: 1.6;
-  margin: 28px 0 36px;
-  max-width: 56ch;
+  color: #8da2b5;
+  font-size: 1rem;
+  line-height: 1.5;
+  margin: 16px 0 0;
 }
 
-.status-card {
-  align-items: center;
-  backdrop-filter: blur(18px);
-  background: rgb(255 255 255 / 7%);
-  border: 1px solid rgb(255 255 255 / 12%);
-  border-radius: 22px;
+.timer-dial {
+  border-radius: 50%;
+  box-shadow:
+    0 30px 80px rgb(0 0 0 / 45%),
+    0 0 80px rgb(88 244 194 / 8%);
+  height: 300px;
+  overflow: hidden;
+  position: relative;
+  width: 300px;
+}
+
+.timer-dial canvas,
+.timer-dial__loading {
+  display: block;
+  height: 300px;
+  width: 300px;
+}
+
+.timer-dial__loading {
+  animation: timer-pulse 1.2s ease-in-out infinite alternate;
+  background: #08121f;
+  border: 8px solid #183047;
+  border-radius: 50%;
+}
+
+.timer-readout {
+  align-items: baseline;
   display: flex;
-  gap: 16px;
-  padding: 18px 20px;
-  width: fit-content;
-}
-
-.status-dot {
-  background: #ff6b6b;
-  border-radius: 999px;
-  box-shadow: 0 0 18px rgb(255 107 107 / 50%);
-  height: 12px;
-  width: 12px;
-}
-
-.status-dot--online {
-  background: #36d399;
-  box-shadow: 0 0 18px rgb(54 211 153 / 55%);
-}
-
-.status-title,
-.status-copy {
-  margin: 0;
-}
-
-.status-title {
+  font-size: 3.1rem;
+  font-variant-numeric: tabular-nums;
   font-weight: 700;
+  inset: 0;
+  justify-content: center;
+  letter-spacing: -0.045em;
+  pointer-events: none;
+  position: absolute;
 }
 
-.status-copy {
-  color: #8fa3ba;
-  font-size: 0.9rem;
-  margin-top: 4px;
+.timer-readout__separator {
+  color: #8da2b5;
 }
 
+.timer-readout__hundredths {
+  color: #58f4c2;
+  font-size: 1.75rem;
+  letter-spacing: -0.03em;
+}
+
+.timer-controls {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr 1fr;
+  width: min(100%, 360px);
+}
+
+.timer-button {
+  background: #101e2b;
+  border: 1px solid #263d51;
+  border-radius: 16px;
+  color: #d5e3ed;
+  cursor: pointer;
+  font-weight: 750;
+  min-height: 54px;
+  padding: 0 24px;
+  transition:
+    background 120ms ease,
+    transform 120ms ease;
+}
+
+.timer-button:hover {
+  background: #172a3b;
+}
+
+.timer-button:active {
+  transform: scale(0.98);
+}
+
+.timer-button:focus-visible {
+  outline: 3px solid rgb(88 244 194 / 35%);
+  outline-offset: 3px;
+}
+
+.timer-button--primary {
+  background: #58f4c2;
+  border-color: #58f4c2;
+  color: #07131d;
+}
+
+.timer-button--primary:hover {
+  background: #76f7d0;
+}
+
+.timer-note {
+  color: #617789;
+  font-size: 0.82rem;
+  margin: -10px 0 0;
+  text-align: center;
+}
+
+@keyframes timer-pulse {
+  to {
+    opacity: 0.65;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .timer-dial__loading {
+    animation: none;
+  }
+
+  .timer-button {
+    transition: none;
+  }
+}
