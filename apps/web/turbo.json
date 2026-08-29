@@ -1,0 +1,12 @@
+{
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "env": ["API_URL"],
+      "inputs": ["$TURBO_DEFAULT$", ".env", ".env.*"]
+    },
+    "typecheck": {
+      "outputs": [".cache/*.tsbuildinfo"]
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "@repo/api-client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/client.ts"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@orpc/client": "2.0.0-beta.32",
+    "@orpc/contract": "2.0.0-beta.32",
+    "@orpc/openapi": "2.0.0-beta.32",
+    "@repo/api-contract": "workspace:*"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "eslint": "9.39.1",
+    "typescript": "~6.0.3"
+  }
+}

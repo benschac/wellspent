@@ -1,0 +1,36 @@
+{
+  "name": "@repo/mobile",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "expo-router/entry",
+  "scripts": {
+    "android": "expo start --android",
+    "build": "expo export --platform all",
+    "dev": "expo start",
+    "ios": "expo start --ios",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "web": "expo start --web"
+  },
+  "dependencies": {
+    "@repo/api-client": "workspace:*",
+    "expo": "~57.0.18",
+    "expo-constants": "~57.0.16",
+    "expo-linking": "~57.0.8",
+    "expo-router": "~57.0.17",
+    "expo-status-bar": "~57.0.1",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "~4.26.0",
+    "react-native-web": "~0.21.0"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
+    "@types/react": "~19.2.2",
+    "eslint": "9.39.1",
+    "typescript": "~6.0.3"
+  }
+}

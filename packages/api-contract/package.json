@@ -1,0 +1,24 @@
+{
+  "name": "@repo/api-contract",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/contract.ts"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@orpc/contract": "2.0.0-beta.32",
+    "@orpc/openapi": "2.0.0-beta.32",
+    "zod": "4.5.2"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "eslint": "9.39.1",
+    "typescript": "~6.0.3"
+  }
+}

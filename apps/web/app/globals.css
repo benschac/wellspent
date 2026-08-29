@@ -1,0 +1,96 @@
+:root {
+  color-scheme: dark;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #07111f;
+  color: #f7fbff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 15% 15%, rgb(25 119 255 / 28%), transparent 32rem),
+    radial-gradient(circle at 85% 80%, rgb(54 211 153 / 18%), transparent 28rem),
+    #07111f;
+}
+
+main {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 48px 24px;
+}
+
+.hero {
+  width: min(720px, 100%);
+}
+
+.eyebrow {
+  color: #70a9ff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  margin: 0 0 18px;
+  text-transform: uppercase;
+}
+
+h1 {
+  font-size: clamp(3rem, 10vw, 6.5rem);
+  letter-spacing: -0.07em;
+  line-height: 0.92;
+  margin: 0;
+  max-width: 11ch;
+}
+
+.lede {
+  color: #a9b9cc;
+  font-size: clamp(1.05rem, 2.5vw, 1.3rem);
+  line-height: 1.6;
+  margin: 28px 0 36px;
+  max-width: 56ch;
+}
+
+.status-card {
+  align-items: center;
+  backdrop-filter: blur(18px);
+  background: rgb(255 255 255 / 7%);
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 22px;
+  display: flex;
+  gap: 16px;
+  padding: 18px 20px;
+  width: fit-content;
+}
+
+.status-dot {
+  background: #ff6b6b;
+  border-radius: 999px;
+  box-shadow: 0 0 18px rgb(255 107 107 / 50%);
+  height: 12px;
+  width: 12px;
+}
+
+.status-dot--online {
+  background: #36d399;
+  box-shadow: 0 0 18px rgb(54 211 153 / 55%);
+}
+
+.status-title,
+.status-copy {
+  margin: 0;
+}
+
+.status-title {
+  font-weight: 700;
+}
+
+.status-copy {
+  color: #8fa3ba;
+  font-size: 0.9rem;
+  margin-top: 4px;
+}
+

@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "Timer",
+    "slug": "timer",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "timer",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": ["expo-router"]
+  }
+}
+

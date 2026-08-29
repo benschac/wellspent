@@ -1,0 +1,35 @@
+{
+  "name": "@repo/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nest build",
+    "dev": "nest start --watch",
+    "lint": "eslint .",
+    "start": "node dist/main.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@nestjs/common": "12.0.1",
+    "@nestjs/config": "12.0.0",
+    "@nestjs/core": "12.0.1",
+    "@nestjs/platform-express": "12.0.1",
+    "@orpc/nest": "2.0.0-beta.32",
+    "@orpc/server": "2.0.0-beta.32",
+    "@repo/api-contract": "workspace:*",
+    "class-transformer": "0.5.1",
+    "class-validator": "0.15.1",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2",
+    "zod": "4.5.2"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "12.0.0",
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "@types/node": "26.4.0",
+    "eslint": "9.39.1",
+    "typescript": "~6.0.3"
+  }
+}

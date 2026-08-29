@@ -1,0 +1,10 @@
+{
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "env": ["EXPO_PUBLIC_API_URL"],
+      "inputs": ["$TURBO_DEFAULT$", ".env", ".env.*"]
+    }
+  }
+}
+
