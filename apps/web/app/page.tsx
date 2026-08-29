@@ -1,12 +1,11 @@
 import { createApiClient } from "@repo/api-client";
+import { env } from "./env";
 
 export const dynamic = "force-dynamic";
 
 async function readApiStatus() {
-  const origin = process.env.API_URL ?? "http://localhost:3001";
-
   try {
-    return await createApiClient(origin).health();
+    return await createApiClient(env.API_URL).health();
   } catch {
     return null;
   }
@@ -45,4 +44,3 @@ export default async function HomePage() {
     </main>
   );
 }
-
