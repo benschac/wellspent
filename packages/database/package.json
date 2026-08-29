@@ -9,8 +9,9 @@
   },
   "scripts": {
     "db:check": "drizzle-kit check",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
+    "db:generate": "drizzle-kit generate --prefix supabase",
+    "db:migrate:local": "bunx supabase@2.116.0 migration up --workdir ../.. --db-url 'postgresql://postgres:postgres@127.0.0.1:54422/postgres?sslmode=disable&connect_timeout=30'",
+    "db:reset:local": "bunx supabase@2.116.0 db reset --workdir ../.. --db-url 'postgresql://postgres:postgres@127.0.0.1:54422/postgres?sslmode=disable&connect_timeout=30'",
     "db:studio": "drizzle-kit studio",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit"

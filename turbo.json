@@ -16,9 +16,11 @@
     "db:generate": {
       "cache": false
     },
-    "db:migrate": {
-      "cache": false,
-      "env": ["DATABASE_URL"]
+    "db:migrate:local": {
+      "cache": false
+    },
+    "db:reset:local": {
+      "cache": false
     },
     "db:studio": {
       "cache": false,
