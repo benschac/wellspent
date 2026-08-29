@@ -159,3 +159,43 @@ packages. Keep all `@orpc/*` versions aligned when upgrading and consult the
 changing the adapter. Additional references: [Turborepo](https://turborepo.dev/docs),
 [Next.js](https://nextjs.org/docs), [Expo](https://docs.expo.dev/), and
 [NestJS](https://docs.nestjs.com/).
+
+## Google Calendar backend integration
+
+The API contains an opt-in Google Calendar integration that creates a dedicated
+`Focus Timer` secondary calendar for each connected user. It requests the
+narrow `calendar.app.created` scope instead of access to every calendar. OAuth
+refresh tokens are encrypted at rest, webhook channel tokens are stored only as
+hashes, and Calendar changes are pulled through incremental sync into a durable
+server-only inbox.
+
+To enable it:
+
+1. Enable the Google Calendar API and create a Google OAuth web client.
+2. Register the exact `GOOGLE_OAUTH_REDIRECT_URI` from `apps/api/.env` as an
+   authorized redirect URI.
+3. Deploy the API at a public HTTPS address and set
+   `GOOGLE_CALENDAR_WEBHOOK_URL` to its webhook endpoint.
+4. Set the Supabase URL and publishable key so Nest can validate user access
+   tokens.
+5. Generate a 32-byte token-encryption key with `openssl rand -base64 32`.
+6. Set `GOOGLE_CALENDAR_ENABLED=true` and apply the database migrations.
+
+Endpoints:
+
+- `GET /api/integrations/google-calendar/connect` — authenticated; returns the
+  Google consent URL.
+- `GET /api/integrations/google-calendar/callback` — Google OAuth callback.
+- `GET /api/integrations/google-calendar/status` — authenticated connection and
+  watch status.
+- `DELETE /api/integrations/google-calendar` — authenticated disconnect and
+  token revocation.
+- `POST /api/integrations/google-calendar/webhook` — authenticated through the
+  stored Google channel token rather than a user bearer token.
+
+Push notifications contain no event body. A durable Postgres worker claims jobs
+with `FOR UPDATE SKIP LOCKED`, refreshes the user's Google access token, performs
+incremental synchronization, and stores each deduplicated change in
+`google_calendar_inbound_changes`. A later timer-domain slice should consume
+that inbox and emit outbound Calendar projections only after durable timer
+transitions commit; it must not synchronize a ticking counter every second.

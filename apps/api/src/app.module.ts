@@ -4,6 +4,7 @@ import { ORPCModule } from "@orpc/nest";
 import { onError } from "@orpc/server";
 import { validateEnvironment } from "./config/environment.js";
 import { DatabaseModule } from "./database/database.module.js";
+import { GoogleCalendarModule } from "./google-calendar/google-calendar.module.js";
 import { HealthModule } from "./health/health.module.js";
 import { RealtimeModule } from "./realtime/realtime.module.js";
 
@@ -24,6 +25,7 @@ const orpcLogger = new Logger("oRPC");
       ],
     }),
     DatabaseModule,
+    GoogleCalendarModule,
     HealthModule,
     RealtimeModule,
   ],
