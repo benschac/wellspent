@@ -7,6 +7,7 @@ A Bun-managed Turborepo containing:
 - `apps/api`: NestJS backend exposing oRPC-backed HTTP routes
 - `packages/api-contract`: shared, runtime-validated oRPC contract
 - `packages/api-client`: shared typed OpenAPI client factory
+- `packages/database`: shared Drizzle schema, PostgreSQL client, and migrations
 - `packages/typescript-config`: reusable TypeScript configurations
 - `packages/eslint-config`: reusable ESLint flat configurations
 
@@ -32,9 +33,15 @@ Create package-local environment files:
 
 ```bash
 cp apps/api/.env.example apps/api/.env
+cp packages/database/.env.example packages/database/.env
 cp apps/web/.env.example apps/web/.env.local
 cp apps/mobile/.env.example apps/mobile/.env
 ```
+
+For Supabase, replace `DATABASE_URL` in both database environment files with
+the Shared Pooler URI from the project's **Connect** panel. The API file is used
+at runtime; the database-package file is used by Drizzle Kit. Keep this URI
+server-only and URL-encode special characters in the database password.
 
 Then start every app through Turborepo:
 
@@ -60,6 +67,18 @@ bun run lint
 bun run typecheck
 bun run build
 ```
+
+Manage the PostgreSQL schema through Drizzle:
+
+```bash
+bun run db:check
+bun run db:generate
+bun run db:migrate
+bun run db:studio
+```
+
+`db:migrate` writes to the database selected by `packages/database/.env`, so
+verify that target before running it.
 
 Run one application with a Turborepo filter:
 
@@ -89,4 +108,3 @@ packages. Keep all `@orpc/*` versions aligned when upgrading and consult the
 changing the adapter. Additional references: [Turborepo](https://turborepo.dev/docs),
 [Next.js](https://nextjs.org/docs), [Expo](https://docs.expo.dev/), and
 [NestJS](https://docs.nestjs.com/).
-

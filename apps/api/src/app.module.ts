@@ -3,6 +3,7 @@ import { ConfigModule } from "@nestjs/config";
 import { ORPCModule } from "@orpc/nest";
 import { onError } from "@orpc/server";
 import { validateEnvironment } from "./config/environment.js";
+import { DatabaseModule } from "./database/database.module.js";
 import { HealthModule } from "./health/health.module.js";
 
 const orpcLogger = new Logger("oRPC");
@@ -21,6 +22,7 @@ const orpcLogger = new Logger("oRPC");
         }),
       ],
     }),
+    DatabaseModule,
     HealthModule,
   ],
 })

@@ -1,7 +1,9 @@
 {
   "extends": "@repo/typescript-config/nestjs.json",
   "compilerOptions": {
+    "allowImportingTsExtensions": true,
     "outDir": "./dist",
+    "rewriteRelativeImportExtensions": true,
     "rootDir": "./src"
   },
   "include": ["src/**/*.ts"],

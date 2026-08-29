@@ -12,6 +12,10 @@
   ],
   "scripts": {
     "build": "turbo run build",
+    "db:check": "turbo run db:check --filter=@repo/database",
+    "db:generate": "turbo run db:generate --filter=@repo/database",
+    "db:migrate": "turbo run db:migrate --filter=@repo/database",
+    "db:studio": "turbo run db:studio --filter=@repo/database",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck"
@@ -20,4 +24,3 @@
     "turbo": "2.10.12"
   }
 }
-

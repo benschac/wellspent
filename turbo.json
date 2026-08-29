@@ -10,6 +10,21 @@
         "dist/**"
       ]
     },
+    "db:check": {
+      "cache": false
+    },
+    "db:generate": {
+      "cache": false
+    },
+    "db:migrate": {
+      "cache": false,
+      "env": ["DATABASE_URL"]
+    },
+    "db:studio": {
+      "cache": false,
+      "env": ["DATABASE_URL"],
+      "persistent": true
+    },
     "dev": {
       "cache": false,
       "persistent": true
