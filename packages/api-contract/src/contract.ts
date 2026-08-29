@@ -8,6 +8,20 @@ export const healthOutputSchema = z.object({
   timestamp: z.iso.datetime(),
 });
 
+export const realtimePingEvent = "realtime.ping" as const;
+export const realtimePongEvent = "realtime.pong" as const;
+
+export const realtimePingSchema = z
+  .object({
+    sentAt: z.iso.datetime(),
+  })
+  .strict();
+
+export const realtimePongSchema = z.object({
+  sentAt: z.iso.datetime(),
+  serverTime: z.iso.datetime(),
+});
+
 export const apiContract = {
   health: oc
     .meta(
@@ -22,4 +36,5 @@ export const apiContract = {
 };
 
 export type HealthOutput = z.infer<typeof healthOutputSchema>;
-
+export type RealtimePing = z.infer<typeof realtimePingSchema>;
+export type RealtimePong = z.infer<typeof realtimePongSchema>;

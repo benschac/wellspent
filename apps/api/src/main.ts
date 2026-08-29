@@ -2,6 +2,7 @@ import "reflect-metadata";
 import { Logger, ValidationPipe } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
+import { WsAdapter } from "@nestjs/platform-ws";
 import { AppModule } from "./app.module.js";
 import type { Environment } from "./config/environment.js";
 
@@ -17,6 +18,7 @@ async function bootstrap(): Promise<void> {
   app.setGlobalPrefix("api");
   app.enableCors({ origin: allowedOrigins });
   app.enableShutdownHooks();
+  app.useWebSocketAdapter(new WsAdapter(app));
   app.useGlobalPipes(
     new ValidationPipe({
       forbidNonWhitelisted: true,

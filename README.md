@@ -19,6 +19,8 @@ another or reach across package boundaries.
 
 - Bun 1.4+
 - Node.js 22+
+- Docker Desktop or another Docker-compatible container runtime
+- Supabase CLI 2.116 (the scripts fetch the pinned CLI through `bunx`)
 - Expo Go for the quickest mobile development loop
 
 ## Setup
@@ -29,19 +31,22 @@ Install dependencies:
 bun install
 ```
 
-Create package-local environment files:
+Start the local Supabase stack, then create the environment files:
 
 ```bash
+bun run supabase:start
 cp apps/api/.env.example apps/api/.env
 cp packages/database/.env.example packages/database/.env
 cp apps/web/.env.example apps/web/.env.local
 cp apps/mobile/.env.example apps/mobile/.env
 ```
 
-For Supabase, replace `DATABASE_URL` in both database environment files with
-the Shared Pooler URI from the project's **Connect** panel. The API file is used
-at runtime; the database-package file is used by Drizzle Kit. Keep this URI
-server-only and URL-encode special characters in the database password.
+The API and database-package examples connect to local Postgres at
+`127.0.0.1:54422`. The API file is used at runtime; the database-package file is
+used by Drizzle Kit. To use a hosted project instead, replace `DATABASE_URL`
+with its server-only connection string and URL-encode special characters in the
+password. Never expose database credentials through `NEXT_PUBLIC_*` or
+`EXPO_PUBLIC_*` variables.
 
 Then start every app through Turborepo:
 
@@ -53,7 +58,14 @@ The default local services are:
 
 - Next.js: `http://localhost:3000`
 - NestJS API: `http://localhost:3001/api`
+- NestJS WebSocket: `ws://localhost:3001/api/ws`
 - Expo development server: shown by the Expo CLI, normally port 8081
+- Supabase API: `http://127.0.0.1:54421`
+- Supabase database: `postgresql://postgres:postgres@127.0.0.1:54422/postgres`
+- Supabase Mailpit: `http://127.0.0.1:54424`
+
+This project reserves ports `54420-54429` for its Supabase stack, keeping it
+separate from the other local projects on `54320-54329` and `64320-64329`.
 
 When opening Expo Go on a physical device, replace `localhost` in
 `apps/mobile/.env` with the computer's LAN address. For an Android emulator,
@@ -68,17 +80,44 @@ bun run typecheck
 bun run build
 ```
 
-Manage the PostgreSQL schema through Drizzle:
+Manage the PostgreSQL schema with Drizzle-generated SQL and the Supabase CLI:
 
 ```bash
 bun run db:check
-bun run db:generate
-bun run db:migrate
+bun run db:generate --name=describe_the_change
+bun run db:migrate:local
 bun run db:studio
 ```
 
-`db:migrate` writes to the database selected by `packages/database/.env`, so
-verify that target before running it.
+Drizzle owns the TypeScript schema and generates timestamped SQL plus metadata
+under `supabase/migrations`. Review generated SQL before applying it. The
+Supabase CLI is the migration applier and history authority; `db:migrate` is a
+convenience alias for `db:migrate:local`.
+
+Local Supabase lifecycle commands:
+
+```bash
+bun run supabase:start
+bun run supabase:start:full
+bun run supabase:status
+bun run supabase:stop
+```
+
+The default start command runs the services used by the current architecture:
+Postgres, Auth, REST, the API gateway, and Mailpit. `supabase:start:full` also
+starts Realtime, Storage, Studio (`http://127.0.0.1:54423`), and the Edge
+Functions runtime. Both commands omit optional analytics, Vector log shipping,
+and image transformation containers. Use the full stack when Docker has enough
+memory available; Supabase recommends at least 7 GB for local development.
+
+To rebuild the local database from committed migrations and `supabase/seed.sql`:
+
+```bash
+bun run db:reset:local
+```
+
+`db:reset:local` destroys local database data. It does not target a linked or
+hosted project.
 
 Run one application with a Turborepo filter:
 
@@ -91,6 +130,18 @@ bunx turbo run dev --filter=@repo/mobile
 The starter endpoint is `GET /api/health`. Both frontends call it through
 `createApiClient`, so input and output changes flow from the contract to every
 consumer at typecheck time.
+
+The API also exposes a native WebSocket transport probe at `/api/ws`. Messages
+use Nest's `{ event, data }` envelope:
+
+```json
+{"event":"realtime.ping","data":{"sentAt":"2026-08-29T12:00:00.000Z"}}
+```
+
+The server replies with `realtime.pong`, echoing `sentAt` and adding
+`serverTime`. This probe verifies transport availability; durable timer sync
+continues to use HTTP catch-up and Supabase Realtime as described in the design
+record.
 
 ## Adding an API feature
 
