@@ -14,6 +14,7 @@
     "packages/*"
   ],
   "scripts": {
+    "android:device": "bash ./scripts/android-device.sh",
     "build": "turbo run build",
     "build:ios": "bun run --cwd apps/mobile build:ios",
     "db:check": "turbo run db:check --filter=@repo/database",
