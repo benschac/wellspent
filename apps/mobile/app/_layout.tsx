@@ -5,10 +5,16 @@ import {
   QueryClientProvider,
 } from "@tanstack/react-query";
 import * as Network from "expo-network";
-import { Stack } from "expo-router/stack";
+import { DarkTheme, DefaultTheme, ThemeProvider } from "expo-router";
+import { Drawer } from "expo-router/drawer";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
-import { AppState, Platform, type AppStateStatus } from "react-native";
+import {
+  AppState,
+  Platform,
+  type AppStateStatus,
+  useColorScheme,
+} from "react-native";
 
 if (Platform.OS !== "web") {
   onlineManager.setEventListener((setOnline) => {
@@ -40,6 +46,7 @@ function onAppStateChange(status: AppStateStatus) {
 
 export default function RootLayout() {
   const [queryClient] = useState(() => new QueryClient());
+  const colorScheme = useColorScheme();
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", onAppStateChange);
@@ -49,15 +56,32 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Stack
-        screenOptions={{
-          headerLargeTitle: true,
-          headerShadowVisible: false,
-        }}
+      <ThemeProvider
+        value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
       >
-        <Stack.Screen name="index" options={{ title: "Timer" }} />
-      </Stack>
-      <StatusBar style="auto" />
+        <Drawer
+          screenOptions={{
+            headerShadowVisible: false,
+          }}
+        >
+          <Drawer.Screen
+            name="(tabs)"
+            options={{
+              drawerLabel: "Timer",
+              headerShown: false,
+              title: "Timer",
+            }}
+          />
+          <Drawer.Screen
+            name="about"
+            options={{
+              drawerLabel: "About",
+              title: "About Timer",
+            }}
+          />
+        </Drawer>
+        <StatusBar style="auto" />
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }
