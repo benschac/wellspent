@@ -15,6 +15,29 @@ export const healthOutputSchema = z.object({
   timestamp: z.iso.datetime(),
 });
 
+export const profileSchema = z
+  .object({
+    id: z.uuid(),
+    displayName: z.string().trim().min(1).max(100).nullable(),
+    avatarUrl: z.url().max(2_048).nullable(),
+    timeZone: z.string().trim().min(1).max(100).nullable(),
+    createdAt: z.iso.datetime(),
+    updatedAt: z.iso.datetime(),
+  })
+  .strict();
+
+export const updateProfileInputSchema = z
+  .object({
+    displayName: z.string().trim().min(1).max(100).nullable().optional(),
+    avatarUrl: z.url().max(2_048).nullable().optional(),
+    timeZone: z.string().trim().min(1).max(100).nullable().optional(),
+  })
+  .strict()
+  .refine(
+    (input) => Object.values(input).some((value) => value !== undefined),
+    "At least one profile field is required",
+  );
+
 const assistantMessagesSchema = z
   .array(z.unknown())
   .min(1)
@@ -112,10 +135,35 @@ export const apiContract = {
       }),
     )
     .output(healthOutputSchema),
+  profile: {
+    get: oc
+      .meta(
+        openapi({
+          method: "GET",
+          path: "/profile",
+          summary: "Get the current user's profile",
+          tags: ["profile"],
+        }),
+      )
+      .output(profileSchema),
+    update: oc
+      .meta(
+        openapi({
+          method: "PATCH",
+          path: "/profile",
+          summary: "Update the current user's profile",
+          tags: ["profile"],
+        }),
+      )
+      .input(updateProfileInputSchema)
+      .output(profileSchema),
+  },
 };
 
 export type AssistantChatInput = z.infer<typeof assistantChatInputSchema>;
 export type HealthOutput = z.infer<typeof healthOutputSchema>;
+export type Profile = z.infer<typeof profileSchema>;
+export type UpdateProfileInput = z.infer<typeof updateProfileInputSchema>;
 export type RealtimePing = z.infer<typeof realtimePingSchema>;
 export type RealtimePong = z.infer<typeof realtimePongSchema>;
 export type RealtimeTimerCommand = z.infer<

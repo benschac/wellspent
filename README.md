@@ -89,10 +89,14 @@ bun run db:migrate:local
 bun run db:studio
 ```
 
-Drizzle owns the TypeScript schema and generates timestamped SQL plus metadata
-under `supabase/migrations`. Review generated SQL before applying it. The
-Supabase CLI is the migration applier and history authority; `db:migrate` is a
-convenience alias for `db:migrate:local`.
+Drizzle owns the desired application schema and generates timestamped SQL plus
+metadata under `supabase/migrations`. Timer-owned tables live in the unexposed
+PostgreSQL `app` schema; Supabase continues to own `auth.users`. Review generated
+SQL before applying it, but do not append functions, triggers, grants, or other
+manual SQL to generated structural migrations. Unsupported PostgreSQL objects
+live in explicitly named Drizzle custom migrations. The Supabase CLI is the
+migration applier and history authority; `db:migrate` is a convenience alias
+for `db:migrate:local`.
 
 Local Supabase lifecycle commands:
 
@@ -186,6 +190,14 @@ changing the adapter. Additional references: [Turborepo](https://turborepo.dev/d
 [Next.js](https://nextjs.org/docs), [Expo](https://docs.expo.dev/), and
 [NestJS](https://docs.nestjs.com/).
 
+## Authentication and profiles
+
+Supabase Auth is the canonical identity provider. Authenticated application
+data goes through Nest rather than the Supabase Data API. An `auth.users`
+`AFTER INSERT` trigger creates the matching `app.profiles` row in the same
+transaction. `GET /api/profile` returns that profile, and `PATCH /api/profile`
+atomically updates its optional application-owned fields.
+
 ## Google Calendar backend integration
 
 The API contains an opt-in Google Calendar integration that creates a dedicated
@@ -222,6 +234,6 @@ Endpoints:
 Push notifications contain no event body. A durable Postgres worker claims jobs
 with `FOR UPDATE SKIP LOCKED`, refreshes the user's Google access token, performs
 incremental synchronization, and stores each deduplicated change in
-`google_calendar_inbound_changes`. A later timer-domain slice should consume
+`app.google_calendar_inbound_changes`. A later timer-domain slice should consume
 that inbox and emit outbound Calendar projections only after durable timer
 transitions commit; it must not synchronize a ticking counter every second.

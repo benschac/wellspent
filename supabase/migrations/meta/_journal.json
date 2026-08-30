@@ -5,15 +5,15 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1788040747879,
-      "tag": "20260829215907_google_calendar_integration",
+      "when": 1788104531593,
+      "tag": "20260830154211_initial_app_schema",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "7",
-      "when": 1788040986733,
-      "tag": "20260829220306_google_calendar_inbound_changes",
+      "when": 1788106994782,
+      "tag": "20260830162314_create_profile_on_auth_user",
       "breakpoints": true
     }
   ]

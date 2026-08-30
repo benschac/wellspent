@@ -1,10 +1,10 @@
 # Focus Timer Product and Sync Architecture
 
-**Status:** Decision-complete product and architecture record for the first technical PRD
+**Status:** Decision-complete; implementation in progress before the first durable session-domain slice
 
-**Last updated:** 2026-08-29
+**Last updated:** 2026-08-30
 
-**Purpose:** Preserve the product direction, lock the foundational platform and synchronization decisions, and define the gates required before implementing the first technical PRD.
+**Purpose:** Preserve the product direction, lock the foundational platform and synchronization decisions, define the implementation gates, and track progress against them.
 
 ## 1. Executive summary
 
@@ -160,18 +160,36 @@ Tauri offers React/TypeScript UI reuse, a small system-webview shell, Rust for l
 
 ## 6. Current repository boundary
 
-As observed on 2026-08-29, the working tree contains:
+As observed on 2026-08-30, the working tree contains:
 
 - `apps/web`: Next.js App Router application.
 - `apps/mobile`: Expo Router application.
 - `apps/api`: NestJS API with oRPC integration.
+- `apps/desktop`: Tauri 2 shell with a React/Vite timer interface.
 - `packages/api-contract`: shared runtime-validated API contract.
 - `packages/api-client`: shared typed client.
-- `packages/database`: an in-progress Drizzle/Postgres package with no application tables yet.
+- `packages/database`: Drizzle/Postgres package with an unexposed `app` schema containing the optional application profile and Google Calendar integration tables, but no canonical timer/session tables.
+- `packages/timer`: shared stopwatch, timer rendering, and WebSocket client hooks used by the web, mobile, and desktop interfaces.
 
-Only the health procedure and a validated `realtime.ping` WebSocket transport probe currently exist. The probe does not carry timer state or replace the selected HTTP and Supabase Realtime synchronization path. No timer, session, synchronization, SQLite repository, Legend-State integration, PowerSync, or TanStack DB implementation exists yet.
+The current product prototype provides immediate monotonic start, pause, resume, and reset controls across web, mobile, and desktop. A Nest WebSocket gateway broadcasts one process-memory timer state to connected clients. The mobile client also contains an iOS Live Activity and widget prototype, including APNs updates for activities already started by the application. Supabase JWT verification, automatic application-profile provisioning, authenticated profile read/update procedures, and durable Google Calendar integration plumbing exist in the API and database, and the Tauri shell renders the shared timer interface.
 
-This document describes proposed architecture, not completed functionality. It intentionally does not modify the in-progress API/database work already in the working tree.
+These are useful platform and delivery prototypes, but they do not implement the selected synchronization architecture. API restarts still discard the shared timer and Live Activity registrations. No versioned session-domain package, multi-session state machine, SQLite or IndexedDB `SessionRepository`, durable outbox, canonical timer Postgres tables, device registry, HTTP upload/catch-up API, contiguous sequence recovery, Legend-State binding, or sync acceptance harness exists yet.
+
+### 6.1 Implementation progress checkpoint
+
+This checkpoint includes the current staged and unstaged implementation as of 2026-08-30. Progress is evaluated against the gates in sections 18, 19, and 26 rather than by code volume alone.
+
+| Phase | Progress | Evidence and remaining gate |
+| ----- | -------- | --------------------------- |
+| Phase 0: protocol and measurement harness | **Partial** | The design record specifies the state machine, event contract, repository boundary, reconnect behavior, and failure matrix. Executable domain schemas, reducer/conformance tests, deterministic fault injection, and latency instrumentation remain. |
+| Phase 1: platform and custom-sync foundations | **Prototype groundwork only** | Expo 57 clients, a Next.js client, WebSocket transport, Tauri shell, and iOS Live Activity delivery code exist. The Android/Next custom-sync vertical slice, Legend-State physical-device proof, macOS capability gate, LAN spike, and recorded gate evidence remain. |
+| Phase 2: local-first multi-session clients | **Not started** | SQLite and IndexedDB repositories, durable events/outbox/cursor, optimistic projections, corrections, archives, overlap reports, and shared conformance tests remain. |
+| Phase 3: cloud-mediated synchronization | **Early partial** | Supabase JWT verification, automatic application-profile provisioning, and authenticated profile persistence through Nest exist. Authenticated device records, timer tables, idempotent event ingestion, HTTP push/catch-up, per-session revisions, per-user sequences, Realtime gap recovery, Android persistent controls, and measurements remain. |
+| Phase 4: macOS focus capabilities | **Shell only** | The Tauri timer window exists. Menu-bar lifecycle, global shortcuts, focus integration, application/site blocking, local-only activity observation, signing evidence, and a custom native bridge remain. No Tauri-versus-SwiftUI decision has passed the capability gate. |
+| Phase 5: reflection and AI | **Integration plumbing only** | Google Calendar authorization, webhook, job, and inbound-change infrastructure exist, but the timer domain does not consume it. Daily/weekly review, evidence-backed AI summaries, and user-approved insights remain. |
+| Phase 6: teams and organizations | **Not started** | Tenant, membership, role, shared-project, visibility, and team-reporting models remain. |
+
+No core synchronization acceptance slice or platform feasibility gate has passed yet. The repository is approximately one-fifth complete in broad scaffolding and prototype terms, but the sequential implementation checkpoint remains immediately before slice 1 in section 26.
 
 ## 7. Core architectural distinction
 
@@ -488,14 +506,17 @@ Legend-State observes the resulting repository projections after those transacti
 The initial Postgres model contains:
 
 ```text
-users
-devices
-sessions
-session_events
-user_stream_sequences
+auth.users
+app.profiles
+app.devices
+app.sessions
+app.session_events
+app.user_stream_sequences
 ```
 
-The event insert, session projection/state-revision update when applicable, and user sequence allocation occur in one transaction. A database trigger may emit a Supabase Realtime notification after the committed event is visible. Realtime delivery is intentionally non-canonical: a missed notification is repaired by HTTP catch-up from the durable event stream, so the prototype does not need a custom publication dispatcher or server outbox.
+Supabase owns authentication identity, credentials, providers, and sessions in `auth.users`. Timer owns one `app.profiles` row with the same UUID for application-specific profile data. An `AFTER INSERT` trigger on `auth.users` creates the row in the signup transaction; its `security definer` function has an empty search path, uses schema-qualified identifiers, and is not executable by client roles. The profile foreign key cascades only when the Auth user is permanently deleted. The `app` schema is not exposed through the Supabase Data API, and clients never receive table privileges; Nest owns profile authorization and persistence.
+
+The event insert, session projection/state-revision update when applicable, and user sequence allocation occur in one transaction. After commit, Nest may emit an opportunistic Supabase Realtime notification through the server-side Realtime API. Realtime delivery is intentionally non-canonical: a missed notification is repaired by HTTP catch-up from the durable event stream, so the prototype does not need a database trigger, custom publication dispatcher, or server outbox.
 
 Ordinary session removal is an indefinite, recoverable archive. During the private prototype, account exit is exposed honestly as deactivation and retains data; it must not be labeled deletion. Before public app-store distribution, the product must add permanent account and associated-data erasure and propagate local wipe instructions to authorized devices.
 
@@ -620,7 +641,7 @@ NestJS is not inherently overboard if the backend owns:
 
 The existing repository already contains NestJS and shared oRPC contracts. Keeping Nest avoids introducing another backend model before product behavior is understood. Nest verifies Supabase access tokens against the project's current JWKS, derives identity from the verified `sub` claim, and registers or revokes device installations. It does not use user-editable metadata for authorization. Device status is checked on every push and subscription because token validity alone does not prove that a specific installation remains authorized.
 
-Server-owned sync tables should live in an unexposed schema or run with the Supabase Data API disabled when clients never access them directly. If any table is deliberately exposed, grants and row-level security must both be explicit and tested. Service-role or secret keys never appear in Next.js, Expo, Tauri, SwiftUI, or other public clients.
+Server-owned tables live in the unexposed Drizzle-managed `app` schema. The Supabase Data API remains outside the application-data path; clients use Supabase Auth and call Nest for Timer data. If any table is deliberately exposed later, grants and row-level security must both be explicit and tested. Service-role or secret keys never appear in Next.js, Expo, Tauri, SwiftUI, or other public clients.
 
 ### 15.2 Next.js API routes or server functions
 
@@ -1013,6 +1034,9 @@ These defaults resolve the remaining technical details without expanding the pro
 ### 25.5 Account-local data and standard authentication
 
 - Clients use standard Supabase Auth. Nest verifies access tokens with the project's asymmetric JWKS and derives identity from `sub`.
+- `auth.users` is the canonical authentication identity. `app.profiles.id` is a one-to-one primary-key and cascading foreign-key reference to that UUID and stores only Timer-owned profile fields.
+- Signup creates the corresponding `app.profiles` row through a tested `AFTER INSERT` Auth trigger. Authenticated `GET /profile` reads the row, and `PATCH /profile` atomically updates it through Nest.
+- Drizzle is the desired-state source for supported application schema objects. Generated structural migration SQL is reviewed but not manually extended; unsupported functions, triggers, grants, and revokes use explicitly named Drizzle custom migrations.
 - Local events, projections, outbox rows, and cursors are scoped by the authenticated `sub`.
 - An expired access token does not stop local timer actions for the last authenticated account; cloud synchronization waits for reauthentication.
 - Logout attempts to flush pending work, then wipes local account data. If unsynchronized work cannot be uploaded, the interface requires explicit confirmation before discarding it.
@@ -1032,6 +1056,8 @@ These defaults resolve the remaining technical details without expanding the pro
 ## 26. Recommended next implementation sequence
 
 Implementation can begin as bounded vertical slices using the defaults in section 25. The first slice starts with a narrow technical PRD for **Local-first multi-session control and one-user multi-device synchronization** and lands the shared domain contract in the same milestone. The PRD and implementation should proceed in this order:
+
+**Current checkpoint (2026-08-30):** none of slices 1 through 6 has passed its gate. Supabase authentication and automatic application-profile persistence provide a reusable portion of slice 4, while the existing WebSocket timer, Tauri shell, iOS Live Activity, and Google Calendar work are prototypes or later-slice groundwork. The next gated deliverable is slice 1; later groundwork does not remove its dependency on the shared event contract and reducer semantics.
 
 1. **Shared domain contract:** add Zod schemas and generated TypeScript types for the versioned event union and push outcomes, plus a pure projection reducer and transition tests. This slice has no network or storage dependency.
 2. **Native local-first slice:** add the SQLite schema, migrations, `appendPending` transaction, projection rebuild, and repository conformance tests. Bind committed projections to Legend-State, persist only a small classified UI-state fixture through the Expo SQLite plugin, and prove cold-start and process-death recovery on physical Android with Expo 57.
