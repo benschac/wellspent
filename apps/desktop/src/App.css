@@ -68,34 +68,42 @@ h1 {
 }
 
 .timer-dial {
-  background: conic-gradient(from 220deg, #58f4c2, #4ca8df, #183047 72%);
+  background: #08121f;
   border-radius: 50%;
   box-shadow:
     0 30px 80px rgb(0 0 0 / 45%),
     0 0 80px rgb(88 244 194 / 8%);
   height: 300px;
-  padding: 8px;
+  overflow: hidden;
+  position: relative;
   width: 300px;
 }
 
-.timer-dial__inner {
-  align-items: center;
-  background: radial-gradient(circle at 50% 38%, #102538, #08121f 62%);
-  border-radius: inherit;
-  display: flex;
+.timer-dial canvas,
+.timer-dial__loading {
+  display: block;
   height: 100%;
-  justify-content: center;
   width: 100%;
 }
 
+.timer-dial__loading {
+  animation: timer-pulse 1.2s ease-in-out infinite alternate;
+  background: #08121f;
+  border: 8px solid #183047;
+  border-radius: 50%;
+}
+
 .timer-readout {
-  align-items: baseline;
+  align-items: center;
   display: flex;
   font-size: 3.1rem;
   font-variant-numeric: tabular-nums;
   font-weight: 700;
+  inset: 0;
   justify-content: center;
   letter-spacing: -0.045em;
+  pointer-events: none;
+  position: absolute;
 }
 
 .timer-readout__separator {
@@ -159,8 +167,57 @@ h1 {
   text-align: center;
 }
 
+@keyframes timer-pulse {
+  to {
+    opacity: 0.65;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .timer-dial__loading {
+    animation: none;
+  }
+
   .timer-button {
     transition: none;
+  }
+}
+
+@media (max-height: 700px) {
+  main {
+    padding: 20px;
+  }
+
+  .timer-shell {
+    gap: 16px;
+  }
+
+  h1 {
+    font-size: clamp(2.5rem, 7vw, 3.25rem);
+  }
+
+  .lede {
+    margin-top: 10px;
+  }
+
+  .timer-dial {
+    height: 240px;
+    width: 240px;
+  }
+
+  .timer-readout {
+    font-size: 2.6rem;
+  }
+
+  .timer-readout__hundredths {
+    font-size: 1.45rem;
+  }
+
+  .timer-button {
+    min-height: 48px;
+  }
+
+  .timer-note {
+    margin-top: -4px;
   }
 }
