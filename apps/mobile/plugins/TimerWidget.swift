@@ -11,8 +11,8 @@ private enum TimerWidgetAction: String, AppEnum {
   case pause
   case start
 
-  static var typeDisplayRepresentation = TypeDisplayRepresentation(name: "Timer action")
-  static var caseDisplayRepresentations: [TimerWidgetAction: DisplayRepresentation] = [
+  static let typeDisplayRepresentation = TypeDisplayRepresentation(name: "Timer action")
+  static let caseDisplayRepresentations: [TimerWidgetAction: DisplayRepresentation] = [
     .pause: DisplayRepresentation(title: "Pause"),
     .start: DisplayRepresentation(title: "Start")
   ]
@@ -45,12 +45,21 @@ private extension View {
       background(color)
     }
   }
+
+  @ViewBuilder
+  func timerWidgetInvalidatableContent() -> some View {
+    if #available(iOS 17.0, *) {
+      invalidatableContent(true)
+    } else {
+      self
+    }
+  }
 }
 
 @available(iOS 17.0, *)
 private struct TimerWidgetControlIntent: AppIntent {
-  static var title: LocalizedStringResource = "Control timer"
-  static var isDiscoverable = false
+  static let title: LocalizedStringResource = "Control timer"
+  static let isDiscoverable = false
 
   @Parameter(title: "Action")
   var action: TimerWidgetAction
@@ -63,7 +72,17 @@ private struct TimerWidgetControlIntent: AppIntent {
     self.action = action
   }
 
-  func perform() async throws -> some IntentResult {
+  func perform() async -> some IntentResult {
+    do {
+      try await performAction()
+    } catch {
+      Self.storeSyncFailure()
+    }
+
+    return .result()
+  }
+
+  private func performAction() async throws {
     guard let realtimeURL = Self.readRealtimeURL() else {
       throw TimerWidgetActionError.missingRealtimeURL
     }
@@ -87,9 +106,6 @@ private struct TimerWidgetControlIntent: AppIntent {
     let nextState = try await Self.receiveTimerState(from: socket)
 
     Self.storeSnapshot(nextState, realtimeURL: realtimeURL)
-    WidgetCenter.shared.reloadTimelines(ofKind: timerWidgetKind)
-
-    return .result()
   }
 
   private static func readRealtimeURL() -> URL? {
@@ -141,17 +157,19 @@ private struct TimerWidgetControlIntent: AppIntent {
       return
     }
 
-    let nowMs = Date().timeIntervalSince1970 * 1_000
+    let now = Date.now
+    let nowMs = now.timeIntervalSince1970 * 1_000
     let updatedAt = parseServerDate(state.updatedAt)
     let elapsedSinceUpdate = state.isRunning
-      ? max(0, nowMs - (updatedAt?.timeIntervalSince1970 ?? Date().timeIntervalSince1970) * 1_000)
+      ? max(0, nowMs - (updatedAt ?? now).timeIntervalSince1970 * 1_000)
       : 0
     let elapsedMs = state.elapsedMs + elapsedSinceUpdate
     let props: [String: Any] = [
       "elapsedMs": elapsedMs,
       "isRunning": state.isRunning,
       "originEpochMs": nowMs - elapsedMs,
-      "realtimeUrl": realtimeURL.absoluteString
+      "realtimeUrl": realtimeURL.absoluteString,
+      "syncError": false
     ]
     let entry: [String: Any] = [
       "timestamp": Int(nowMs),
@@ -159,6 +177,29 @@ private struct TimerWidgetControlIntent: AppIntent {
     ]
 
     defaults.set([entry], forKey: timerWidgetTimelineKey)
+  }
+
+  private static func storeSyncFailure() {
+    guard let timeline = WidgetsStorage.getArray(forKey: timerWidgetTimelineKey),
+          let groupIdentifier = WidgetsStorage.appGroupIdentifier,
+          let defaults = UserDefaults(suiteName: groupIdentifier) else {
+      return
+    }
+
+    for case let currentEntry as [String: Any] in timeline.reversed() {
+      guard var props = currentEntry["props"] as? [String: Any] else {
+        continue
+      }
+
+      let nowMs = Date.now.timeIntervalSince1970 * 1_000
+      props["syncError"] = true
+      let entry: [String: Any] = [
+        "timestamp": Int(nowMs),
+        "props": props
+      ]
+      defaults.set([entry], forKey: timerWidgetTimelineKey)
+      return
+    }
   }
 
   private static func parseServerDate(_ value: String) -> Date? {
@@ -184,17 +225,35 @@ private struct TimerWidgetEntryView: View {
     (entry.props?["isRunning"] as? NSNumber)?.boolValue ?? false
   }
 
+  private var hasSyncError: Bool {
+    (entry.props?["syncError"] as? NSNumber)?.boolValue ?? false
+  }
+
   private var originDate: Date {
     let originEpochMs = (entry.props?["originEpochMs"] as? NSNumber)?.doubleValue ?? 0
     return Date(timeIntervalSince1970: originEpochMs / 1_000)
   }
 
+  private var pausedDuration: Duration {
+    .milliseconds(max(0, Int(elapsedMs)))
+  }
+
   private var pausedTime: String {
-    let clampedMs = max(0, Int(elapsedMs))
-    let minutes = clampedMs / 60_000
-    let seconds = (clampedMs / 1_000) % 60
-    let hundredths = (clampedMs / 10) % 100
-    return String(format: "%d:%02d.%02d", minutes, seconds, hundredths)
+    pausedDuration.formatted(
+      .time(
+        pattern: .minuteSecond(
+          padMinuteToLength: 1,
+          fractionalSecondsLength: 2,
+          roundFractionalSeconds: .down
+        )
+      )
+    )
+  }
+
+  private var accessiblePausedTime: String {
+    pausedDuration.formatted(
+      .units(allowed: [.minutes, .seconds], width: .wide)
+    )
   }
 
   var body: some View {
@@ -202,14 +261,16 @@ private struct TimerWidgetEntryView: View {
       HStack(spacing: 7) {
         Image(systemName: "timer")
           .foregroundStyle(Color(red: 0.35, green: 0.96, blue: 0.76))
+          .accessibilityHidden(true)
         Text("SHARED TIMER")
           .font(.caption2.weight(.bold))
           .foregroundStyle(Color(red: 0.55, green: 0.64, blue: 0.71))
       }
 
-      Text(isRunning ? "Running" : "Paused")
+      Text(hasSyncError ? "Sync failed" : isRunning ? "Running" : "Paused")
         .font(.caption.weight(.semibold))
-        .foregroundStyle(.white.opacity(0.82))
+        .foregroundStyle(hasSyncError ? .orange : .white.opacity(0.82))
+        .timerWidgetInvalidatableContent()
 
       Group {
         if isRunning {
@@ -220,13 +281,17 @@ private struct TimerWidgetEntryView: View {
           )
         } else {
           Text(pausedTime)
+            .accessibilityLabel("Elapsed time")
+            .accessibilityValue(accessiblePausedTime)
         }
       }
-      .font(.system(size: 31, weight: .bold, design: .rounded))
+      .font(.system(.title, design: .rounded))
+      .bold()
       .monospacedDigit()
       .foregroundStyle(Color(red: 0.35, green: 0.96, blue: 0.76))
       .minimumScaleFactor(0.68)
       .lineLimit(1)
+      .timerWidgetInvalidatableContent()
 
       Spacer(minLength: 0)
 
