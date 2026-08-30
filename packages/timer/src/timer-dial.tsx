@@ -7,7 +7,7 @@ import {
   Skia,
   vec,
 } from "@shopify/react-native-skia";
-import { type ComponentProps, useMemo } from "react";
+import type { ComponentProps } from "react";
 
 export interface TimerDialProps {
   elapsedMs: number;
@@ -31,45 +31,39 @@ export default function TimerDial({
   const secondProgress =
     animatedSecondProgress ?? (Math.max(0, elapsedMs) % 1000) / 1000;
 
-  const progressPath = useMemo(() => {
-    const pathBuilder = Skia.PathBuilder.Make();
-    const inset = center - radius;
+  const pathBuilder = Skia.PathBuilder.Make();
+  const inset = center - radius;
 
-    pathBuilder.addArc(
-      {
-        height: radius * 2,
-        width: radius * 2,
-        x: inset,
-        y: inset,
-      },
-      -90,
-      359.999,
-    );
-
-    return pathBuilder.detach();
-  }, [center, radius]);
-
-  const tickMarks = useMemo<TickMark[]>(
-    () =>
-      Array.from({ length: 60 }, (_, index) => {
-        const angle = (index / 60) * Math.PI * 2 - Math.PI / 2;
-        const isMajor = index % 5 === 0;
-        const outerRadius = radius - strokeWidth * 1.8;
-        const innerRadius = outerRadius - (isMajor ? size * 0.04 : size * 0.018);
-
-        return {
-          end: vec(
-            center + Math.cos(angle) * outerRadius,
-            center + Math.sin(angle) * outerRadius,
-          ),
-          start: vec(
-            center + Math.cos(angle) * innerRadius,
-            center + Math.sin(angle) * innerRadius,
-          ),
-        };
-      }),
-    [center, radius, size, strokeWidth],
+  pathBuilder.addArc(
+    {
+      height: radius * 2,
+      width: radius * 2,
+      x: inset,
+      y: inset,
+    },
+    -90,
+    359.999,
   );
+
+  const progressPath = pathBuilder.detach();
+
+  const tickMarks: TickMark[] = Array.from({ length: 60 }, (_, index) => {
+    const angle = (index / 60) * Math.PI * 2 - Math.PI / 2;
+    const isMajor = index % 5 === 0;
+    const outerRadius = radius - strokeWidth * 1.8;
+    const innerRadius = outerRadius - (isMajor ? size * 0.04 : size * 0.018);
+
+    return {
+      end: vec(
+        center + Math.cos(angle) * outerRadius,
+        center + Math.sin(angle) * outerRadius,
+      ),
+      start: vec(
+        center + Math.cos(angle) * innerRadius,
+        center + Math.sin(angle) * innerRadius,
+      ),
+    };
+  });
 
   return (
     <Canvas style={{ height: size, width: size }}>

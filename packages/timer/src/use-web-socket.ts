@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useEffectEvent, useRef } from "react";
+import { useEffect, useEffectEvent, useRef } from "react";
 
 import { useEventListener } from "./use-event-listener";
 import { useSetTimeout } from "./use-set-timeout";
@@ -85,20 +85,17 @@ export function useWebSocket({
     };
   }, [clearReconnectTimeout, listen, reconnectDelayMs, scheduleReconnect, url]);
 
-  return useCallback(
-    (data: string) => {
-      if (!url) {
-        return;
-      }
+  return (data: string) => {
+    if (!url) {
+      return;
+    }
 
-      const socket = socketRef.current;
+    const socket = socketRef.current;
 
-      if (socket?.readyState === WebSocket.OPEN) {
-        socket.send(data);
-      } else {
-        pendingMessagesRef.current.push(data);
-      }
-    },
-    [url],
-  );
+    if (socket?.readyState === WebSocket.OPEN) {
+      socket.send(data);
+    } else {
+      pendingMessagesRef.current.push(data);
+    }
+  };
 }

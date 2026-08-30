@@ -7,6 +7,9 @@
     "scheme": "timer",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "experiments": {
+      "reactCompiler": true
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.benschac.timer"
@@ -19,14 +22,31 @@
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
-      ]
+      ],
+      "package": "com.benschac.timer"
     },
     "web": {
       "bundler": "metro"
     },
     "plugins": [
       "expo-router",
-      "expo-widgets",
+      "./modules/timer-live-activity/app.plugin.js",
+      "./plugins/with-timer-widget-actions",
+      [
+        "expo-widgets",
+        {
+          "widgets": [
+            {
+              "name": "TimerWidget",
+              "displayName": "Timer",
+              "description": "See and control the shared timer.",
+              "ios": {
+                "supportedFamilies": ["systemSmall", "systemMedium"]
+              }
+            }
+          ]
+        }
+      ],
       "expo-secure-store",
       "expo-maps",
       "expo-image",

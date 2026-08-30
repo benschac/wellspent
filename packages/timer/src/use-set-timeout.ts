@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 
 export interface SetTimeoutControls {
   clear: () => void;
@@ -10,27 +10,24 @@ export function useSetTimeout(): SetTimeoutControls {
     undefined,
   );
 
-  const clear = useCallback(() => {
+  const clear = () => {
     if (timeoutRef.current === undefined) {
       return;
     }
 
     globalThis.clearTimeout(timeoutRef.current);
     timeoutRef.current = undefined;
-  }, []);
+  };
 
-  const schedule = useCallback(
-    (callback: () => void, delayMs: number) => {
-      clear();
-      timeoutRef.current = globalThis.setTimeout(() => {
-        timeoutRef.current = undefined;
-        callback();
-      }, delayMs);
-    },
-    [clear],
-  );
+  const schedule = (callback: () => void, delayMs: number) => {
+    clear();
+    timeoutRef.current = globalThis.setTimeout(() => {
+      timeoutRef.current = undefined;
+      callback();
+    }, delayMs);
+  };
 
   useEffect(() => clear, [clear]);
 
-  return useMemo(() => ({ clear, schedule }), [clear, schedule]);
+  return { clear, schedule };
 }

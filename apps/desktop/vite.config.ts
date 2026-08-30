@@ -1,11 +1,53 @@
+import babel from "@rolldown/plugin-babel";
 import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
+import react, { reactCompilerPreset } from "@vitejs/plugin-react";
+import { fileURLToPath } from "node:url";
 
 const host = process.env.TAURI_DEV_HOST;
+const reanimatedStub = fileURLToPath(
+  new URL("./src/react-native-reanimated-stub.ts", import.meta.url),
+);
+const webExtensions = [
+  ".web.mjs",
+  ".web.js",
+  ".web.mts",
+  ".web.ts",
+  ".web.jsx",
+  ".web.tsx",
+  ".mjs",
+  ".js",
+  ".mts",
+  ".ts",
+  ".jsx",
+  ".tsx",
+  ".json",
+];
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: react(),
+  define: {
+    global: "globalThis",
+  },
+  plugins: [react(), babel({ presets: [reactCompilerPreset()] })],
+  resolve: {
+    alias: [
+      { find: /^react-native$/, replacement: "react-native-web" },
+      {
+        find: /^react-native-reanimated(?:\/package\.json)?$/,
+        replacement: reanimatedStub,
+      },
+    ],
+    extensions: webExtensions,
+  },
+  optimizeDeps: {
+    rolldownOptions: {
+      resolve: {
+        // Vite's optimizer has its own resolver and otherwise picks Skia's
+        // native `.js` modules before their `.web.js` counterparts.
+        extensions: webExtensions,
+      },
+    },
+  },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //

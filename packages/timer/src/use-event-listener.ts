@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 
 export type RemoveEventListener = () => void;
 
@@ -20,42 +20,39 @@ export interface ListenForEvent {
 export function useEventListener(): ListenForEvent {
   const removersRef = useRef(new Set<RemoveEventListener>());
 
-  const removeAll = useCallback(() => {
+  const removeAll = () => {
     for (const remove of removersRef.current) {
       remove();
     }
 
     removersRef.current.clear();
-  }, []);
+  };
 
   useEffect(() => removeAll, [removeAll]);
 
-  return useCallback(
-    (<EventType extends Event>(
-      target: EventTarget,
-      eventName: string,
-      listener: (event: EventType) => void,
-      options?: boolean | AddEventListenerOptions,
-    ) => {
-      const eventListener = listener as EventListener;
-      let isListening = true;
+  return (<EventType extends Event>(
+    target: EventTarget,
+    eventName: string,
+    listener: (event: EventType) => void,
+    options?: boolean | AddEventListenerOptions,
+  ) => {
+    const eventListener = listener as EventListener;
+    let isListening = true;
 
-      target.addEventListener(eventName, eventListener, options);
+    target.addEventListener(eventName, eventListener, options);
 
-      const remove = () => {
-        if (!isListening) {
-          return;
-        }
+    const remove = () => {
+      if (!isListening) {
+        return;
+      }
 
-        isListening = false;
-        target.removeEventListener(eventName, eventListener, options);
-        removersRef.current.delete(remove);
-      };
+      isListening = false;
+      target.removeEventListener(eventName, eventListener, options);
+      removersRef.current.delete(remove);
+    };
 
-      removersRef.current.add(remove);
+    removersRef.current.add(remove);
 
-      return remove;
-    }) as ListenForEvent,
-    [],
-  );
+    return remove;
+  }) as ListenForEvent;
 }

@@ -5,25 +5,31 @@
   "type": "module",
   "scripts": {
     "build": "tsc --noEmit && vite build",
-    "dev": "vite",
+    "dev": "bun run skia:web && vite",
     "lint": "eslint .",
     "preview": "vite preview",
+    "skia:web": "setup-skia-web public",
     "tauri": "tauri",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@repo/timer": "workspace:*",
+    "@shopify/react-native-skia": "2.6.2",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "react-native-web": "0.21.2"
   },
   "devDependencies": {
+    "@babel/core": "7.29.7",
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
+    "@rolldown/plugin-babel": "^0.2.3",
     "@tauri-apps/cli": "2.11.4",
     "@types/node": "26.4.0",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.1.1",
+    "babel-plugin-react-compiler": "1.0.0",
     "eslint": "9.39.1",
     "typescript": "~6.0.3",
     "vite": "8.2.2"

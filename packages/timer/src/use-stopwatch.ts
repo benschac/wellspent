@@ -5,7 +5,7 @@ import {
   type RealtimeTimerCommand,
   type RealtimeTimerState,
 } from "@repo/api-contract";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useRaf } from "./use-raf";
 import { useWebSocket } from "./use-web-socket";
@@ -50,7 +50,7 @@ export function useStopwatch(
   const latestRevisionRef = useRef(-1);
   const startedAtRef = useRef<number | null>(null);
 
-  const updateElapsed = useCallback(() => {
+  const updateElapsed = () => {
     const startedAt = startedAtRef.current;
 
     if (startedAt !== null) {
@@ -62,7 +62,7 @@ export function useStopwatch(
         sampledAtMs,
       });
     }
-  }, []);
+  };
 
   useRaf(updateElapsed, isRunning && updateIntervalMs === undefined);
 
@@ -76,7 +76,7 @@ export function useStopwatch(
     return () => clearInterval(interval);
   }, [isRunning, updateElapsed, updateIntervalMs]);
 
-  const applyRealtimeState = useCallback((state: RealtimeTimerState) => {
+  const applyRealtimeState = (state: RealtimeTimerState) => {
     if (state.revision <= latestRevisionRef.current) {
       return;
     }
@@ -94,7 +94,7 @@ export function useStopwatch(
     startedAtRef.current = state.isRunning ? sampledAtMs : null;
     setElapsedSnapshot({ elapsedMs: nextElapsedMs, sampledAtMs });
     setIsRunning(state.isRunning);
-  }, []);
+  };
 
   const sendRealtimeMessage = useWebSocket({
     url: realtimeUrl,
@@ -126,16 +126,16 @@ export function useStopwatch(
     },
   });
 
-  const sendAction = useCallback((action: TimerAction) => {
+  const sendAction = (action: TimerAction) => {
     sendRealtimeMessage(
       JSON.stringify({
         event: realtimeTimerCommandEvent,
         data: { action },
       }),
     );
-  }, [sendRealtimeMessage]);
+  };
 
-  const start = useCallback(() => {
+  const start = () => {
     if (isRunningRef.current) {
       sendAction("start");
       return;
@@ -148,9 +148,9 @@ export function useStopwatch(
     setElapsedSnapshot((snapshot) => ({ ...snapshot, sampledAtMs }));
     setIsRunning(true);
     sendAction("start");
-  }, [sendAction]);
+  };
 
-  const pause = useCallback(() => {
+  const pause = () => {
     if (!isRunningRef.current || startedAtRef.current === null) {
       sendAction("pause");
       return;
@@ -166,16 +166,16 @@ export function useStopwatch(
     setElapsedSnapshot({ elapsedMs: nextElapsedMs, sampledAtMs });
     setIsRunning(false);
     sendAction("pause");
-  }, [sendAction]);
+  };
 
-  const reset = useCallback(() => {
+  const reset = () => {
     const sampledAtMs = readClock();
 
     accumulatedMsRef.current = 0;
     startedAtRef.current = isRunningRef.current ? sampledAtMs : null;
     setElapsedSnapshot({ elapsedMs: 0, sampledAtMs });
     sendAction("reset");
-  }, [sendAction]);
+  };
 
   return {
     elapsedMs: elapsedSnapshot.elapsedMs,
