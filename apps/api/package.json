@@ -23,6 +23,7 @@
     "@repo/api-contract": "workspace:*",
     "@repo/database": "workspace:*",
     "@t3-oss/env-core": "0.13.11",
+    "ai": "7.0.85",
     "class-transformer": "0.5.1",
     "class-validator": "0.15.1",
     "drizzle-orm": "0.45.2",

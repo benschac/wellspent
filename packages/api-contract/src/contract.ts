@@ -1,5 +1,12 @@
-import { oc } from "@orpc/contract";
+import {
+  asyncIteratorObject,
+  error,
+  oc,
+  type Schema,
+  type,
+} from "@orpc/contract";
 import { openapi } from "@orpc/openapi";
+import type { UIMessage, UIMessageChunk } from "ai";
 import { z } from "zod";
 
 export const healthOutputSchema = z.object({
@@ -7,6 +14,32 @@ export const healthOutputSchema = z.object({
   status: z.literal("ok"),
   timestamp: z.iso.datetime(),
 });
+
+const assistantMessagesSchema = z
+  .array(z.unknown())
+  .min(1)
+  .max(50)
+  .transform((messages) => messages as UIMessage[]);
+
+export const assistantChatInputSchema = z
+  .object({
+    chatId: z.string().min(1).max(128),
+    messages: assistantMessagesSchema,
+  })
+  .strict();
+
+export const assistantNotConfiguredError = error("SERVICE_UNAVAILABLE", {
+  message: "The focus assistant is not configured",
+});
+
+export const assistantInvalidMessagesError = error("BAD_REQUEST", {
+  message: "The conversation contains invalid messages",
+});
+
+const assistantChatOutputSchema: Schema<
+  AsyncIteratorObject<UIMessageChunk, unknown, void>,
+  AsyncIteratorObject<UIMessageChunk, unknown, void>
+> = asyncIteratorObject(type<UIMessageChunk>());
 
 export const realtimePingEvent = "realtime.ping" as const;
 export const realtimePongEvent = "realtime.pong" as const;
@@ -52,6 +85,23 @@ export const realtimeTimerStateSchema = z
   .strict();
 
 export const apiContract = {
+  assistant: {
+    chat: oc
+      .meta(
+        openapi({
+          method: "POST",
+          path: "/assistant/chat",
+          summary: "Stream a focus assistant response",
+          tags: ["assistant"],
+        }),
+      )
+      .input(assistantChatInputSchema)
+      .output(assistantChatOutputSchema)
+      .errors({
+        [assistantInvalidMessagesError.code]: assistantInvalidMessagesError,
+        [assistantNotConfiguredError.code]: assistantNotConfiguredError,
+      }),
+  },
   health: oc
     .meta(
       openapi({
@@ -64,6 +114,7 @@ export const apiContract = {
     .output(healthOutputSchema),
 };
 
+export type AssistantChatInput = z.infer<typeof assistantChatInputSchema>;
 export type HealthOutput = z.infer<typeof healthOutputSchema>;
 export type RealtimePing = z.infer<typeof realtimePingSchema>;
 export type RealtimePong = z.infer<typeof realtimePongSchema>;

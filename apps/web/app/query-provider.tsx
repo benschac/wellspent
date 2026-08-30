@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { env } from "./env";
 
-const api = createApiClient(env.NEXT_PUBLIC_API_URL);
+export const api = createApiClient(env.NEXT_PUBLIC_API_URL);
 
 export const orpc = createApiQueryUtils(api);
 

@@ -2,6 +2,8 @@ import { createEnv } from "@t3-oss/env-core";
 import * as z from "zod";
 
 const server = {
+  AI_GATEWAY_API_KEY: z.string().min(1).optional(),
+  AI_MODEL: z.string().min(1).default("openai/gpt-5.6-luna"),
   APPLE_APNS_BUNDLE_ID: z.string().min(1).optional(),
   APPLE_APNS_ENVIRONMENT: z
     .enum(["development", "production"])
@@ -26,6 +28,8 @@ const server = {
 };
 
 export interface Environment {
+  AI_GATEWAY_API_KEY?: string | undefined;
+  AI_MODEL: string;
   APPLE_APNS_BUNDLE_ID?: string | undefined;
   APPLE_APNS_ENVIRONMENT: "development" | "production";
   APPLE_APNS_KEY_ID?: string | undefined;
