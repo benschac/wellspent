@@ -14,7 +14,9 @@
     "@orpc/client": "2.0.0-beta.32",
     "@orpc/contract": "2.0.0-beta.32",
     "@orpc/openapi": "2.0.0-beta.32",
-    "@repo/api-contract": "workspace:*"
+    "@orpc/tanstack-query": "2.0.0-beta.32",
+    "@repo/api-contract": "workspace:*",
+    "@tanstack/query-core": "5.102.8"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",

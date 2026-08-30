@@ -1,4 +1,4 @@
-import { createApiClient } from "@repo/api-client";
+import { createApiClient, createApiQueryUtils } from "@repo/api-client";
 import { env } from "../env";
 import { replaceLocalhost } from "./get-localhost";
 
@@ -15,5 +15,6 @@ const createTimerRealtimeUrl = (): string => {
 const apiOrigin = replaceLocalhost(env.EXPO_PUBLIC_API_URL);
 
 export const api = createApiClient(apiOrigin);
+export const orpc = createApiQueryUtils(api);
 export { apiOrigin };
 export const getTimerRealtimeUrl = createTimerRealtimeUrl;
