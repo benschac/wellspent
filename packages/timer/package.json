@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@repo/api-contract": "workspace:*",
     "@shopify/react-native-skia": "2.6.2"
   },
   "devDependencies": {

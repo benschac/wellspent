@@ -25,6 +25,7 @@ import { TimerWidget, type TimerWidgetProps } from "@/lib/timer-widget";
 import { getTimerRealtimeUrl } from "@/lib/api";
 import {
   endTimerLiveActivity,
+  onTimerLiveActivityPushToken,
   startOrUpdateTimerLiveActivity,
   type TimerLiveActivityState,
 } from "@/modules/timer-live-activity/src";
@@ -126,6 +127,7 @@ export default function HomeScreen() {
     elapsedSnapshotAtMs,
     isRunning,
     pause,
+    registerLiveActivity,
     realtimeRevision,
     reset,
     start,
@@ -273,6 +275,28 @@ export default function HomeScreen() {
 
     syncLiveActivityFromRealtime();
   }, [realtimeRevision]);
+
+  const registerLiveActivityPushToken = useEffectEvent(
+    ({ activityId, pushToken }: { activityId: string; pushToken: string }) => {
+      registerLiveActivity({
+        activityId,
+        pushToken,
+        realtimeUrl: timerRealtimeUrl,
+      });
+    },
+  );
+
+  useEffect(() => {
+    if (process.env.EXPO_OS !== "ios") {
+      return;
+    }
+
+    const subscription = onTimerLiveActivityPushToken((event) => {
+      registerLiveActivityPushToken(event);
+    });
+
+    return () => subscription.remove();
+  }, []);
 
   useEffect(() => {
     if (timerRealtimeUrl.includes("://localhost:")) {

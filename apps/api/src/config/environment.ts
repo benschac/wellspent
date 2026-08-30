@@ -2,6 +2,14 @@ import { createEnv } from "@t3-oss/env-core";
 import * as z from "zod";
 
 const server = {
+  APPLE_APNS_BUNDLE_ID: z.string().min(1).optional(),
+  APPLE_APNS_ENVIRONMENT: z
+    .enum(["development", "production"])
+    .default("development"),
+  APPLE_APNS_KEY_ID: z.string().min(1).optional(),
+  APPLE_APNS_PRIVATE_KEY_BASE64: z.string().min(1).optional(),
+  APPLE_APNS_TEAM_ID: z.string().min(1).optional(),
+  APPLE_LIVE_ACTIVITY_PUSH_ENABLED: z.stringbool().default(false),
   CORS_ORIGIN: z
     .string()
     .default("http://localhost:3000,http://localhost:8081"),
@@ -18,6 +26,12 @@ const server = {
 };
 
 export interface Environment {
+  APPLE_APNS_BUNDLE_ID?: string | undefined;
+  APPLE_APNS_ENVIRONMENT: "development" | "production";
+  APPLE_APNS_KEY_ID?: string | undefined;
+  APPLE_APNS_PRIVATE_KEY_BASE64?: string | undefined;
+  APPLE_APNS_TEAM_ID?: string | undefined;
+  APPLE_LIVE_ACTIVITY_PUSH_ENABLED: boolean;
   CORS_ORIGIN: string;
   DATABASE_URL: string;
   GOOGLE_CALENDAR_ENABLED: boolean;
@@ -39,6 +53,31 @@ export function validateEnvironment(
     runtimeEnv: environment,
     emptyStringAsUndefined: true,
   });
+
+  if (validated.APPLE_LIVE_ACTIVITY_PUSH_ENABLED) {
+    const requiredKeys = [
+      "APPLE_APNS_BUNDLE_ID",
+      "APPLE_APNS_KEY_ID",
+      "APPLE_APNS_PRIVATE_KEY_BASE64",
+      "APPLE_APNS_TEAM_ID",
+    ] as const;
+
+    for (const key of requiredKeys) {
+      if (validated[key] === undefined) {
+        throw new Error(`${key} is required when Live Activity push is enabled`);
+      }
+    }
+
+    const privateKey = Buffer.from(
+      validated.APPLE_APNS_PRIVATE_KEY_BASE64 ?? "",
+      "base64",
+    ).toString("utf8");
+    if (!privateKey.includes("-----BEGIN PRIVATE KEY-----")) {
+      throw new Error(
+        "APPLE_APNS_PRIVATE_KEY_BASE64 must contain a base64-encoded APNs .p8 key",
+      );
+    }
+  }
 
   if (validated.GOOGLE_CALENDAR_ENABLED) {
     const requiredKeys = [

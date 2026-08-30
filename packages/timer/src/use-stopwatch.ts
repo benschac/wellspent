@@ -1,8 +1,10 @@
 import {
   realtimeTimerCommandEvent,
+  realtimeTimerLiveActivityRegisterEvent,
   realtimeTimerStateEvent,
   realtimeTimerStateSchema,
   type RealtimeTimerCommand,
+  type RealtimeTimerLiveActivityRegistration,
   type RealtimeTimerState,
 } from "@repo/api-contract";
 import { useEffect, useRef, useState } from "react";
@@ -15,6 +17,9 @@ export interface Stopwatch {
   elapsedSnapshotAtMs: number;
   isRunning: boolean;
   pause: () => void;
+  registerLiveActivity: (
+    registration: RealtimeTimerLiveActivityRegistration,
+  ) => void;
   realtimeRevision: number | null;
   reset: () => void;
   start: () => void;
@@ -135,6 +140,17 @@ export function useStopwatch(
     );
   };
 
+  const registerLiveActivity = (
+    registration: RealtimeTimerLiveActivityRegistration,
+  ) => {
+    sendRealtimeMessage(
+      JSON.stringify({
+        event: realtimeTimerLiveActivityRegisterEvent,
+        data: registration,
+      }),
+    );
+  };
+
   const start = () => {
     if (isRunningRef.current) {
       sendAction("start");
@@ -182,6 +198,7 @@ export function useStopwatch(
     elapsedSnapshotAtMs: elapsedSnapshot.sampledAtMs,
     isRunning,
     pause,
+    registerLiveActivity,
     realtimeRevision,
     reset,
     start,

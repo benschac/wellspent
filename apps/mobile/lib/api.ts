@@ -1,7 +1,19 @@
 import { createApiClient } from "@repo/api-client";
 import { env } from "../env";
+import { replaceLocalhost } from "./get-localhost";
 
-const apiOrigin = env.EXPO_PUBLIC_API_URL;
+const createTimerRealtimeUrl = (): string => {
+  const realtimeUrl = new URL(
+    "/api/ws",
+    replaceLocalhost(env.EXPO_PUBLIC_API_URL),
+  );
+  realtimeUrl.protocol = realtimeUrl.protocol === "https:" ? "wss:" : "ws:";
+
+  return realtimeUrl.toString();
+};
+
+const apiOrigin = replaceLocalhost(env.EXPO_PUBLIC_API_URL);
 
 export const api = createApiClient(apiOrigin);
 export { apiOrigin };
+export const getTimerRealtimeUrl = createTimerRealtimeUrl;

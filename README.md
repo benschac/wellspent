@@ -67,10 +67,10 @@ The default local services are:
 This project reserves ports `54420-54429` for its Supabase stack, keeping it
 separate from the other local projects on `54320-54329` and `64320-64329`.
 
-When opening Expo Go on a physical device, replace `localhost` in
-`apps/mobile/.env` with the computer's LAN address. For an Android emulator,
-use `http://10.0.2.2:3001` when it cannot resolve the host through `localhost`.
-Only public, non-secret values belong in `EXPO_PUBLIC_*` variables.
+On native development builds, the mobile client automatically replaces the
+`localhost` API hostname with Metro's current host. Remote and production API
+URLs are left unchanged. Only public, non-secret values belong in
+`EXPO_PUBLIC_*` variables.
 
 ## Useful commands
 
@@ -139,9 +139,35 @@ use Nest's `{ event, data }` envelope:
 ```
 
 The server replies with `realtime.pong`, echoing `sentAt` and adding
-`serverTime`. This probe verifies transport availability; durable timer sync
-continues to use HTTP catch-up and Supabase Realtime as described in the design
-record.
+`serverTime`. Connected timer clients also send `timer.command` frames with a
+`start`, `pause`, or `reset` action. The API broadcasts the resulting
+`timer.state` snapshot to every connected client so web and mobile controls
+converge immediately.
+
+This realtime timer is currently an in-memory connected-device path. API
+restarts reset it, and it does not replace the durable HTTP catch-up, local
+outbox, authentication, and Postgres/Supabase Realtime architecture described
+in the design record.
+
+### Live Activity remote updates
+
+The iOS timer starts ActivityKit activities with per-activity APNs update
+tokens. While the mobile app is connected, it registers the current token with
+the timer WebSocket. Subsequent `start`, `pause`, and running `reset`
+transitions are sent to registered Live Activities through APNs; resetting a
+paused timer ends and immediately dismisses them.
+
+Remote updates are disabled by default. To enable them, create an Apple Push
+Notifications authentication key and configure the API values documented in
+`apps/api/.env.example`. Use the main app bundle identifier
+(`com.benschac.timer`), not the widget extension identifier, and select the
+sandbox APNs environment for development-signed builds.
+
+The current registration registry follows the timer's existing in-memory
+prototype boundary: API restarts discard both timer state and Live Activity
+tokens. This path updates activities already created by the iOS app. Remote
+push-to-start requires a durable device registration so the server can avoid
+creating duplicate activities and is not part of this slice.
 
 ## Adding an API feature
 
