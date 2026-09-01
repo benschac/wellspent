@@ -67,6 +67,10 @@
         "vite": "8.2.2",
       },
     },
+    "apps/macos": {
+      "name": "@repo/macos",
+      "version": "0.0.0",
+    },
     "apps/mobile": {
       "name": "@repo/mobile",
       "version": "0.0.0",
@@ -830,6 +834,8 @@
     "@repo/desktop": ["@repo/desktop@workspace:apps/desktop"],
 
     "@repo/eslint-config": ["@repo/eslint-config@workspace:packages/eslint-config"],
+
+    "@repo/macos": ["@repo/macos@workspace:apps/macos"],
 
     "@repo/mobile": ["@repo/mobile@workspace:apps/mobile"],
 

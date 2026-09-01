@@ -1,0 +1,18 @@
+{
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "cache": false,
+      "outputs": []
+    },
+    "lint": {
+      "cache": false,
+      "outputs": []
+    },
+    "test": {
+      "cache": false,
+      "dependsOn": ["build"],
+      "outputs": []
+    }
+  }
+}

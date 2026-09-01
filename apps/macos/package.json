@@ -1,0 +1,11 @@
+{
+  "name": "@repo/macos",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "xcodebuild -project TimerMac.xcodeproj -scheme TimerMac -configuration Debug -destination 'platform=macOS' -derivedDataPath .derivedData CODE_SIGNING_ALLOWED=NO build",
+    "format": "bash ./scripts/swift-format.sh format",
+    "lint": "bash ./scripts/swift-format.sh lint",
+    "test": "xcodebuild -project TimerMac.xcodeproj -scheme TimerMac -configuration Debug -destination 'platform=macOS' -derivedDataPath .derivedData CODE_SIGNING_ALLOWED=NO test"
+  }
+}

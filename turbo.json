@@ -37,6 +37,9 @@
     "skia:web": {
       "outputs": ["public/canvaskit.wasm"]
     },
+    "test": {
+      "dependsOn": ["build"]
+    },
     "typecheck": {
       "dependsOn": ["transit"]
     },
