@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc --noEmit && vite build",
     "dev": "bun run skia:web && vite",
-    "lint": "eslint .",
+    "lint": "biome lint .",
     "preview": "vite preview",
     "skia:web": "setup-skia-web public",
     "tauri": "tauri",
@@ -21,7 +21,6 @@
   },
   "devDependencies": {
     "@babel/core": "7.29.7",
-    "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@rolldown/plugin-babel": "^0.2.3",
     "@tauri-apps/cli": "2.11.4",
@@ -30,7 +29,6 @@
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.1.1",
     "babel-plugin-react-compiler": "1.0.0",
-    "eslint": "9.39.1",
     "typescript": "~6.0.3",
     "vite": "8.2.2"
   }

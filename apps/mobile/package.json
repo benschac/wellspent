@@ -11,7 +11,7 @@
     "dev": "expo start",
     "ios": "expo run:ios",
     "ios:device": "expo run:ios --device \"Deez iPhone\" --configuration Debug",
-    "lint": "eslint .",
+    "lint": "biome lint .",
     "skia:web": "setup-skia-web public",
     "typecheck": "tsc --noEmit",
     "web": "expo start --web"
@@ -71,10 +71,8 @@
     "zod": "4.5.2"
   },
   "devDependencies": {
-    "@repo/eslint-config": "workspace:*",
     "@types/react": "~19.2.2",
     "babel-plugin-react-compiler": "1.0.0",
-    "eslint": "9.39.1",
     "typescript": "~6.0.3"
   }
 }
