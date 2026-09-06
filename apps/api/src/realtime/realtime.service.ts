@@ -5,9 +5,17 @@ import type {
   RealtimeTimerCommand,
   RealtimeTimerState,
 } from "@repo/api-contract";
+// biome-ignore lint/style/useImportType: Nest needs the runtime class for constructor metadata.
+import { ApplicationEventBus } from "../events/application-event-bus.service.js";
+import {
+  type TimerStateChangedEvent,
+  timerStateChangedEvent,
+} from "./timer-state-changed.event.js";
 
 @Injectable()
 export class RealtimeService {
+  constructor(private readonly eventBus: ApplicationEventBus) {}
+
   private timerState: RealtimeTimerState = {
     elapsedMs: 0,
     isRunning: false,
@@ -27,6 +35,7 @@ export class RealtimeService {
   }
 
   applyTimerCommand(command: RealtimeTimerCommand): RealtimeTimerState {
+    const previousRevision = this.timerState.revision;
     const now = Date.now();
     const currentElapsedMs = this.timerState.isRunning
       ? this.timerState.elapsedMs +
@@ -68,6 +77,15 @@ export class RealtimeService {
         break;
     }
 
-    return this.getTimerState();
+    const state = this.getTimerState();
+
+    if (state.revision !== previousRevision) {
+      this.eventBus.publish<TimerStateChangedEvent>(timerStateChangedEvent, {
+        action: command.action,
+        state,
+      });
+    }
+
+    return state;
   }
 }

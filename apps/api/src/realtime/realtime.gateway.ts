@@ -1,28 +1,30 @@
 import { UseFilters } from "@nestjs/common";
+import type { WsResponse } from "@nestjs/websockets";
 import {
-  type OnGatewayConnection,
   MessageBody,
+  type OnGatewayConnection,
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
 } from "@nestjs/websockets";
-import type { WsResponse } from "@nestjs/websockets";
 import {
-  realtimePingEvent,
-  realtimePongEvent,
-  realtimeTimerCommandEvent,
-  realtimeTimerLiveActivityRegisterEvent,
-  realtimeTimerStateEvent,
   type RealtimePing,
   type RealtimePong,
   type RealtimeTimerCommand,
   type RealtimeTimerLiveActivityRegistration,
   type RealtimeTimerState,
+  realtimePingEvent,
+  realtimePongEvent,
+  realtimeTimerCommandEvent,
+  realtimeTimerLiveActivityRegisterEvent,
+  realtimeTimerStateEvent,
 } from "@repo/api-contract";
+// biome-ignore lint/style/useImportType: Nest needs the runtime class for constructor metadata.
 import { LiveActivityPushService } from "./live-activity-push.service.js";
+// biome-ignore lint/style/useImportType: Nest needs the runtime class for constructor metadata.
+import { RealtimeService } from "./realtime.service.js";
 import { RealtimeLiveActivityRegistrationPipe } from "./realtime-live-activity-registration.pipe.js";
 import { RealtimePingPipe } from "./realtime-ping.pipe.js";
-import { RealtimeService } from "./realtime.service.js";
 import { RealtimeTimerCommandPipe } from "./realtime-timer-command.pipe.js";
 import { RealtimeWsExceptionFilter } from "./realtime-ws-exception.filter.js";
 
@@ -68,13 +70,7 @@ export class RealtimeGateway implements OnGatewayConnection {
   handleTimerCommand(
     @MessageBody(RealtimeTimerCommandPipe) command: RealtimeTimerCommand,
   ): void {
-    const state = this.realtimeService.applyTimerCommand(command);
-
-    this.broadcastTimerState(state);
-    void this.liveActivityPushService.publish(
-      state,
-      command.action === "reset" && !state.isRunning ? "end" : "update",
-    );
+    this.realtimeService.applyTimerCommand(command);
   }
 
   @SubscribeMessage(realtimeTimerLiveActivityRegisterEvent)
@@ -85,7 +81,7 @@ export class RealtimeGateway implements OnGatewayConnection {
     this.liveActivityPushService.register(registration);
   }
 
-  private broadcastTimerState(state: RealtimeTimerState): void {
+  broadcastTimerState(state: RealtimeTimerState): void {
     for (const client of this.server.clients) {
       if (client.readyState === 1) {
         this.sendTimerState(client, state);
