@@ -1,0 +1,189 @@
+.gh-page { --gh-paper:#030405; --gh-ink:#eeece8; --gh-muted:#959ca3; --gh-copper:#c4b79e; --gh-line:#27313c; background:var(--gh-paper); color:var(--gh-ink); color-scheme:dark; font-family:Arial,Helvetica,sans-serif; -webkit-font-smoothing:antialiased; overflow:clip; }
+.gh-page *, .gh-page *::before, .gh-page *::after { box-sizing:border-box; }
+.gh-page button,.gh-page input,.gh-page textarea { font:inherit; }
+.gh-page button { cursor:pointer; }
+.gh-page a { text-decoration:none; }
+.gh-page :focus-visible { outline:2px solid #e5c791; outline-offset:6px; }
+.gh-page h1,.gh-page h2,.gh-page h3,.gh-wordmark { font-family:var(--font-editorial),Georgia,serif; font-weight:400; }
+.gh-page h1,.gh-page h2,.gh-page h3,.gh-page p { margin:0; }
+.gh-page h2 { font-size:clamp(48px,5vw,72px); line-height:1.05; letter-spacing:-.025em; }
+.gh-page em { font-weight:400; }
+.gh-skip { position:fixed; left:20px; top:-90px; z-index:20; background:var(--gh-paper); padding:16px; }
+.gh-skip:focus { top:16px; }
+.gh-opening { background:#020304 url('/marketing/dark-atmosphere.webp') center / cover no-repeat; }
+.gh-header { height:100px; display:flex; align-items:center; justify-content:space-between; max-width:1600px; padding:0 3.4%; margin:auto; position:relative; z-index:4; }
+.gh-wordmark { font-size:37px; letter-spacing:-.015em; line-height:1; }
+.gh-header nav { display:flex; align-items:center; gap:46px; }
+.gh-nav-link { font-size:14px; color:#a4acb2; }
+.gh-nav-link:hover { color:white; }
+.gh-button { border:1px solid #fffaed; border-radius:999px; min-height:62px; background:#f0e6d3; color:#191918; padding:0 40px; font-size:15px; display:inline-flex; align-items:center; justify-content:center; gap:24px; box-shadow:0 0 22px #ffe9ba2a,0 0 5px #fff8df28,inset 0 1px 5px #ffffffb3; transition:background .2s,transform .2s,box-shadow .2s; }
+.gh-button svg { width:17px; height:17px; }
+.gh-button:hover { background:#fff6e6; transform:translateY(-2px); box-shadow:0 0 34px #ffe9ba47; }
+.gh-button:active { transform:translateY(0); }
+.gh-button-small { min-height:44px; font-size:13px; padding:0 30px; }
+.gh-main { display:block; width:100%; min-height:0; padding:0; place-items:normal; }
+.gh-hero { display:block; width:100%; min-height:738px; max-width:1600px; margin:auto; position:relative; }
+.gh-hero-message { position:relative; z-index:2; width:53%; padding:91px 0 90px 5.2%; pointer-events:none; }
+.gh-hero-message button { pointer-events:auto; }
+.gh-hero h1 { font-size:clamp(62px,6.05vw,88px); line-height:1.04; letter-spacing:-.01em; white-space:nowrap; }
+.gh-hero-copy { margin-top:34px !important; font-size:20px; line-height:1.55; color:#969da3; }
+.gh-hero-cta { margin-top:59px; min-width:235px; }
+.gh-page .gh-platforms { margin-top:31px; color:#929ba3; font-size:13px; letter-spacing:.005em; }
+.gh-hero-art { position:absolute; right:2.5%; top:-72px; width:60%; height:810px; --rail-x:0px; --rail-y:0px; }
+.gh-glass-canvas { display:block; position:absolute; width:100%; height:100%; inset:0; pointer-events:none; }
+.gh-focus-controls { position:absolute; left:15.5%; top:32.8%; width:64%; height:25%; display:flex; align-items:center; justify-content:space-between; padding:3% 9% 3% 9.5%; color:#eee9de; border:1px solid #6d7887; background:#090d12; border-radius:95px; transform:translate(var(--rail-x),var(--rail-y)) rotate(3.44deg); cursor:grab; touch-action:pan-y; user-select:none; }
+.gh-focus-controls:active { cursor:grabbing; }
+[data-glass-ready="true"] .gh-focus-controls { border-color:transparent; background:transparent; }
+.gh-rail-reading { flex:1; }
+.gh-focus-intention { font-size:clamp(13px,1.45vw,21px); white-space:nowrap; display:block; margin-bottom:9px; color:#adb4bb; }
+.gh-demo-time { font-family:Arial,Helvetica,sans-serif; font-size:clamp(40px,4.1vw,62px); font-weight:300; letter-spacing:-.065em; white-space:nowrap; font-variant-numeric:tabular-nums; line-height:1; }
+.gh-demo-time > span { opacity:.8; }
+.gh-timer-control { flex-shrink:0; width:62px; height:62px; display:grid; place-items:center; background:transparent; color:#dcd8d1; border:0; border-radius:100%; margin-left:0; position:absolute; left:68%; top:54%; transform:translateY(-50%); }
+.gh-timer-control:hover { background:#ffffff0d; color:white; }
+.gh-timer-control svg { width:28px; height:28px; }
+.gh-floating-recap { position:absolute; top:59%; left:6%; width:67%; min-height:244px; padding:39px 40px; border:1px solid #6673819c; border-radius:23px; background:#090e14e6; box-shadow:inset 0 1px 1px #d4dfe43d,0 18px 50px #0007; transform:perspective(1500px) rotateY(-6deg) rotateZ(1.5deg); }
+.gh-floating-recap > span { font-size:18px; color:#939da6; }
+.gh-floating-recap h2 { font-size:36px; margin:17px 0 13px; letter-spacing:0; }
+.gh-floating-recap p { color:#9aa4ad; font-size:18px; line-height:1.55; }
+.gh-floating-recap a { position:absolute; right:28px; bottom:27px; width:44px; height:44px; display:grid; place-items:center; color:#acbaca; }
+.gh-floating-recap a:hover { color:white; }
+.gh-floating-recap svg { width:24px; height:24px; }
+.gh-art-caption { position:absolute; bottom:8%; right:10%; font-size:13px; color:#758493; line-height:1.5; }
+.gh-drag-hint { position:absolute; top:27%; left:26%; color:#8a97a3; font-size:10px; letter-spacing:.06em; opacity:0; transition:opacity .2s; }
+.gh-hero-art:hover .gh-drag-hint { opacity:1; }
+.gh-recap-section { border-block:1px solid #1d242a; padding:48px 5.2% 75px; display:grid; grid-template-columns:1fr 1fr; gap:6%; max-width:1600px; margin:auto; scroll-margin-top:25px; }
+.gh-recap-intro { padding-top:35px; }
+.gh-recap-intro h2 { font-size:clamp(40px,4vw,57px); }
+.gh-recap-intro p { font-size:15px; line-height:1.65; color:#9ba5ae; margin-top:28px; }
+.gh-product-stage { width:100%; min-width:0; }
+.gh-journal { position: relative; padding: 64px 64px 24px; background: #0b1016; box-shadow: 0 1px 0 #fff inset, 0 12px 40px #00000066, 2px 0 1px #ffffff16 inset; transform: perspective(1800px) rotateX(9deg); transform-origin: top center; text-align: left; }
+.gh-journal-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--gh-line); padding: 8px 0 22px; }
+.gh-journal h2 { font-size: 28px; letter-spacing: -.015em; font-style: italic; }
+.gh-journal-tabs { display: flex; gap: 25px; align-items: center; }
+.gh-journal-tabs button { font-size: 11px; letter-spacing: .05em; background: transparent; border: 0; color: var(--gh-muted); padding: 8px 0; position: relative; }
+.gh-journal-tabs button[aria-selected="true"] { color: var(--gh-copper); box-shadow: 0 1px var(--gh-copper); }
+.gh-journal-body { min-height: 262px; }
+.gh-page summary { list-style: none; cursor: pointer; }
+.gh-page summary::-webkit-details-marker { display: none; }
+.gh-session { border-bottom: 1px solid var(--gh-line); }
+.gh-session summary { display: flex; align-items: center; padding: 24px 0; min-height: 99px; }
+.gh-session-time { width: 140px; flex-shrink: 0; font-size: 11px; color: var(--gh-muted); font-style: italic; line-height: 1.7; }
+.gh-session-time small { display: block; font-size: 11px; }
+.gh-session-copy { flex: 1; }
+.gh-session-copy strong { font-family: var(--font-editorial), Georgia, serif; font-weight: 400; font-size: 29px; display: block; }
+.gh-session-copy > span { font-size: 13px; line-height: 1.5; color: #8f9dab; }
+.gh-session-arrow { width: 17px; height: 17px; margin-left: 20px; color: #8193a4; transition: transform .2s; }
+.gh-session[open] .gh-session-arrow, .gh-page details[open] > summary > svg { transform: rotate(90deg); }
+.gh-page .gh-session-detail { font-size: 13px; line-height: 1.7; padding: 0 25px 20px 140px; color: #96a5b3; max-width: 740px; }
+.gh-reflection summary { display: flex; justify-content: space-between; align-items: center; min-height: 80px; padding-top: 10px; font-size: 11px; font-style: italic; }
+.gh-reflection small { display: block; margin-top: 5px; font-size: 11px; color: #8c9daa; }
+.gh-reflection > p { padding: 5px 0 15px; font-size: 13px; line-height: 1.7; color: #96a5b3; }
+.gh-current-session { padding: 26px 0 16px; }
+.gh-current-session h3 { font-size: 35px; margin: 12px 0; }
+.gh-current-session p { font-size: 14px; line-height: 1.6; max-width: 470px; color: #96a5b3; }
+.gh-current-session button { margin-top: 18px; }
+.gh-demo-label { display: block; font-size: 10px; margin-top: 16px; color: #8293a2; }
+.gh-notes { padding-top: 25px; }
+.gh-notes label { font-family: var(--font-editorial), Georgia, serif; font-size: 27px; }
+.gh-notes textarea { display: block; width: 100%; min-height: 105px; margin: 12px 0 15px; padding: 12px; color: var(--gh-ink); background: #111923; border: 1px solid var(--gh-line); resize: vertical; font-size: 13px; line-height: 1.6; }
+.gh-notes > div { display: flex; justify-content: space-between; align-items: center; gap: 15px; }
+.gh-notes > div > span { font-size: 10px; color: var(--gh-muted); }
+.gh-page .gh-preview-caption { font-size: 10px; color: #788a9b; margin-top: 24px; letter-spacing: .03em; }
+.gh-preview-caption span { color: var(--gh-copper); margin-left: 4px; }
+.gh-kicker { font-size: 10px; font-weight: 500; letter-spacing: .15em; color: var(--gh-copper); display: block; }
+.gh-approach { padding: 75px 6% 110px; text-align: center; scroll-margin-top: 50px; }
+.gh-approach h2 { margin: 25px 0; }
+.gh-section-intro { max-width: 505px; margin: 0 auto !important; font-size: 16px; line-height: 1.8; color: var(--gh-muted); }
+.gh-principles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 55px; max-width: 1110px; margin: 85px auto 0; text-align: left; }
+.gh-principles article { padding-top: 25px; border-top: 1px solid var(--gh-line); }
+.gh-step { color: var(--gh-copper); font-size: 10px; letter-spacing: .1em; }
+.gh-principles h3 { margin: 26px 0 15px; font-size: 34px; }
+.gh-principles p { font-size: 14px; line-height: 1.8; color: var(--gh-muted); }
+.gh-manifesto { padding: 100px 8%; color: #ede6d9; background: #090e14; }
+.gh-manifesto-inner { max-width: 1120px; margin: auto; }
+.gh-manifesto .gh-kicker { color: #c1a17b; }
+.gh-manifesto h2 { font-size: clamp(60px, 7.6vw, 100px); margin: 28px 0 35px; }
+.gh-manifesto p:not(.gh-kicker) { margin-left: 46%; color: #9daebf; font-size: 17px; line-height: 1.9; }
+.gh-manifesto strong { font-weight: 400; color: #f0e5d6; }
+.gh-text-button { background: none; border: 0; padding: 0 0 7px; border-bottom: 1px solid currentColor; display: inline-flex; align-items: center; gap: 15px; font-size: 12px; color: var(--gh-copper); }
+.gh-text-button svg { width: 15px; height: 15px; }
+.gh-text-button:hover { color: #ffffff; }
+.gh-manifesto .gh-text-button { margin-left: 46%; margin-top: 28px; color: #ded2ba; }
+.gh-questions { max-width: 1250px; margin: auto; padding: 105px 6%; display: grid; grid-template-columns: .9fr 1.1fr; gap: 60px; }
+.gh-questions h2 { font-size: 65px; margin-top: 25px; }
+.gh-faq-list details { border-bottom: 1px solid var(--gh-line); }
+.gh-faq-list details:first-child { border-top: 1px solid var(--gh-line); }
+.gh-faq-list summary { font-size: 15px; padding: 25px 0; display: flex; justify-content: space-between; gap: 20px; }
+.gh-faq-list summary svg { flex-shrink: 0; margin-top: 2px; transition: transform .2s; }
+.gh-faq-list details > p { font-size: 14px; line-height: 1.8; padding: 0 25px 24px 0; color: var(--gh-muted); }
+.gh-waitlist { text-align: center; padding: 85px 20px 100px; background: url('/marketing/dark-atmosphere.webp') center center / cover; scroll-margin-top: 20px; }
+.gh-waitlist h2 { margin: 26px 0; }
+.gh-waitlist p { font-size: 15px; color: #96a5b3; }
+.gh-waitlist .gh-button { margin-top: 32px; }
+.gh-footer { padding: 38px 5%; display: flex; justify-content: space-between; align-items: center; gap: 20px; border-top: 1px solid var(--gh-line); }
+.gh-footer .gh-wordmark { font-size: 32px; }
+.gh-footer > span, .gh-footer > a:last-child { font-size: 11px; color: var(--gh-muted); }
+.gh-footer > a:last-child { display: flex; gap: 12px; align-items: center; }
+.gh-footer svg { width: 12px; height: 12px; }
+.gh-waitlist-dialog { width: min(520px, calc(100% - 32px)); border: 1px solid #536579; padding: 55px 45px 45px; border-radius: 4px; background: var(--gh-paper); color: var(--gh-ink); box-shadow: 0 30px 100px #00000088; }
+.gh-waitlist-dialog::backdrop { background: #03070aaa; backdrop-filter: blur(8px); }
+.gh-waitlist-dialog h2 { font-size: 62px; margin: 24px 0; }
+.gh-waitlist-dialog > p:not(.gh-kicker) { font-size: 15px; line-height: 1.7; color: var(--gh-muted); }
+.gh-waitlist-dialog .gh-button { margin-top: 28px; }
+.gh-dialog-close { position: absolute; top: 14px; right: 14px; width: 40px; height: 40px; display: grid; place-items: center; background: transparent; border: 0; color: var(--gh-ink); }
+.gh-will-reveal { opacity: 0; transform: translateY(22px); transition: opacity .8s, transform .8s cubic-bezier(.2,.7,.2,1); }
+.gh-revealed { opacity: 1; transform: none; }
+
+.gh-journal { padding:30px 23px 16px; border:1px solid #627180; border-radius:18px; transform:none; }
+.gh-journal-heading { padding:14px 0 25px; border:0; }
+.gh-journal h2 { font-family:Arial,Helvetica,sans-serif; font-size:20px; letter-spacing:-.025em; font-style:normal; }
+.gh-journal h2 span { margin-left:8px; font-size:9px; color:#a0aebb; background:#1c232c; border-radius:20px; padding:5px 8px; vertical-align:middle; }
+.gh-journal-tabs { gap:17px; }
+.gh-journal-tabs button { font-size:10px; color:#9aa7b3; }
+.gh-session { border:1px solid #343f4b; border-radius:12px; margin-bottom:9px; background:#171e26; }
+.gh-session summary { padding:19px 16px; min-height:97px; }
+.gh-session-time { width:65px; font-size:10px; color:#a0adba; font-style:normal; }
+.gh-session-time small { font-size:10px; color:#c7baa5; }
+.gh-session-copy strong { font-family:Arial,Helvetica,sans-serif; font-size:14px; margin-bottom:8px; color:#cbd3da; }
+.gh-session-copy > span { display:block; font-size:12px; line-height:1.55; color:#a0aeba; }
+.gh-page .gh-session-detail { padding-left:81px; font-size:12px; }
+.gh-reflection summary { padding-inline:7px; font-style:normal; }
+.gh-reflection small { max-width:330px; line-height:1.5; }
+.gh-demo-reset { background:transparent; border:0; color:#a0aeba; margin-left:24px; font-size:11px !important; display:inline-flex; gap:6px; align-items:center; }
+.gh-notes > div > span { max-width:130px; line-height:1.5; }
+.gh-preview-caption { text-align:center; }
+.gh-approach { padding-top:105px; }
+.gh-approach em { color:#b8c9dc; }
+.gh-manifesto { background:#090e14 url('/marketing/dark-atmosphere.webp') center / cover; border-block:1px solid #202831; }
+.gh-waitlist { background-color:#070b10; border-top:1px solid #17212b; }
+.gh-waitlist-dialog { background:#0d131a; border-radius:18px; }
+@media(prefers-reduced-motion:reduce) { .gh-page *, .gh-page *::before, .gh-page *::after { transition:none !important; animation:none !important; scroll-behavior:auto !important; } .gh-will-reveal { opacity:1; transform:none; } }
+@media(max-width:1100px) {
+ .gh-hero { min-height:680px; } .gh-hero-message { padding-top:75px; } .gh-hero h1 { font-size:64px; } .gh-hero-copy { font-size:15px; }
+ .gh-hero-art { top:-25px; height:700px; width:59%; right:1%; } .gh-floating-recap { top:57%; padding:28px; min-height:210px; } .gh-floating-recap h2 { font-size:30px; } .gh-floating-recap p,.gh-floating-recap > span { font-size:15px; }
+ .gh-focus-controls { top:33.5%; height:23%; } .gh-timer-control { margin-left:8%; width:50px; height:50px; } .gh-art-caption { right:8%; bottom:6%; font-size:11px; }
+ .gh-principles { gap:30px; } .gh-recap-section { gap:4%; } .gh-journal { padding:23px 15px 12px; } .gh-journal-tabs { gap:10px; }
+}
+@media(max-width:760px) {
+ .gh-header { height:90px; padding-inline:25px; } .gh-wordmark { font-size:30px; } .gh-header nav { gap:24px; } .gh-nav-link { font-size:12px; } .gh-button-small { min-height:40px; padding-inline:22px; font-size:12px; }
+ .gh-hero { min-height:980px; } .gh-hero-message { width:100%; padding:50px 25px 0; } .gh-hero h1 { font-size:clamp(50px,8.6vw,67px); white-space:normal; } .gh-hero-copy { font-size:16px; margin-top:25px !important; } .gh-hero-cta { margin-top:35px; min-height:55px; min-width:218px; } .gh-page .gh-platforms { margin-top:24px; font-size:12px; }
+ .gh-hero-art { top:370px; right:0; width:100%; height:620px; } .gh-focus-controls { top:34%; height:23%; } .gh-focus-intention { font-size:16px; } .gh-demo-time { font-size:47px; } .gh-timer-control { width:58px; height:58px; }
+ .gh-floating-recap { top:57%; min-height:190px; padding:27px 30px; left:10%; width:68%; } .gh-floating-recap > span { font-size:15px; } .gh-floating-recap h2 { font-size:31px; } .gh-floating-recap p { font-size:15px; } .gh-art-caption { right:7%; bottom:3%; } .gh-drag-hint { top:28%; opacity:.8; }
+ .gh-recap-section { display:block; padding:40px 25px 60px; } .gh-recap-intro { padding-top:0; margin-bottom:36px; } .gh-recap-intro h2 { font-size:46px; } .gh-recap-intro p { font-size:14px; }
+ .gh-journal { padding:23px 20px 15px; } .gh-journal-tabs { gap:18px; } .gh-session-copy strong { font-size:14px; } .gh-session-copy > span { font-size:12px; }
+ .gh-approach { padding:65px 25px; } .gh-page h2 { font-size:55px; } .gh-floating-recap h2 { font-size:31px; } .gh-journal h2 { font-size:20px; } .gh-section-intro { font-size:14px; }
+ .gh-principles { grid-template-columns:1fr; margin-top:48px; gap:30px; } .gh-principles h3 { font-size:32px; margin-top:20px; }
+ .gh-manifesto { padding:65px 25px; } .gh-manifesto h2 { font-size:59px; } .gh-manifesto p:not(.gh-kicker),.gh-manifesto .gh-text-button { margin-left:0; } .gh-manifesto p:not(.gh-kicker) { font-size:15px; }
+ .gh-questions { grid-template-columns:1fr; padding:65px 25px; gap:36px; } .gh-faq-list summary { font-size:14px; } .gh-waitlist { padding:65px 20px; }
+ .gh-footer { flex-wrap:wrap; padding:30px 25px; } .gh-footer .gh-wordmark { font-size:28px; } .gh-footer > span { max-width:120px; text-align:right; line-height:1.6; } .gh-footer > a:last-child { width:100%; margin-top:5px; }
+ .gh-waitlist-dialog { padding:50px 25px 32px; } .gh-waitlist-dialog h2 { font-size:57px; }
+}
+@media(max-width:480px) {
+ .gh-header { padding-inline:21px; } .gh-header nav { gap:0; } .gh-nav-link { display:none; } .gh-button-small { padding-inline:20px; }
+ .gh-hero-message { padding-top:37px; padding-inline:25px; } .gh-hero h1 { font-size:clamp(42px,13vw,52px); letter-spacing:-.025em; } .gh-hero-copy { font-size:14px; max-width:335px; } .gh-desktop-break { display:none; }
+ .gh-hero-art { top:300px; height:460px; } .gh-hero { min-height:840px; } .gh-focus-controls { top:34%; height:22%; padding-left:8%; padding-right:8%; } .gh-focus-intention { font-size:12px; margin-bottom:7px; } .gh-demo-time { font-size:35px; } .gh-timer-control { margin-left:0; left:64%; width:44px; height:44px; } .gh-timer-control svg { width:22px; height:22px; }
+ .gh-floating-recap { top:57%; padding:23px; width:71%; min-height:180px; } .gh-floating-recap h2 { font-size:28px; margin:12px 0; } .gh-floating-recap p,.gh-floating-recap > span { font-size:12px; } .gh-floating-recap a { right:9px; bottom:9px; } .gh-art-caption { bottom:0; font-size:10px; } .gh-drag-hint { top:27%; font-size:9px; }
+ .gh-recap-intro h2 { font-size:42px; } .gh-journal { padding:20px 12px 12px; } .gh-journal-heading { gap:8px; } .gh-journal h2 span { margin-left:4px; padding-inline:5px; font-size:8px; } .gh-journal-tabs { gap:12px; }
+ .gh-session summary { padding:16px 11px; } .gh-session-time { width:53px; font-size:9px; } .gh-session-copy strong { font-size:12px; } .gh-session-copy > span { font-size:11px; } .gh-page .gh-session-detail { padding-left:64px; padding-right:14px; } .gh-session-arrow { width:12px; margin-left:5px; }
+ .gh-notes label { font-size:24px; } .gh-notes .gh-text-button { font-size:10px; }
+}
