@@ -1,5 +1,5 @@
 import { NativeTabs } from "expo-router/unstable-native-tabs";
-import { DynamicColorIOS, type ColorValue } from "react-native";
+import { type ColorValue, DynamicColorIOS } from "react-native";
 
 const tintColor: ColorValue =
   process.env.EXPO_OS === "ios"

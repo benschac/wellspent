@@ -1,4 +1,8 @@
-import { ArgumentsHost, Catch, type WsExceptionFilter } from "@nestjs/common";
+import {
+  type ArgumentsHost,
+  Catch,
+  type WsExceptionFilter,
+} from "@nestjs/common";
 import { WsException } from "@nestjs/websockets";
 
 interface NativeWebSocketClient {

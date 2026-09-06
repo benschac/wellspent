@@ -30,7 +30,10 @@ async function fixture(
     otherId: string;
   }) => Promise<void>,
 ) {
-  const connection = createDatabaseConnection(testUrl!);
+  if (testUrl === undefined) {
+    throw new Error("FOCUS_TEST_DATABASE_URL is required for this fixture");
+  }
+  const connection = createDatabaseConnection(testUrl);
   try {
     await connection.database.transaction(async (tx) => {
       const userId = crypto.randomUUID();

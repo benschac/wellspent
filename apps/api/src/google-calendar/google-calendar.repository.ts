@@ -1,5 +1,4 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, eq, gt, lt, lte, sql } from "drizzle-orm";
 import type { Database } from "@repo/database";
 import {
   googleCalendarConnections,
@@ -8,6 +7,7 @@ import {
   googleCalendarOauthStates,
   googleCalendarSubscriptions,
 } from "@repo/database/schema";
+import { and, eq, gt, lt, lte, sql } from "drizzle-orm";
 import { DATABASE } from "../database/database.constants.js";
 
 export type GoogleCalendarConnection =

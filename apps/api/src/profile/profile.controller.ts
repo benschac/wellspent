@@ -2,9 +2,9 @@ import { Controller, UseGuards } from "@nestjs/common";
 import { Implement } from "@orpc/nest";
 import { implement } from "@orpc/server";
 import { apiContract } from "@repo/api-contract";
+import type { AuthenticatedUser } from "../auth/auth.types.js";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import { SupabaseAuthGuard } from "../auth/supabase-auth.guard.js";
-import type { AuthenticatedUser } from "../auth/auth.types.js";
 import { ProfileService } from "./profile.service.js";
 
 @Controller()

@@ -6,7 +6,7 @@
   "scripts": {
     "build": "nest build",
     "dev": "nest start --watch",
-    "lint": "biome lint .",
+    "lint": "biome check .",
     "start": "node dist/main.js",
     "test": "bun test",
     "typecheck": "tsc --noEmit"

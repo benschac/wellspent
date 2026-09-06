@@ -222,9 +222,13 @@ export function createFocusScene(canvas: HTMLCanvasElement) {
         (Array.isArray(object.material)
           ? object.material
           : [object.material]
-        ).forEach((material) => materials.add(material));
+        ).forEach((material) => {
+          materials.add(material);
+        });
       });
-      materials.forEach((material) => material.dispose());
+      materials.forEach((material) => {
+        material.dispose();
+      });
       environment.dispose();
       pmrem.dispose();
       renderer.dispose();

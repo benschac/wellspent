@@ -1,9 +1,9 @@
 import { Injectable, type PipeTransform } from "@nestjs/common";
-import {
-  realtimeTimerLiveActivityRegistrationSchema,
-  type RealtimeTimerLiveActivityRegistration,
-} from "@repo/api-contract";
 import { WsException } from "@nestjs/websockets";
+import {
+  type RealtimeTimerLiveActivityRegistration,
+  realtimeTimerLiveActivityRegistrationSchema,
+} from "@repo/api-contract";
 
 @Injectable()
 export class RealtimeLiveActivityRegistrationPipe

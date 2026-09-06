@@ -1,5 +1,5 @@
-import { WithSkiaWeb } from "@shopify/react-native-skia/lib/module/web";
 import type { TimerDialProps } from "@repo/timer/skia";
+import { WithSkiaWeb } from "@shopify/react-native-skia/lib/module/web";
 
 export function SkiaDial(props: TimerDialProps) {
   return (

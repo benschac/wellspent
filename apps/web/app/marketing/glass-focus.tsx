@@ -13,14 +13,16 @@ export function GlassFocus() {
     let cleanup: (() => void) | undefined;
     void import("./focus-scene")
       .then(({ createFocusScene }) => {
-        if (disposed) return;
+        if (disposed || !canvas || !host) return;
+        const activeCanvas = canvas;
+        const activeHost = host;
         let scene: ReturnType<typeof createFocusScene>;
         try {
-          scene = createFocusScene(canvas);
+          scene = createFocusScene(activeCanvas);
         } catch {
           return;
         }
-        host.dataset.glassReady = "true";
+        activeHost.dataset.glassReady = "true";
         let frame = 0;
         let visible = true;
         let currentX = 0;
@@ -33,7 +35,7 @@ export function GlassFocus() {
         function stop() {
           cancelAnimationFrame(frame);
           frame = 0;
-          canvas!.dataset.animationActive = "false";
+          activeCanvas.dataset.animationActive = "false";
         }
         function draw() {
           frame = 0;
@@ -49,7 +51,7 @@ export function GlassFocus() {
               0.002 &&
             !reduceMotion.matches
           ) {
-            canvas!.dataset.animationActive = "true";
+            activeCanvas.dataset.animationActive = "true";
             frame = requestAnimationFrame(draw);
           } else stop();
         }
@@ -59,7 +61,7 @@ export function GlassFocus() {
         }
         function move(event: PointerEvent) {
           if (reduceMotion.matches || event.pointerType === "touch") return;
-          const rect = host!.getBoundingClientRect();
+          const rect = activeHost.getBoundingClientRect();
           targetX = ((event.clientX - rect.left) / rect.width - 0.5) * 2;
           targetY = ((event.clientY - rect.top) / rect.height - 0.5) * 2;
           schedule();
@@ -82,43 +84,43 @@ export function GlassFocus() {
           scene.render();
         }
         const resize = new ResizeObserver(() => {
-          scene.resize(host!.clientWidth, host!.clientHeight);
+          scene.resize(activeHost.clientWidth, activeHost.clientHeight);
         });
-        resize.observe(host);
+        resize.observe(activeHost);
         const intersection = new IntersectionObserver(([entry]) => {
           visible = entry?.isIntersecting ?? false;
           if (visible) schedule();
           else stop();
         });
-        intersection.observe(host);
+        intersection.observe(activeHost);
         const drag = (event: Event) => {
           const detail = (event as CustomEvent<{ x: number; y: number }>)
             .detail;
           scene.drag(detail.x, detail.y);
         };
-        host.addEventListener("focus-rail-drag", drag);
-        host.addEventListener("pointermove", move);
-        host.addEventListener("pointerleave", reset);
+        activeHost.addEventListener("focus-rail-drag", drag);
+        activeHost.addEventListener("pointermove", move);
+        activeHost.addEventListener("pointerleave", reset);
         document.addEventListener("visibilitychange", visibility);
         reduceMotion.addEventListener("change", motionChange);
         const contextLost = (event: Event) => {
           event.preventDefault();
           stop();
-          delete host.dataset.glassReady;
+          delete activeHost.dataset.glassReady;
         };
-        canvas.addEventListener("webglcontextlost", contextLost);
-        scene.resize(host.clientWidth, host.clientHeight);
+        activeCanvas.addEventListener("webglcontextlost", contextLost);
+        scene.resize(activeHost.clientWidth, activeHost.clientHeight);
         cleanup = () => {
           stop();
           resize.disconnect();
           intersection.disconnect();
-          host.removeEventListener("focus-rail-drag", drag);
-          host.removeEventListener("pointermove", move);
-          host.removeEventListener("pointerleave", reset);
+          activeHost.removeEventListener("focus-rail-drag", drag);
+          activeHost.removeEventListener("pointermove", move);
+          activeHost.removeEventListener("pointerleave", reset);
           document.removeEventListener("visibilitychange", visibility);
           reduceMotion.removeEventListener("change", motionChange);
-          canvas.removeEventListener("webglcontextlost", contextLost);
-          delete host.dataset.glassReady;
+          activeCanvas.removeEventListener("webglcontextlost", contextLost);
+          delete activeHost.dataset.glassReady;
           scene.dispose();
         };
       })
@@ -131,6 +133,7 @@ export function GlassFocus() {
     };
   }, []);
   return (
+    // biome-ignore lint/a11y/noAriaHiddenOnFocusable: This canvas is decorative; the adjacent DOM controls provide the interaction.
     <canvas
       ref={canvasRef}
       className="gh-glass-canvas"

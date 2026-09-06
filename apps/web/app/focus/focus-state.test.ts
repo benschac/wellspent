@@ -3,8 +3,8 @@ import { test } from "node:test";
 import {
   commandsSchema,
   elapsedAt,
-  projectCommand,
   type FocusCommand,
+  projectCommand,
 } from "./focus-state";
 
 const sessionId = "10000000-0000-4000-8000-000000000001";
@@ -64,9 +64,10 @@ test("persisted offline commands replay their original timestamps and exclude a 
 });
 
 test("a pause restored from the outbox stays stopped after browser reload", () => {
-  const sessions = [start, pause].reduce(projectCommand, []);
+  const [session] = [start, pause].reduce(projectCommand, []);
+  assert.ok(session);
   assert.equal(
-    elapsedAt(sessions[0]!, Date.parse("2026-09-06T13:00:00Z")),
+    elapsedAt(session, Date.parse("2026-09-06T13:00:00Z")),
     15 * 60_000,
   );
 });
@@ -80,10 +81,9 @@ test("an acknowledged command left in storage after interruption is not double a
 });
 
 test("outbox restores stable command IDs and rejects malformed transition data", () => {
-  assert.equal(
-    commandsSchema.parse([pause])[0]!.input.commandId,
-    pause.input.commandId,
-  );
+  const [restored] = commandsSchema.parse([pause]);
+  assert.ok(restored);
+  assert.equal(restored.input.commandId, pause.input.commandId);
   assert.equal(
     commandsSchema.safeParse([
       { ...pause, input: { ...pause.input, expectedRevision: -1 } },

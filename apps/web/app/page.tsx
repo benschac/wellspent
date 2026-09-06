@@ -1,6 +1,6 @@
+import Link from "next/link";
 import { env } from "./env";
 import { TimerClient } from "./timer-client";
-import Link from "next/link";
 
 export default function HomePage() {
   const realtimeUrl = new URL("/api/ws", env.API_URL);

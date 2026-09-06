@@ -19,9 +19,7 @@ import {
   realtimeTimerLiveActivityRegisterEvent,
   realtimeTimerStateEvent,
 } from "@repo/api-contract";
-// biome-ignore lint/style/useImportType: Nest needs the runtime class for constructor metadata.
 import { LiveActivityPushService } from "./live-activity-push.service.js";
-// biome-ignore lint/style/useImportType: Nest needs the runtime class for constructor metadata.
 import { RealtimeService } from "./realtime.service.js";
 import { RealtimeLiveActivityRegistrationPipe } from "./realtime-live-activity-registration.pipe.js";
 import { RealtimePingPipe } from "./realtime-ping.pipe.js";

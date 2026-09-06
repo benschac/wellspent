@@ -6,7 +6,7 @@ import {
   type Session,
   type SupabaseClient,
 } from "@supabase/supabase-js";
-import { useEffect, useState, type FormEvent } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { env } from "../env";
 import { errorMessage } from "./focus-state";
 import { FocusWorkspace } from "./focus-workspace";
@@ -201,7 +201,11 @@ function AuthForm({ supabase }: { supabase: SupabaseClient }) {
           </p>
         )}
         {message && <p role="status">{message}</p>}
-        <button className="timer-button timer-button--primary" disabled={busy}>
+        <button
+          className="timer-button timer-button--primary"
+          disabled={busy}
+          type="submit"
+        >
           {busy
             ? "Please wait…"
             : mode === "signin"

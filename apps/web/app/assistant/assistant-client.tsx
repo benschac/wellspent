@@ -41,9 +41,11 @@ export function AssistantClient() {
             key={message.id}
           >
             <strong>{message.role === "user" ? "You" : "Coach"}</strong>
-            {message.parts.map((part, index) =>
+            {message.parts.map((part) =>
               part.type === "text" ? (
-                <p key={`${message.id}-${index}`}>{part.text}</p>
+                <p key={`${message.id}-${part.state}-${part.text}`}>
+                  {part.text}
+                </p>
               ) : null,
             )}
           </article>

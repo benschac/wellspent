@@ -4,11 +4,8 @@ import {
   type OnModuleDestroy,
   type OnModuleInit,
 } from "@nestjs/common";
-// biome-ignore lint/style/useImportType: Nest needs the runtime class for constructor metadata.
 import { ApplicationEventBus } from "../events/application-event-bus.service.js";
-// biome-ignore lint/style/useImportType: Nest needs the runtime class for constructor metadata.
 import { LiveActivityPushService } from "./live-activity-push.service.js";
-// biome-ignore lint/style/useImportType: Nest needs the runtime class for constructor metadata.
 import { RealtimeGateway } from "./realtime.gateway.js";
 import {
   type TimerStateChangedEvent,

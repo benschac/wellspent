@@ -16,8 +16,8 @@ import Animated, {
   useFrameCallback,
   useSharedValue,
 } from "react-native-reanimated";
-import { TimerWidget, type TimerWidgetProps } from "@/lib/timer-widget";
 import { getTimerRealtimeUrl } from "@/lib/api";
+import { TimerWidget, type TimerWidgetProps } from "@/lib/timer-widget";
 import {
   endTimerLiveActivity,
   onTimerLiveActivityPushToken,

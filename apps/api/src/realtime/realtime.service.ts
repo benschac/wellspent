@@ -5,7 +5,6 @@ import type {
   RealtimeTimerCommand,
   RealtimeTimerState,
 } from "@repo/api-contract";
-// biome-ignore lint/style/useImportType: Nest needs the runtime class for constructor metadata.
 import { ApplicationEventBus } from "../events/application-event-bus.service.js";
 import {
   type TimerStateChangedEvent,

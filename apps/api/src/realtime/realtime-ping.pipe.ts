@@ -1,6 +1,6 @@
 import { Injectable, type PipeTransform } from "@nestjs/common";
-import { realtimePingSchema, type RealtimePing } from "@repo/api-contract";
 import { WsException } from "@nestjs/websockets";
+import { type RealtimePing, realtimePingSchema } from "@repo/api-contract";
 
 @Injectable()
 export class RealtimePingPipe implements PipeTransform<unknown, RealtimePing> {

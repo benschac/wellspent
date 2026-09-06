@@ -1,13 +1,13 @@
 "use client";
 
 import type { ApiClient } from "@repo/api-client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { createFocusOutbox, type FocusOutbox } from "./focus-outbox";
 import {
   errorMessage,
-  projectCommand,
   type FocusCommand,
   type FocusSession,
+  projectCommand,
 } from "./focus-state";
 
 export function useFocusSessions(api: ApiClient, userId: string) {
@@ -22,14 +22,14 @@ export function useFocusSessions(api: ApiClient, userId: string) {
   const blockedRef = useRef(false);
   const requests = useRef<AbortController | null>(null);
 
-  const display = useCallback(() => {
+  const display = () => {
     if (!active.current || !outbox.current) return;
     const commands = outbox.current.readCommands();
     setPending(commands);
     setSessions(commands.reduce(projectCommand, outbox.current.readSessions()));
-  }, []);
+  };
 
-  const sync = useCallback(async () => {
+  const sync = async () => {
     const store = outbox.current;
     if (syncing.current || blockedRef.current || !active.current || !store)
       return;
@@ -110,24 +110,27 @@ export function useFocusSessions(api: ApiClient, userId: string) {
     } finally {
       syncing.current = false;
     }
-  }, [api, display, userId]);
+  };
+
+  const displayFromEffect = useEffectEvent(display);
+  const syncFromEffect = useEffectEvent(sync);
 
   useEffect(() => {
     active.current = true;
     requests.current = new AbortController();
     try {
       outbox.current = createFocusOutbox(localStorage, userId);
-      display();
+      displayFromEffect();
       // Browser storage is unavailable during server rendering; mark readiness only
       // after restoring it on mount, before allowing any timer action.
       setReady(true);
-      void sync();
+      void syncFromEffect();
     } catch {
       setError(
         "Your browser could not open the saved timer actions. Enable browser storage before starting a session.",
       );
     }
-    const interval = setInterval(() => void sync(), 10_000);
+    const interval = setInterval(() => void syncFromEffect(), 10_000);
     const onStorage = (event: StorageEvent) => {
       if (
         event.storageArea !== localStorage ||
@@ -135,24 +138,24 @@ export function useFocusSessions(api: ApiClient, userId: string) {
       )
         return;
       try {
-        display();
-        void sync();
+        displayFromEffect();
+        void syncFromEffect();
       } catch {
         setError(
           "Saved timer actions could not be read. Your pending work has not been removed.",
         );
       }
     };
-    window.addEventListener("online", sync);
+    window.addEventListener("online", syncFromEffect);
     window.addEventListener("storage", onStorage);
     return () => {
       active.current = false;
       requests.current?.abort();
       clearInterval(interval);
-      window.removeEventListener("online", sync);
+      window.removeEventListener("online", syncFromEffect);
       window.removeEventListener("storage", onStorage);
     };
-  }, [display, sync, userId]);
+  }, [userId]);
 
   function enqueue(command: FocusCommand) {
     if (!ready || blockedRef.current || !outbox.current) return false;

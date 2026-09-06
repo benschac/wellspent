@@ -1,13 +1,13 @@
 import { sql } from "drizzle-orm";
 import {
-  check,
   bigint,
-  primaryKey,
+  check,
   foreignKey,
   index,
   integer,
   jsonb,
   pgSchema,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,

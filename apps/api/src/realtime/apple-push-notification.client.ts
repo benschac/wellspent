@@ -1,5 +1,5 @@
-import { Injectable } from "@nestjs/common";
 import { connect, constants } from "node:http2";
+import { Injectable } from "@nestjs/common";
 import { importPKCS8, SignJWT } from "jose";
 import { LiveActivityPushConfig } from "./live-activity-push.config.js";
 

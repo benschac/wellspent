@@ -11,7 +11,7 @@
     "dev": "expo start",
     "ios": "expo run:ios",
     "ios:device": "expo run:ios --device \"Deez iPhone\" --configuration Debug",
-    "lint": "biome lint .",
+    "lint": "biome check .",
     "skia:web": "setup-skia-web public",
     "typecheck": "tsc --noEmit",
     "web": "expo start --web"

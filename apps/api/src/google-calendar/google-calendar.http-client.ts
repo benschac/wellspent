@@ -5,9 +5,9 @@ import {
   GoogleCalendarConfig,
 } from "./google-calendar.config.js";
 import {
+  type CreateWatchInput,
   GoogleCalendarApiError,
   GoogleCalendarClient,
-  type CreateWatchInput,
   type GoogleCalendarEventPage,
   type GoogleNotificationChannel,
   type GoogleOAuthTokens,

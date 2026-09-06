@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createFocusOutbox } from "./focus-outbox";
-import { projectCommand, type FocusCommand } from "./focus-state";
+import { type FocusCommand, projectCommand } from "./focus-state";
 
 function memoryStorage() {
   const values = new Map<string, string>();
@@ -45,7 +45,8 @@ test("a new browser instance restores pending work without a sessionStorage tab 
 test("fresh server baselines survive an offline reopen even with no queued commands", () => {
   const storage = memoryStorage();
   const store = createFocusOutbox(storage, "account-a");
-  const session = projectCommand([], start())[0]!;
+  const [session] = projectCommand([], start());
+  assert.ok(session);
   store.saveSessions([session]);
   const resumed = createFocusOutbox(storage, "account-a");
   assert.deepEqual(resumed.readSessions(), [session]);
@@ -66,13 +67,16 @@ test("one tab acknowledging its action cannot remove another tab's new action", 
 
 test("a delayed server response preserves the latest timer and recap revisions", () => {
   const store = createFocusOutbox(memoryStorage(), "account-a");
-  const session = projectCommand([], start())[0]!;
+  const [session] = projectCommand([], start());
+  assert.ok(session);
   store.saveSessions([
     { ...session, revision: 4, recapRevision: 2, recapText: "Latest recap" },
   ]);
   store.saveSessions([session]);
-  assert.equal(store.readSessions()[0]!.revision, 4);
-  assert.equal(store.readSessions()[0]!.recapText, "Latest recap");
+  const [saved] = store.readSessions();
+  assert.ok(saved);
+  assert.equal(saved.revision, 4);
+  assert.equal(saved.recapText, "Latest recap");
 });
 
 test("a full outbox rejects more actions without losing the existing 1,000", () => {

@@ -1,11 +1,11 @@
 import {
+  type RealtimeTimerCommand,
+  type RealtimeTimerLiveActivityRegistration,
+  type RealtimeTimerState,
   realtimeTimerCommandEvent,
   realtimeTimerLiveActivityRegisterEvent,
   realtimeTimerStateEvent,
   realtimeTimerStateSchema,
-  type RealtimeTimerCommand,
-  type RealtimeTimerLiveActivityRegistration,
-  type RealtimeTimerState,
 } from "@repo/api-contract";
 import { useEffect, useRef, useState } from "react";
 
@@ -75,10 +75,21 @@ export function useStopwatch(options: UseStopwatchOptions = {}): Stopwatch {
       return;
     }
 
-    const interval = setInterval(updateElapsed, updateIntervalMs);
+    const interval = setInterval(() => {
+      const startedAt = startedAtRef.current;
+
+      if (startedAt !== null) {
+        const sampledAtMs = readClock();
+
+        setElapsedSnapshot({
+          elapsedMs: accumulatedMsRef.current + sampledAtMs - startedAt,
+          sampledAtMs,
+        });
+      }
+    }, updateIntervalMs);
 
     return () => clearInterval(interval);
-  }, [isRunning, updateElapsed, updateIntervalMs]);
+  }, [isRunning, updateIntervalMs]);
 
   const applyRealtimeState = (state: RealtimeTimerState) => {
     if (state.revision <= latestRevisionRef.current) {

@@ -11,8 +11,8 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import {
   AppState,
-  Platform,
   type AppStateStatus,
+  Platform,
   useColorScheme,
 } from "react-native";
 

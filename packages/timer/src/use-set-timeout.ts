@@ -27,7 +27,15 @@ export function useSetTimeout(): SetTimeoutControls {
     }, delayMs);
   };
 
-  useEffect(() => clear, [clear]);
+  useEffect(
+    () => () => {
+      if (timeoutRef.current !== undefined) {
+        globalThis.clearTimeout(timeoutRef.current);
+        timeoutRef.current = undefined;
+      }
+    },
+    [],
+  );
 
   return { clear, schedule };
 }

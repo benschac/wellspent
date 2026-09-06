@@ -20,15 +20,16 @@ export interface ListenForEvent {
 export function useEventListener(): ListenForEvent {
   const removersRef = useRef(new Set<RemoveEventListener>());
 
-  const removeAll = () => {
-    for (const remove of removersRef.current) {
-      remove();
-    }
+  useEffect(
+    () => () => {
+      for (const remove of removersRef.current) {
+        remove();
+      }
 
-    removersRef.current.clear();
-  };
-
-  useEffect(() => removeAll, [removeAll]);
+      removersRef.current.clear();
+    },
+    [],
+  );
 
   return (<EventType extends Event>(
     target: EventTarget,

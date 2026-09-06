@@ -23,7 +23,10 @@ export function createFocusOutbox(storage: BrowserStorage, userId: string) {
       const key = storage.key(index);
       if (!key?.startsWith(commandPrefix)) continue;
       const raw = storage.getItem(key);
-      if (raw) commands.push(commandsSchema.parse([JSON.parse(raw)])[0]!);
+      if (raw) {
+        const [command] = commandsSchema.parse([JSON.parse(raw)]);
+        if (command) commands.push(command);
+      }
     }
     return commands.sort(
       (a, b) =>

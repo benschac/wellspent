@@ -1,12 +1,14 @@
+import * as nodeCrypto from "node:crypto";
 import {
   BadGatewayException,
   BadRequestException,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
   UnauthorizedException,
 } from "@nestjs/common";
-import { randomUUID } from "node:crypto";
+
 import { CryptoService } from "../crypto/crypto.service.js";
 import { GoogleCalendarConfig } from "./google-calendar.config.js";
 import { GoogleCalendarRepository } from "./google-calendar.repository.js";
@@ -20,6 +22,7 @@ export class GoogleCalendarService {
   private readonly logger = new Logger(GoogleCalendarService.name);
 
   constructor(
+    @Inject(GoogleCalendarClient)
     private readonly client: GoogleCalendarClient,
     private readonly config: GoogleCalendarConfig,
     private readonly crypto: CryptoService,
@@ -107,7 +110,7 @@ export class GoogleCalendarService {
       tokens.accessToken,
       calendarId,
     );
-    const channelId = randomUUID();
+    const channelId = nodeCrypto.randomUUID();
     const channelToken = this.crypto.randomToken();
     const channel = await this.client.createWatch({
       accessToken: tokens.accessToken,
@@ -333,7 +336,7 @@ export class GoogleCalendarService {
       accessToken,
       address: this.config.webhookUrl,
       calendarId: subscription.calendarId,
-      channelId: randomUUID(),
+      channelId: nodeCrypto.randomUUID(),
       channelToken,
     });
 

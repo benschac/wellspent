@@ -44,21 +44,7 @@
       "**/*.tsx"
     ],
     "rules": {
-      "preset": "recommended",
-      "a11y": {
-        "noAriaHiddenOnFocusable": "warn",
-        "useAriaPropsSupportedByRole": "warn",
-        "useButtonType": "warn",
-        "useKeyWithClickEvents": "warn",
-        "useValidAnchor": "warn"
-      },
-      "correctness": {
-        "useExhaustiveDependencies": "warn"
-      },
-      "suspicious": {
-        "noArrayIndexKey": "warn",
-        "useIterableCallbackReturn": "warn"
-      }
+      "preset": "recommended"
     }
   },
   "assist": {

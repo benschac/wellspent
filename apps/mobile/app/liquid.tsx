@@ -1,4 +1,4 @@
-import { LiquidView, type LiquidEdge } from "@repo/liquid-ui";
+import { type LiquidEdge, LiquidView } from "@repo/liquid-ui";
 import { useState } from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";

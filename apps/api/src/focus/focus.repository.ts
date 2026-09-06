@@ -1,6 +1,6 @@
+import { createHash, randomBytes } from "node:crypto";
 import { Inject, Injectable } from "@nestjs/common";
 import { ORPCError } from "@orpc/server";
-import { createHash, randomBytes } from "node:crypto";
 import type {
   AddFocusNoteInput,
   CreateFocusInput,
@@ -117,16 +117,14 @@ export class FocusRepository {
           throw new ORPCError("BAD_REQUEST", {
             message: "New sessions must start within the last seven days",
           });
-        await tx
-          .insert(focusTransitions)
-          .values({
-            sessionId: created.id,
-            commandId: input.commandId,
-            action: "start",
-            revision: 1,
-            occurredAt: at,
-            fingerprint: signature,
-          });
+        await tx.insert(focusTransitions).values({
+          sessionId: created.id,
+          commandId: input.commandId,
+          action: "start",
+          revision: 1,
+          occurredAt: at,
+          fingerprint: signature,
+        });
         return serialize(created);
       }
       const existing = await this.lock(tx, userId, input.id);
@@ -202,16 +200,14 @@ export class FocusRepository {
         .returning();
       if (updated === undefined)
         throw new Error("Focus transition returned no session");
-      await tx
-        .insert(focusTransitions)
-        .values({
-          sessionId: session.id,
-          commandId: input.commandId,
-          action: input.action,
-          revision: next.revision,
-          occurredAt: at,
-          fingerprint: signature,
-        });
+      await tx.insert(focusTransitions).values({
+        sessionId: session.id,
+        commandId: input.commandId,
+        action: input.action,
+        revision: next.revision,
+        occurredAt: at,
+        fingerprint: signature,
+      });
       return serialize(updated);
     });
   }
@@ -364,14 +360,12 @@ export class FocusRepository {
         reject(event.id, "session_limit");
         continue;
       }
-      await tx
-        .insert(focusWorkEvents)
-        .values({
-          ...event,
-          sessionId: session.id,
-          occurredAt: at,
-          fingerprint: signature,
-        });
+      await tx.insert(focusWorkEvents).values({
+        ...event,
+        sessionId: session.id,
+        occurredAt: at,
+        fingerprint: signature,
+      });
       signatures.set(event.id, signature);
       acceptedEventIds.push(event.id);
     }
@@ -408,13 +402,10 @@ export class FocusRepository {
         expiresAt,
         createdAt: now,
       };
-      await tx
-        .insert(focusCaptureTokens)
-        .values(values)
-        .onConflictDoUpdate({
-          target: focusCaptureTokens.sessionId,
-          set: values,
-        });
+      await tx.insert(focusCaptureTokens).values(values).onConflictDoUpdate({
+        target: focusCaptureTokens.sessionId,
+        set: values,
+      });
       return { token, expiresAt: expiresAt.toISOString() };
     });
   }

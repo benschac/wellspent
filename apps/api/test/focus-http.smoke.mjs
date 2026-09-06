@@ -7,13 +7,13 @@
  */
 /* global process, fetch, AbortSignal, URL, console */
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
 import { spawn, spawnSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { mkdtemp, open, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, resolve, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { dirname, join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
+import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const port = Number(process.env.TIMER_HTTP_SMOKE_PORT ?? 3102);

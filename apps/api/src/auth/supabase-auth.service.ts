@@ -61,7 +61,8 @@ export class SupabaseAuthService {
     authorization: string | undefined,
   ): Promise<AuthenticatedUser> {
     const accessToken = this.readBearerToken(authorization);
-    const { issuer, jwks } = this;
+    const issuer = this.issuer;
+    const jwks = this.jwks;
     if (issuer === undefined || jwks === undefined) {
       throw new ServiceUnavailableException(
         "Supabase authentication is not configured",

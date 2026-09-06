@@ -2,18 +2,18 @@
 
 import type { ApiClient } from "@repo/api-client";
 import {
-  useCallback,
+  type FormEvent,
   useEffect,
+  useEffectEvent,
   useRef,
   useState,
-  type FormEvent,
 } from "react";
 import { env } from "../env";
 import {
   errorMessage,
-  formatDuration,
   type FocusDetail,
   type FocusSession,
+  formatDuration,
 } from "./focus-state";
 
 export function SessionDetail({
@@ -47,14 +47,14 @@ export function SessionDetail({
   );
   const outsideEvents =
     detail?.events.filter((event) => !sectionEventIds.has(event.id)) ?? [];
-  const refresh = useCallback(
-    async (signal?: AbortSignal) => {
+  const refresh = useEffectEvent(
+    async (minimumRevision: number, signal?: AbortSignal) => {
       try {
         const result = await api.focus.get(
           { sessionId: session.id },
           { signal },
         );
-        if (!signal?.aborted) {
+        if (!signal?.aborted && result.session.revision >= minimumRevision) {
           setDetail(result);
           setFetchError(null);
         }
@@ -62,20 +62,22 @@ export function SessionDetail({
         if (!signal?.aborted) setFetchError(errorMessage(cause));
       }
     },
-    [api, session.id],
   );
   useEffect(() => {
     if (pending) return;
     const controller = new AbortController();
     request.current = controller;
     // Fetch completion updates state asynchronously; this effect owns its cancellation.
-    void refresh(controller.signal);
-    const interval = setInterval(() => void refresh(controller.signal), 10_000);
+    void refresh(session.revision, controller.signal);
+    const interval = setInterval(
+      () => void refresh(session.revision, controller.signal),
+      10_000,
+    );
     return () => {
       controller.abort();
       clearInterval(interval);
     };
-  }, [pending, refresh, session.revision]);
+  }, [pending, session.revision]);
 
   async function saveRecap(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -156,6 +158,7 @@ export function SessionDetail({
                 <button
                   className="focus-text-button"
                   disabled={pending}
+                  type="button"
                   onClick={() =>
                     setDraft({
                       text: (
@@ -191,6 +194,7 @@ export function SessionDetail({
                   <button
                     className="timer-button timer-button--primary"
                     disabled={saving || pending}
+                    type="submit"
                   >
                     Save recap
                   </button>
@@ -281,6 +285,7 @@ export function SessionDetail({
               <button
                 className="timer-button"
                 disabled={saving || pending || !note.trim()}
+                type="submit"
               >
                 Save note
               </button>
@@ -314,7 +319,7 @@ function EventList({ events }: { events: FocusDetail["events"] }) {
             </time>
           </div>
           <p>{event.summary}</p>
-          {event.evidenceUrl && event.evidenceUrl.startsWith("https://") && (
+          {event.evidenceUrl?.startsWith("https://") && (
             <a href={event.evidenceUrl} target="_blank" rel="noreferrer">
               View evidence ↗
             </a>
@@ -402,6 +407,7 @@ function CaptureSettings({
           <button
             className="timer-button"
             disabled={!consent || busy || disabled}
+            type="button"
             onClick={async () => {
               setBusy(true);
               setError(null);
@@ -422,6 +428,7 @@ function CaptureSettings({
           <button
             className="focus-text-button"
             disabled={busy || disabled}
+            type="button"
             onClick={async () => {
               setBusy(true);
               setError(null);
@@ -462,12 +469,14 @@ function CaptureSettings({
               <button
                 className="timer-button"
                 onClick={() => void copy(token.token)}
+                type="button"
               >
                 Copy token
               </button>
               <button
                 className="focus-text-button"
                 onClick={() => setToken(null)}
+                type="button"
               >
                 Hide token
               </button>
@@ -500,7 +509,11 @@ function CaptureSettings({
             </li>
           </ol>
           <pre>{setup}</pre>
-          <button className="timer-button" onClick={() => void copy(setup)}>
+          <button
+            className="timer-button"
+            onClick={() => void copy(setup)}
+            type="button"
+          >
             Copy setup commands
           </button>
         </details>

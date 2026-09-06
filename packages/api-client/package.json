@@ -7,7 +7,7 @@
     ".": "./src/client.ts"
   },
   "scripts": {
-    "lint": "biome lint .",
+    "lint": "biome check .",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

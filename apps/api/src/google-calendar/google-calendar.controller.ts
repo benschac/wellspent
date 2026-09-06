@@ -8,9 +8,9 @@ import {
   Query,
   UseGuards,
 } from "@nestjs/common";
+import type { AuthenticatedUser } from "../auth/auth.types.js";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import { SupabaseAuthGuard } from "../auth/supabase-auth.guard.js";
-import type { AuthenticatedUser } from "../auth/auth.types.js";
 import { GoogleCalendarCallbackQueryDto } from "./dto/google-calendar-callback-query.dto.js";
 import { GoogleCalendarService } from "./google-calendar.service.js";
 

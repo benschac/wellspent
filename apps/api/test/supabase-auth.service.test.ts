@@ -5,8 +5,8 @@ import {
 } from "@nestjs/common";
 import type { ConfigService } from "@nestjs/config";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
-import type { Environment } from "../src/config/environment.js";
 import { SupabaseAuthService } from "../src/auth/supabase-auth.service.js";
+import type { Environment } from "../src/config/environment.js";
 
 const supabaseUrl = "https://project.supabase.co";
 const issuer = `${supabaseUrl}/auth/v1`;

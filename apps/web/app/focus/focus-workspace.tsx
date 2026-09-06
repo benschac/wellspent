@@ -1,7 +1,7 @@
 "use client";
 
 import type { ApiClient } from "@repo/api-client";
-import { useEffect, useState, type FormEvent } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { elapsedAt, errorMessage, formatDuration } from "./focus-state";
 import { SessionDetail } from "./session-detail";
 import { useFocusSessions } from "./use-focus-sessions";
@@ -67,6 +67,7 @@ export function FocusWorkspace({
         <button
           className="focus-text-button"
           disabled={signingOut}
+          type="button"
           onClick={async () => {
             setSigningOut(true);
             try {
@@ -96,6 +97,7 @@ export function FocusWorkspace({
         <div className="focus-actions">
           <button
             className="timer-button"
+            type="button"
             onClick={() => {
               if (
                 window.confirm(
@@ -124,6 +126,7 @@ export function FocusWorkspace({
           <button
             className="timer-button timer-button--primary"
             disabled={!focus.ready || focus.blocked || !intention.trim()}
+            type="submit"
           >
             Start focusing
           </button>
@@ -148,6 +151,7 @@ export function FocusWorkspace({
                     }
                     onClick={() => setSelectedId(session.id)}
                     aria-pressed={selected?.id === session.id}
+                    type="button"
                   >
                     <strong>{session.intention}</strong>
                     <span>
@@ -177,6 +181,7 @@ export function FocusWorkspace({
               <div
                 className="focus-clock"
                 aria-label={`${Math.floor(elapsedAt(selected, now) / 60000)} minutes of focused time`}
+                role="timer"
               >
                 {formatDuration(elapsedAt(selected, now))}
               </div>
@@ -185,6 +190,7 @@ export function FocusWorkspace({
                   <button
                     className="timer-button timer-button--primary"
                     disabled={focus.blocked || !focus.ready}
+                    type="button"
                     onClick={() =>
                       focus.enqueue({
                         type: "transition",
@@ -204,6 +210,7 @@ export function FocusWorkspace({
                   <button
                     className="timer-button"
                     disabled={focus.blocked || !focus.ready}
+                    type="button"
                     onClick={() =>
                       focus.enqueue({
                         type: "transition",

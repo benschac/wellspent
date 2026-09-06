@@ -17,6 +17,7 @@ export interface TimerDialProps {
 
 interface TickMark {
   end: ReturnType<typeof vec>;
+  index: number;
   start: ReturnType<typeof vec>;
 }
 
@@ -58,6 +59,7 @@ export default function TimerDial({
         center + Math.cos(angle) * outerRadius,
         center + Math.sin(angle) * outerRadius,
       ),
+      index,
       start: vec(
         center + Math.cos(angle) * innerRadius,
         center + Math.sin(angle) * innerRadius,
@@ -76,14 +78,14 @@ export default function TimerDial({
         strokeWidth={strokeWidth}
         style="stroke"
       />
-      {tickMarks.map((tick, index) => (
+      {tickMarks.map((tick) => (
         <Line
-          color={index % 5 === 0 ? "#4e718f" : "#29455d"}
-          key={index}
+          color={tick.index % 5 === 0 ? "#4e718f" : "#29455d"}
+          key={tick.index}
           p1={tick.start}
           p2={tick.end}
           strokeCap="round"
-          strokeWidth={index % 5 === 0 ? size * 0.007 : size * 0.004}
+          strokeWidth={tick.index % 5 === 0 ? size * 0.007 : size * 0.004}
         />
       ))}
       <Path

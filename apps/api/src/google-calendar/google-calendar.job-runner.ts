@@ -1,10 +1,10 @@
+import { randomUUID } from "node:crypto";
 import {
   Injectable,
   Logger,
   type OnModuleDestroy,
   type OnModuleInit,
 } from "@nestjs/common";
-import { randomUUID } from "node:crypto";
 import { GoogleCalendarConfig } from "./google-calendar.config.js";
 import { GoogleCalendarRepository } from "./google-calendar.repository.js";
 import { GoogleCalendarService } from "./google-calendar.service.js";

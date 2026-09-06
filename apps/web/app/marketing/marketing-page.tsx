@@ -144,7 +144,7 @@ export function MarketingPage({
       </a>
       <div className="gh-opening">
         <header className="gh-header">
-          <a className="gh-wordmark" href="#" aria-label="Good Hours home">
+          <a className="gh-wordmark" href="/" aria-label="Good Hours home">
             Good Hours
           </a>
           <nav aria-label="Main navigation">
@@ -154,6 +154,7 @@ export function MarketingPage({
             <button
               className="gh-button gh-button-small"
               onClick={joinWaitlist}
+              type="button"
             >
               Join the waitlist
             </button>
@@ -172,14 +173,18 @@ export function MarketingPage({
                 <br className="gh-desktop-break" /> Look back at work that feels
                 worth your time.
               </p>
-              <button className="gh-button gh-hero-cta" onClick={joinWaitlist}>
+              <button
+                className="gh-button gh-hero-cta"
+                onClick={joinWaitlist}
+                type="button"
+              >
                 Join the waitlist
               </button>
               <p className="gh-platforms">
                 Coming to Mac, iOS, Android &amp; Web
               </p>
             </div>
-            <div
+            <section
               ref={artRef}
               className="gh-hero-art"
               aria-label="Interactive focus tool preview"
@@ -225,6 +230,7 @@ export function MarketingPage({
                   <span
                     className="gh-demo-time"
                     aria-label={`${minutes} minutes ${remainder} seconds`}
+                    role="timer"
                   >
                     {minutes}
                     <span>:</span>
@@ -235,6 +241,7 @@ export function MarketingPage({
                   className="gh-timer-control"
                   aria-label={running ? "Pause focus demo" : "Start focus demo"}
                   onClick={() => setRunning(!running)}
+                  type="button"
                 >
                   {running ? <PauseIcon /> : <PlayIcon />}
                 </button>
@@ -257,7 +264,7 @@ export function MarketingPage({
                 deep work.
               </span>
               <span className="gh-drag-hint">Pull it away. Make it yours.</span>
-            </div>
+            </section>
           </section>
         </main>
       </div>
@@ -278,7 +285,7 @@ export function MarketingPage({
             See what moved forward and where your attention went.
           </p>
         </div>
-        <div className="gh-product-stage" aria-label="Explore a sample day">
+        <section className="gh-product-stage" aria-label="Explore a sample day">
           <div className="gh-journal">
             <div className="gh-journal-heading">
               <h2>
@@ -322,6 +329,7 @@ export function MarketingPage({
                         document.getElementById(`tab-${next}`)?.focus();
                       }
                     }}
+                    type="button"
                   >
                     {label}
                   </button>
@@ -385,11 +393,16 @@ export function MarketingPage({
                   <button
                     className="gh-text-button"
                     onClick={() => setRunning(!running)}
+                    type="button"
                   >
                     {running ? "Pause for a moment" : "Try a focus session"}{" "}
                     {running ? <PauseIcon /> : <PlayIcon />}
                   </button>
-                  <button className="gh-demo-reset" onClick={resetDemo}>
+                  <button
+                    className="gh-demo-reset"
+                    onClick={resetDemo}
+                    type="button"
+                  >
                     <ResetIcon /> Reset demo
                   </button>
                   <span className="gh-demo-label">
@@ -416,6 +429,7 @@ export function MarketingPage({
                     <button
                       className="gh-text-button"
                       onClick={() => setSaved(true)}
+                      type="button"
                     >
                       {saved ? (
                         <>
@@ -435,7 +449,7 @@ export function MarketingPage({
           <p className="gh-preview-caption">
             A glimpse of a day well spent. <span>Try the tabs.</span>
           </p>
-        </div>
+        </section>
       </section>
 
       <section
@@ -575,14 +589,14 @@ export function MarketingPage({
             <em>next good hour.</em>
           </h2>
           <p>Be there when Good Hours opens its doors.</p>
-          <button className="gh-button" onClick={joinWaitlist}>
+          <button className="gh-button" onClick={joinWaitlist} type="button">
             Join the waitlist <ArrowRightIcon aria-hidden="true" />
           </button>
           <p className="gh-platforms">Mac · iOS · Android · Web</p>
         </div>
       </section>
       <footer className="gh-footer">
-        <a className="gh-wordmark" href="#">
+        <a className="gh-wordmark" href="/">
           Good Hours
         </a>
         <span>A little space for your best work.</span>
@@ -597,11 +611,15 @@ export function MarketingPage({
         onClick={(event) => {
           if (event.target === event.currentTarget) event.currentTarget.close();
         }}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") event.currentTarget.close();
+        }}
       >
         <button
           className="gh-dialog-close"
           aria-label="Close waitlist information"
           onClick={() => dialogRef.current?.close()}
+          type="button"
         >
           <Cross1Icon />
         </button>
@@ -618,6 +636,7 @@ export function MarketingPage({
         <button
           className="gh-button"
           onClick={() => dialogRef.current?.close()}
+          type="button"
         >
           Back to Good Hours
         </button>
