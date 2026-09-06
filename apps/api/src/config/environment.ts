@@ -68,7 +68,9 @@ export function validateEnvironment(
 
     for (const key of requiredKeys) {
       if (validated[key] === undefined) {
-        throw new Error(`${key} is required when Live Activity push is enabled`);
+        throw new Error(
+          `${key} is required when Live Activity push is enabled`,
+        );
       }
     }
 

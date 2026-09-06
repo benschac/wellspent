@@ -35,7 +35,11 @@ function App() {
           <p className="lede">Shared timer logic, running inside Tauri.</p>
         </header>
 
-        <div aria-label={formattedTime.label} className="timer-dial" role="timer">
+        <div
+          aria-label={formattedTime.label}
+          className="timer-dial"
+          role="timer"
+        >
           <SkiaDial elapsedMs={elapsedMs} size={dialSize} />
           <div aria-hidden="true" className="timer-readout">
             <span>{formattedTime.minutes}</span>

@@ -40,14 +40,14 @@ type TimerAction = RealtimeTimerCommand["action"];
 
 const readClock = (): number => globalThis.performance?.now() ?? Date.now();
 
-export function useStopwatch(
-  options: UseStopwatchOptions = {},
-): Stopwatch {
+export function useStopwatch(options: UseStopwatchOptions = {}): Stopwatch {
   const { realtimeUrl, reconnectDelayMs = 1_000, updateIntervalMs } = options;
-  const [elapsedSnapshot, setElapsedSnapshot] = useState<ElapsedSnapshot>(() => ({
-    elapsedMs: 0,
-    sampledAtMs: readClock(),
-  }));
+  const [elapsedSnapshot, setElapsedSnapshot] = useState<ElapsedSnapshot>(
+    () => ({
+      elapsedMs: 0,
+      sampledAtMs: readClock(),
+    }),
+  );
   const [isRunning, setIsRunning] = useState(false);
   const [realtimeRevision, setRealtimeRevision] = useState<number | null>(null);
   const accumulatedMsRef = useRef(0);
@@ -62,8 +62,7 @@ export function useStopwatch(
       const sampledAtMs = readClock();
 
       setElapsedSnapshot({
-        elapsedMs:
-          accumulatedMsRef.current + sampledAtMs - startedAt,
+        elapsedMs: accumulatedMsRef.current + sampledAtMs - startedAt,
         sampledAtMs,
       });
     }

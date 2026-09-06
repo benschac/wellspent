@@ -62,7 +62,9 @@ export abstract class GoogleCalendarClient {
 
   abstract createCalendar(accessToken: string): Promise<string>;
 
-  abstract createWatch(input: CreateWatchInput): Promise<GoogleNotificationChannel>;
+  abstract createWatch(
+    input: CreateWatchInput,
+  ): Promise<GoogleNotificationChannel>;
 
   abstract listEvents(input: ListEventsInput): Promise<GoogleCalendarEventPage>;
 

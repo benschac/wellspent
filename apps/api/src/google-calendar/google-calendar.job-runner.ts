@@ -10,9 +10,7 @@ import { GoogleCalendarRepository } from "./google-calendar.repository.js";
 import { GoogleCalendarService } from "./google-calendar.service.js";
 
 @Injectable()
-export class GoogleCalendarJobRunner
-  implements OnModuleInit, OnModuleDestroy
-{
+export class GoogleCalendarJobRunner implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(GoogleCalendarJobRunner.name);
   private readonly workerId = randomUUID();
   private timer?: NodeJS.Timeout;
@@ -73,7 +71,9 @@ export class GoogleCalendarJobRunner
               await this.service.renewWatch(job.connectionId);
               break;
             default:
-              throw new Error(`Unsupported Google Calendar job: ${job.jobType}`);
+              throw new Error(
+                `Unsupported Google Calendar job: ${job.jobType}`,
+              );
           }
           await this.repository.completeJob(job.id, this.workerId);
         } catch (error) {

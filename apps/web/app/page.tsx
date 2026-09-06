@@ -8,7 +8,10 @@ export default function HomePage() {
 
   return (
     <main>
-      <Link className="timer-button timer-button--primary focus-home-link" href="/focus">
+      <Link
+        className="timer-button timer-button--primary focus-home-link"
+        href="/focus"
+      >
         Start a focus session
       </Link>
       <TimerClient realtimeUrl={realtimeUrl.toString()} />

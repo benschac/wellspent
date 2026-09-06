@@ -13,9 +13,7 @@ export class RealtimeWsExceptionFilter
     const client = host.switchToWs().getClient<NativeWebSocketClient>();
     const error = exception.getError();
     const data =
-      typeof error === "string"
-        ? { status: "error", message: error }
-        : error;
+      typeof error === "string" ? { status: "error", message: error } : error;
 
     client.send(JSON.stringify({ event: "exception", data }));
   }

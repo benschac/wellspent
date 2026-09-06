@@ -10,7 +10,13 @@ import type { UIMessage, UIMessageChunk } from "ai";
 import { z } from "zod";
 
 const sessionIdInput = z.object({ sessionId: z.uuid() }).strict();
-const evidenceUrl = z.url().max(2048).refine((value) => value.startsWith("https://"), "Evidence links must use HTTPS");
+const evidenceUrl = z
+  .url()
+  .max(2048)
+  .refine(
+    (value) => value.startsWith("https://"),
+    "Evidence links must use HTTPS",
+  );
 
 export const focusSessionSchema = z.object({
   id: z.uuid(),
@@ -26,15 +32,17 @@ export const focusSessionSchema = z.object({
   recapRevision: z.number().int(),
 });
 
-export const workEventInputSchema = z.object({
-  id: z.uuid(),
-  source: z.literal("codex"),
-  sourceSessionId: z.string().min(1).max(256),
-  occurredAt: z.iso.datetime(),
-  kind: z.enum(["tool_completed", "turn_completed"]),
-  summary: z.string().trim().min(1).max(2000),
-  evidenceUrl: evidenceUrl.optional(),
-}).strict();
+export const workEventInputSchema = z
+  .object({
+    id: z.uuid(),
+    source: z.literal("codex"),
+    sourceSessionId: z.string().min(1).max(256),
+    occurredAt: z.iso.datetime(),
+    kind: z.enum(["tool_completed", "turn_completed"]),
+    summary: z.string().trim().min(1).max(2000),
+    evidenceUrl: evidenceUrl.optional(),
+  })
+  .strict();
 
 export const workEventSchema = z.object({
   id: z.uuid(),
@@ -59,34 +67,109 @@ export const focusDetailSchema = z.object({
   generatedRecap: z.string(),
   segmentsTruncated: z.boolean(),
 });
-export const createFocusInputSchema = z.object({
-  id: z.uuid(), commandId: z.uuid(), intention: z.string().trim().min(1).max(500), occurredAt: z.iso.datetime(),
-}).strict();
+export const createFocusInputSchema = z
+  .object({
+    id: z.uuid(),
+    commandId: z.uuid(),
+    intention: z.string().trim().min(1).max(500),
+    occurredAt: z.iso.datetime(),
+  })
+  .strict();
 export const transitionFocusInputSchema = sessionIdInput.extend({
-  commandId: z.uuid(), action: z.enum(["pause", "resume", "finish"]),
-  expectedRevision: z.number().int().positive(), occurredAt: z.iso.datetime(),
+  commandId: z.uuid(),
+  action: z.enum(["pause", "resume", "finish"]),
+  expectedRevision: z.number().int().positive(),
+  occurredAt: z.iso.datetime(),
 });
 export const updateRecapInputSchema = sessionIdInput.extend({
-  text: z.string().trim().max(8000), expectedRevision: z.number().int().nonnegative(),
+  text: z.string().trim().max(8000),
+  expectedRevision: z.number().int().nonnegative(),
 });
 export const addFocusNoteInputSchema = sessionIdInput.extend({
-  id: z.uuid(), occurredAt: z.iso.datetime(), summary: z.string().trim().min(1).max(2000), evidenceUrl: evidenceUrl.optional(),
+  id: z.uuid(),
+  occurredAt: z.iso.datetime(),
+  summary: z.string().trim().min(1).max(2000),
+  evidenceUrl: evidenceUrl.optional(),
 });
-export const ingestWorkEventsInputSchema = sessionIdInput.extend({events: z.array(workEventInputSchema).min(1).max(50)});
+export const ingestWorkEventsInputSchema = sessionIdInput.extend({
+  events: z.array(workEventInputSchema).min(1).max(50),
+});
 
 export const focusContract = {
-  list: oc.meta(openapi({method: "GET", path: "/focus/sessions"})).output(z.array(focusSessionSchema)),
-  create: oc.meta(openapi({method: "POST", path: "/focus/sessions"})).input(createFocusInputSchema).output(focusSessionSchema),
-  get: oc.meta(openapi({method: "GET", path: "/focus/sessions/{sessionId}"})).input(sessionIdInput).output(focusDetailSchema),
-  transition: oc.meta(openapi({method: "POST", path: "/focus/sessions/{sessionId}/transitions"})).input(transitionFocusInputSchema).output(focusSessionSchema),
-  updateRecap: oc.meta(openapi({method: "PATCH", path: "/focus/sessions/{sessionId}/recap"})).input(updateRecapInputSchema).output(focusDetailSchema),
-  addNote: oc.meta(openapi({method: "POST", path: "/focus/sessions/{sessionId}/notes"})).input(addFocusNoteInputSchema).output(focusDetailSchema),
-  createCaptureToken: oc.meta(openapi({method: "POST", path: "/focus/sessions/{sessionId}/capture-token"})).input(sessionIdInput).output(z.object({token:z.string(),expiresAt:z.iso.datetime()})),
-  revokeCaptureToken: oc.meta(openapi({method: "DELETE", path: "/focus/sessions/{sessionId}/capture-token"})).input(sessionIdInput).output(z.object({revoked:z.literal(true)})),
-  ingest: oc.meta(openapi({method: "POST", path: "/focus/sessions/{sessionId}/work-events"})).input(ingestWorkEventsInputSchema).output(z.object({
-    acceptedEventIds:z.array(z.uuid()),
-    rejectedEvents:z.array(z.object({id:z.uuid(),reason:z.enum(["outside_session","future_timestamp","id_conflict","session_limit"])})),
-  })),
+  list: oc
+    .meta(openapi({ method: "GET", path: "/focus/sessions" }))
+    .output(z.array(focusSessionSchema)),
+  create: oc
+    .meta(openapi({ method: "POST", path: "/focus/sessions" }))
+    .input(createFocusInputSchema)
+    .output(focusSessionSchema),
+  get: oc
+    .meta(openapi({ method: "GET", path: "/focus/sessions/{sessionId}" }))
+    .input(sessionIdInput)
+    .output(focusDetailSchema),
+  transition: oc
+    .meta(
+      openapi({
+        method: "POST",
+        path: "/focus/sessions/{sessionId}/transitions",
+      }),
+    )
+    .input(transitionFocusInputSchema)
+    .output(focusSessionSchema),
+  updateRecap: oc
+    .meta(
+      openapi({ method: "PATCH", path: "/focus/sessions/{sessionId}/recap" }),
+    )
+    .input(updateRecapInputSchema)
+    .output(focusDetailSchema),
+  addNote: oc
+    .meta(
+      openapi({ method: "POST", path: "/focus/sessions/{sessionId}/notes" }),
+    )
+    .input(addFocusNoteInputSchema)
+    .output(focusDetailSchema),
+  createCaptureToken: oc
+    .meta(
+      openapi({
+        method: "POST",
+        path: "/focus/sessions/{sessionId}/capture-token",
+      }),
+    )
+    .input(sessionIdInput)
+    .output(z.object({ token: z.string(), expiresAt: z.iso.datetime() })),
+  revokeCaptureToken: oc
+    .meta(
+      openapi({
+        method: "DELETE",
+        path: "/focus/sessions/{sessionId}/capture-token",
+      }),
+    )
+    .input(sessionIdInput)
+    .output(z.object({ revoked: z.literal(true) })),
+  ingest: oc
+    .meta(
+      openapi({
+        method: "POST",
+        path: "/focus/sessions/{sessionId}/work-events",
+      }),
+    )
+    .input(ingestWorkEventsInputSchema)
+    .output(
+      z.object({
+        acceptedEventIds: z.array(z.uuid()),
+        rejectedEvents: z.array(
+          z.object({
+            id: z.uuid(),
+            reason: z.enum([
+              "outside_session",
+              "future_timestamp",
+              "id_conflict",
+              "session_limit",
+            ]),
+          }),
+        ),
+      }),
+    ),
 };
 
 export type FocusSession = z.infer<typeof focusSessionSchema>;
@@ -181,10 +264,16 @@ export const realtimeTimerCommandSchema = z
 export const realtimeTimerLiveActivityRegistrationSchema = z
   .object({
     activityId: z.string().min(1).max(256),
-    pushToken: z.string().regex(/^[0-9a-f]+$/i).min(2).max(512),
+    pushToken: z
+      .string()
+      .regex(/^[0-9a-f]+$/i)
+      .min(2)
+      .max(512),
     realtimeUrl: z
       .url()
-      .refine((value) => value.startsWith("ws://") || value.startsWith("wss://")),
+      .refine(
+        (value) => value.startsWith("ws://") || value.startsWith("wss://"),
+      ),
   })
   .strict();
 
@@ -257,9 +346,7 @@ export type Profile = z.infer<typeof profileSchema>;
 export type UpdateProfileInput = z.infer<typeof updateProfileInputSchema>;
 export type RealtimePing = z.infer<typeof realtimePingSchema>;
 export type RealtimePong = z.infer<typeof realtimePongSchema>;
-export type RealtimeTimerCommand = z.infer<
-  typeof realtimeTimerCommandSchema
->;
+export type RealtimeTimerCommand = z.infer<typeof realtimeTimerCommandSchema>;
 export type RealtimeTimerLiveActivityRegistration = z.infer<
   typeof realtimeTimerLiveActivityRegistrationSchema
 >;

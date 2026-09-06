@@ -8,7 +8,9 @@ export const metadata: Metadata = {
   title: "Timer Monorepo",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
+export default function RootLayout({
+  children,
+}: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="en">
       <body suppressHydrationWarning>

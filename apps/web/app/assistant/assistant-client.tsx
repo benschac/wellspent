@@ -36,7 +36,10 @@ export function AssistantClient() {
           </p>
         ) : null}
         {messages.map((message) => (
-          <article className={`assistant-message assistant-message--${message.role}`} key={message.id}>
+          <article
+            className={`assistant-message assistant-message--${message.role}`}
+            key={message.id}
+          >
             <strong>{message.role === "user" ? "You" : "Coach"}</strong>
             {message.parts.map((part, index) =>
               part.type === "text" ? (
@@ -85,7 +88,11 @@ export function AssistantClient() {
             Ask coach
           </button>
           {isStreaming ? (
-            <button className="timer-button" onClick={() => stop()} type="button">
+            <button
+              className="timer-button"
+              onClick={() => stop()}
+              type="button"
+            >
               Stop
             </button>
           ) : null}

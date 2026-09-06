@@ -27,14 +27,12 @@ export function TimerClient({ realtimeUrl }: TimerClientProps) {
       <header className="timer-heading">
         <p className="eyebrow">Precision timer</p>
         <h1>Every hundredth counts.</h1>
-        <p className="lede">Monotonic time, rendered with Skia on every frame.</p>
+        <p className="lede">
+          Monotonic time, rendered with Skia on every frame.
+        </p>
       </header>
 
-      <div
-        aria-label={formattedTime.label}
-        className="timer-dial"
-        role="timer"
-      >
+      <div aria-label={formattedTime.label} className="timer-dial" role="timer">
         <SkiaDial elapsedMs={elapsedMs} size={dialSize} />
         <div aria-hidden="true" className="timer-readout">
           <span>{formattedTime.minutes}</span>

@@ -15,10 +15,16 @@ export default function HistoryScreen() {
           padding: 20,
         }}
       >
-        <Text selectable style={{ color: "#f5fbff", fontSize: 18, fontWeight: "600" }}>
+        <Text
+          selectable
+          style={{ color: "#f5fbff", fontSize: 18, fontWeight: "600" }}
+        >
           No sessions yet
         </Text>
-        <Text selectable style={{ color: "#9fb4ad", fontSize: 15, lineHeight: 21 }}>
+        <Text
+          selectable
+          style={{ color: "#9fb4ad", fontSize: 15, lineHeight: 21 }}
+        >
           Completed focus sessions will appear here.
         </Text>
       </View>

@@ -15,10 +15,16 @@ export default function SettingsScreen() {
           padding: 20,
         }}
       >
-        <Text selectable style={{ color: "#f5fbff", fontSize: 18, fontWeight: "600" }}>
+        <Text
+          selectable
+          style={{ color: "#f5fbff", fontSize: 18, fontWeight: "600" }}
+        >
           Timer preferences
         </Text>
-        <Text selectable style={{ color: "#9fb4ad", fontSize: 15, lineHeight: 21 }}>
+        <Text
+          selectable
+          style={{ color: "#9fb4ad", fontSize: 15, lineHeight: 21 }}
+        >
           Sound, haptics, and focus defaults will live here.
         </Text>
       </View>

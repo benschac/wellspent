@@ -92,24 +92,30 @@ export class GoogleCalendarHttpClient extends GoogleCalendarClient {
     code: string;
     codeVerifier: string;
   }): Promise<GoogleOAuthTokens> {
-    const response = await this.formRequest("https://oauth2.googleapis.com/token", {
-      client_id: this.config.clientId,
-      client_secret: this.config.clientSecret,
-      code: input.code,
-      code_verifier: input.codeVerifier,
-      grant_type: "authorization_code",
-      redirect_uri: this.config.redirectUri,
-    });
+    const response = await this.formRequest(
+      "https://oauth2.googleapis.com/token",
+      {
+        client_id: this.config.clientId,
+        client_secret: this.config.clientSecret,
+        code: input.code,
+        code_verifier: input.codeVerifier,
+        grant_type: "authorization_code",
+        redirect_uri: this.config.redirectUri,
+      },
+    );
     return this.parseTokens(response);
   }
 
   async refreshAccessToken(refreshToken: string): Promise<string> {
-    const response = await this.formRequest("https://oauth2.googleapis.com/token", {
-      client_id: this.config.clientId,
-      client_secret: this.config.clientSecret,
-      grant_type: "refresh_token",
-      refresh_token: refreshToken,
-    });
+    const response = await this.formRequest(
+      "https://oauth2.googleapis.com/token",
+      {
+        client_id: this.config.clientId,
+        client_secret: this.config.clientSecret,
+        grant_type: "refresh_token",
+        refresh_token: refreshToken,
+      },
+    );
     return this.parseTokens(response).accessToken;
   }
 
@@ -128,7 +134,9 @@ export class GoogleCalendarHttpClient extends GoogleCalendarClient {
     return calendarSchema.parse(response).id;
   }
 
-  async createWatch(input: CreateWatchInput): Promise<GoogleNotificationChannel> {
+  async createWatch(
+    input: CreateWatchInput,
+  ): Promise<GoogleNotificationChannel> {
     const calendarId = encodeURIComponent(input.calendarId);
     const response = await this.jsonRequest(
       `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events/watch`,
@@ -209,7 +217,10 @@ export class GoogleCalendarHttpClient extends GoogleCalendarClient {
       },
     );
     if (!response.ok) {
-      throw new GoogleCalendarApiError("Google token revocation failed", response.status);
+      throw new GoogleCalendarApiError(
+        "Google token revocation failed",
+        response.status,
+      );
     }
   }
 

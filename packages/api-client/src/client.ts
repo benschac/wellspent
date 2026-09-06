@@ -37,9 +37,7 @@ export function createApiQueryUtils(client: ApiClient): RouterUtils<ApiClient> {
 export async function streamAssistantChat(
   client: ApiClient,
   input: Parameters<ApiClient["assistant"]["chat"]>[0],
-  signal?: NonNullable<
-    Parameters<ApiClient["assistant"]["chat"]>[1]
-  >["signal"],
+  signal?: NonNullable<Parameters<ApiClient["assistant"]["chat"]>[1]>["signal"],
 ) {
   const iterator = await client.assistant.chat(input, { signal });
 

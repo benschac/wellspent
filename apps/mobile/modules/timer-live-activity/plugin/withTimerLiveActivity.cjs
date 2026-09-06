@@ -71,9 +71,10 @@ const configureTargetBuildSettings = (
   config,
   bundleIdentifier,
 ) => {
-  const configurationList = project.pbxXCConfigurationList()[
-    target.pbxNativeTarget.buildConfigurationList
-  ];
+  const configurationList =
+    project.pbxXCConfigurationList()[
+      target.pbxNativeTarget.buildConfigurationList
+    ];
   const configurations = project.pbxXCBuildConfigurationSection();
   const deploymentTarget = config.ios?.deploymentTarget ?? "16.4";
   const marketingVersion = config.ios?.version ?? config.version ?? "1.0";
@@ -136,7 +137,8 @@ const addExtensionTarget = (project, config, bundleIdentifier) => {
   );
   addTargetGroup(project);
 
-  const pbxProject = project.pbxProjectSection()[project.getFirstProject().uuid];
+  const pbxProject =
+    project.pbxProjectSection()[project.getFirstProject().uuid];
   pbxProject.attributes.TargetAttributes ??= {};
   pbxProject.attributes.TargetAttributes[target.uuid] = {
     LastSwiftMigration: 1600,

@@ -1,11 +1,6 @@
 import { formatElapsedTime, useStopwatch } from "@repo/timer";
 import TimerDial from "@repo/timer/skia";
-import {
-  useCallback,
-  useEffect,
-  useEffectEvent,
-  useState,
-} from "react";
+import { useCallback, useEffect, useEffectEvent, useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -43,10 +38,7 @@ const formatTwoDigits = (value: number): string => {
   return value < 10 ? `0${value}` : String(value);
 };
 
-function AnimatedTimerReadout({
-  elapsedMs,
-  size,
-}: AnimatedTimerReadoutProps) {
+function AnimatedTimerReadout({ elapsedMs, size }: AnimatedTimerReadoutProps) {
   const mainText = useDerivedValue(() => {
     const totalSeconds = Math.floor(Math.max(0, elapsedMs.value) / 1_000);
     const minutes = Math.floor(totalSeconds / 60);
@@ -119,9 +111,7 @@ function AnimatedTimerReadout({
 
 export default function HomeScreen() {
   const { width } = useWindowDimensions();
-  const [timerRealtimeUrl, setTimerRealtimeUrl] = useState(
-    getTimerRealtimeUrl,
-  );
+  const [timerRealtimeUrl, setTimerRealtimeUrl] = useState(getTimerRealtimeUrl);
   const {
     elapsedMs,
     elapsedSnapshotAtMs,
@@ -150,10 +140,7 @@ export default function HomeScreen() {
     return () => clearInterval(interval);
   }, [timerRealtimeUrl]);
 
-  const updateTimerWidget = (
-    nextElapsedMs: number,
-    nextIsRunning: boolean,
-  ) => {
+  const updateTimerWidget = (nextElapsedMs: number, nextIsRunning: boolean) => {
     if (process.env.EXPO_OS !== "ios") {
       return;
     }

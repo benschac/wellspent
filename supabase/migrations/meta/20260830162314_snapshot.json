@@ -82,14 +82,10 @@
         "google_calendar_connections_user_id_auth_users_id_fk": {
           "name": "google_calendar_connections_user_id_auth_users_id_fk",
           "tableFrom": "google_calendar_connections",
-          "columnsFrom": [
-            "user_id"
-          ],
+          "columnsFrom": ["user_id"],
           "tableTo": "users",
           "schemaTo": "auth",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -250,14 +246,10 @@
         "gcal_event_links_connection_id_fk": {
           "name": "gcal_event_links_connection_id_fk",
           "tableFrom": "google_calendar_event_links",
-          "columnsFrom": [
-            "connection_id"
-          ],
+          "columnsFrom": ["connection_id"],
           "tableTo": "google_calendar_connections",
           "schemaTo": "app",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -392,14 +384,10 @@
         "gcal_inbound_changes_connection_id_fk": {
           "name": "gcal_inbound_changes_connection_id_fk",
           "tableFrom": "google_calendar_inbound_changes",
-          "columnsFrom": [
-            "connection_id"
-          ],
+          "columnsFrom": ["connection_id"],
           "tableTo": "google_calendar_connections",
           "schemaTo": "app",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -556,14 +544,10 @@
         "gcal_jobs_connection_id_fk": {
           "name": "gcal_jobs_connection_id_fk",
           "tableFrom": "google_calendar_jobs",
-          "columnsFrom": [
-            "connection_id"
-          ],
+          "columnsFrom": ["connection_id"],
           "tableTo": "google_calendar_connections",
           "schemaTo": "app",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -677,14 +661,10 @@
         "google_calendar_oauth_states_user_id_auth_users_id_fk": {
           "name": "google_calendar_oauth_states_user_id_auth_users_id_fk",
           "tableFrom": "google_calendar_oauth_states",
-          "columnsFrom": [
-            "user_id"
-          ],
+          "columnsFrom": ["user_id"],
           "tableTo": "users",
           "schemaTo": "auth",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -835,14 +815,10 @@
         "gcal_subscriptions_connection_id_fk": {
           "name": "gcal_subscriptions_connection_id_fk",
           "tableFrom": "google_calendar_subscriptions",
-          "columnsFrom": [
-            "connection_id"
-          ],
+          "columnsFrom": ["connection_id"],
           "tableTo": "google_calendar_connections",
           "schemaTo": "app",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -901,14 +877,10 @@
         "profiles_id_auth_users_id_fk": {
           "name": "profiles_id_auth_users_id_fk",
           "tableFrom": "profiles",
-          "columnsFrom": [
-            "id"
-          ],
+          "columnsFrom": ["id"],
           "tableTo": "users",
           "schemaTo": "auth",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }

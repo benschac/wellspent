@@ -7,4 +7,3 @@ import { HealthService } from "./health.service.js";
   providers: [HealthService],
 })
 export class HealthModule {}
-

@@ -1,11 +1,7 @@
 {
-  "platforms": [
-    "ios"
-  ],
+  "platforms": ["ios"],
   "apple": {
-    "modules": [
-      "ExpoLiquidUIModule"
-    ],
+    "modules": ["ExpoLiquidUIModule"],
     "podspecPath": "ExpoLiquidUI.podspec"
   }
 }

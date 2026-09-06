@@ -3,12 +3,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build", "skia:web"],
-      "outputs": [
-        ".next/**",
-        "!.next/cache/**",
-        "!.next/dev/**",
-        "dist/**"
-      ]
+      "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**", "dist/**"]
     },
     "db:check": {
       "cache": false

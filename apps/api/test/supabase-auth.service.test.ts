@@ -101,7 +101,9 @@ describe("SupabaseAuthService", () => {
     );
     globalThis.fetch = fetchMock as typeof fetch;
 
-    await expect(createSubject().authenticate(`Bearer ${token}`)).resolves.toEqual({
+    await expect(
+      createSubject().authenticate(`Bearer ${token}`),
+    ).resolves.toEqual({
       email: "person@example.com",
       id: userId,
     });
@@ -130,8 +132,8 @@ describe("SupabaseAuthService", () => {
     await expect(subject.authenticate(undefined)).rejects.toBeInstanceOf(
       UnauthorizedException,
     );
-    await expect(subject.authenticate("Basic credentials")).rejects.toBeInstanceOf(
-      UnauthorizedException,
-    );
+    await expect(
+      subject.authenticate("Basic credentials"),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });

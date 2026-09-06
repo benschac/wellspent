@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  Module,
-  type OnApplicationShutdown,
-} from "@nestjs/common";
+import { Injectable, Module, type OnApplicationShutdown } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import {
   createDatabaseConnection,

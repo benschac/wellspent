@@ -60,7 +60,9 @@ export class CryptoService {
   matchesSha256(value: string, expectedHash: string): boolean {
     const actual = Buffer.from(this.sha256(value));
     const expected = Buffer.from(expectedHash);
-    return actual.length === expected.length && timingSafeEqual(actual, expected);
+    return (
+      actual.length === expected.length && timingSafeEqual(actual, expected)
+    );
   }
 
   private assertAes256Key(key: Buffer): void {

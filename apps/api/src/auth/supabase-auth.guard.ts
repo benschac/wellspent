@@ -1,4 +1,8 @@
-import { type CanActivate, type ExecutionContext, Injectable } from "@nestjs/common";
+import {
+  type CanActivate,
+  type ExecutionContext,
+  Injectable,
+} from "@nestjs/common";
 import type { AuthenticatedRequest } from "./auth.types.js";
 import { SupabaseAuthService } from "./supabase-auth.service.js";
 

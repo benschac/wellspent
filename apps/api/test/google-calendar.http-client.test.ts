@@ -9,7 +9,8 @@ describe("GoogleCalendarHttpClient", () => {
   it("builds an offline PKCE authorization URL with the narrow app scope", () => {
     const client = new GoogleCalendarHttpClient({
       clientId: "client-id",
-      redirectUri: "https://api.example.com/api/integrations/google-calendar/callback",
+      redirectUri:
+        "https://api.example.com/api/integrations/google-calendar/callback",
     } as GoogleCalendarConfig);
 
     const url = new URL(

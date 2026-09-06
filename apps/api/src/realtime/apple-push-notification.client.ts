@@ -40,9 +40,7 @@ export class ApplePushNotificationClient {
       let responseBody = "";
       let statusCode = 0;
       let settled = false;
-      const finish = (
-        callback: () => void,
-      ) => {
+      const finish = (callback: () => void) => {
         if (settled) {
           return;
         }
@@ -96,10 +94,7 @@ export class ApplePushNotificationClient {
   private async getProviderToken(): Promise<string> {
     const now = Math.floor(Date.now() / 1_000);
 
-    if (
-      this.providerToken &&
-      now - this.providerToken.issuedAt < 50 * 60
-    ) {
+    if (this.providerToken && now - this.providerToken.issuedAt < 50 * 60) {
       return this.providerToken.value;
     }
 

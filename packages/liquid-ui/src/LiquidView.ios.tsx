@@ -3,7 +3,10 @@ import { requireNativeView } from "expo";
 import type { ComponentType } from "react";
 import type { NativeSyntheticEvent } from "react-native";
 
-import type { LiquidAttachmentChange, LiquidViewProps } from "./LiquidView.types";
+import type {
+  LiquidAttachmentChange,
+  LiquidViewProps,
+} from "./LiquidView.types";
 
 type NativeProps = Omit<LiquidViewProps, "style" | "onAttachmentChange"> & {
   onAttachmentChange?: (

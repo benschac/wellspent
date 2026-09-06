@@ -10,7 +10,8 @@ export class HealthController {
 
   @Implement(apiContract.health)
   health() {
-    return implement(apiContract.health).handler(() => this.healthService.check());
+    return implement(apiContract.health).handler(() =>
+      this.healthService.check(),
+    );
   }
 }
-

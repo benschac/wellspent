@@ -5,15 +5,13 @@ import type {
   TimerLiveActivityState,
 } from "./TimerLiveActivity.types";
 
-const nativeModule = requireNativeModule<TimerLiveActivityNativeModule>(
-  "TimerLiveActivity",
-);
+const nativeModule =
+  requireNativeModule<TimerLiveActivityNativeModule>("TimerLiveActivity");
 
 export const startOrUpdateTimerLiveActivity = (
   state: TimerLiveActivityState,
   startIfMissing = true,
-): Promise<string | null> =>
-  nativeModule.startOrUpdate(state, startIfMissing);
+): Promise<string | null> => nativeModule.startOrUpdate(state, startIfMissing);
 
 export const endTimerLiveActivity = (): Promise<void> => nativeModule.end();
 

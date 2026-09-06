@@ -16,22 +16,70 @@ type Softbox = {
 
 const SOFTBOXES: readonly Softbox[] = [
   /* Broad key, high and camera-left. */
-  { u: 0.3, v: 0.2, halfWidth: 0.155, halfHeight: 0.135, intensity: 19, feather: 0.86, warm: 0.04 },
+  {
+    u: 0.3,
+    v: 0.2,
+    halfWidth: 0.155,
+    halfHeight: 0.135,
+    intensity: 19,
+    feather: 0.86,
+    warm: 0.04,
+  },
   /* Narrow strip: the hard highlight that runs the length of the shoulder. */
-  { u: 0.52, v: 0.115, halfWidth: 0.17, halfHeight: 0.04, intensity: 15, feather: 0.9, warm: 0 },
+  {
+    u: 0.52,
+    v: 0.115,
+    halfWidth: 0.17,
+    halfHeight: 0.04,
+    intensity: 15,
+    feather: 0.9,
+    warm: 0,
+  },
   /* Cool rim from behind camera-right. */
-  { u: 0.86, v: 0.31, halfWidth: 0.085, halfHeight: 0.09, intensity: 10, feather: 0.92, warm: -0.06 },
+  {
+    u: 0.86,
+    v: 0.31,
+    halfWidth: 0.085,
+    halfHeight: 0.09,
+    intensity: 10,
+    feather: 0.92,
+    warm: -0.06,
+  },
   /* Backlight, directly behind the subject at u=0.25. At the silhouette the
      reflection vector points straight away from the camera, so this is the
      source that draws the clean border all the way round — and it lights the
      transmission through the body at the same time. A ring around the horizon
      instead reflects onto the equator and paints a bar across the middle. */
-  { u: 0.25, v: 0.5, halfWidth: 0.1, halfHeight: 0.2, intensity: 6.5, feather: 0.8, warm: 0 },
+  {
+    u: 0.25,
+    v: 0.5,
+    halfWidth: 0.1,
+    halfHeight: 0.2,
+    intensity: 6.5,
+    feather: 0.8,
+    warm: 0,
+  },
   /* A small hard source high and camera-left: the crisp catchlight on the
      sphere, which a broad softbox alone can never give. */
-  { u: 0.95, v: 0.21, halfWidth: 0.028, halfHeight: 0.032, intensity: 70, feather: 0.45, warm: 0.02 },
+  {
+    u: 0.95,
+    v: 0.21,
+    halfWidth: 0.028,
+    halfHeight: 0.032,
+    intensity: 70,
+    feather: 0.45,
+    warm: 0.02,
+  },
   /* Low bounce so the underside is not dead black. */
-  { u: 0.5, v: 0.82, halfWidth: 0.5, halfHeight: 0.22, intensity: 0.5, feather: 1, warm: 0.02 },
+  {
+    u: 0.5,
+    v: 0.82,
+    halfWidth: 0.5,
+    halfHeight: 0.22,
+    intensity: 0.5,
+    feather: 1,
+    warm: 0.02,
+  },
 ];
 
 function smoothFalloff(distance: number, extent: number, feather: number) {
@@ -83,11 +131,12 @@ export function buildEnvironmentTexture() {
         /* Elliptical, not separable: a product of two 1D falloffs reflects as a
            rectangle with visible corners. */
         const radial = Math.sqrt(
-          (du / light.halfWidth) * (du / light.halfWidth)
-          + (dv / light.halfHeight) * (dv / light.halfHeight),
+          (du / light.halfWidth) * (du / light.halfWidth) +
+            (dv / light.halfHeight) * (dv / light.halfHeight),
         );
         if (radial >= 1) continue;
-        const strength = smoothFalloff(radial, 1, light.feather) * light.intensity;
+        const strength =
+          smoothFalloff(radial, 1, light.feather) * light.intensity;
         r += box.r * strength * (1 + light.warm);
         g += box.g * strength;
         b += box.b * strength * (1 - light.warm);
@@ -101,7 +150,13 @@ export function buildEnvironmentTexture() {
     }
   }
 
-  const texture = new THREE.DataTexture(data, width, height, THREE.RGBAFormat, THREE.FloatType);
+  const texture = new THREE.DataTexture(
+    data,
+    width,
+    height,
+    THREE.RGBAFormat,
+    THREE.FloatType,
+  );
   texture.mapping = THREE.EquirectangularReflectionMapping;
   texture.minFilter = THREE.LinearFilter;
   texture.magFilter = THREE.LinearFilter;
@@ -109,4 +164,3 @@ export function buildEnvironmentTexture() {
   texture.needsUpdate = true;
   return texture;
 }
-

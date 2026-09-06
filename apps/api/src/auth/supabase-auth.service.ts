@@ -57,11 +57,15 @@ export class SupabaseAuthService {
     }
   }
 
-  async authenticate(authorization: string | undefined): Promise<AuthenticatedUser> {
+  async authenticate(
+    authorization: string | undefined,
+  ): Promise<AuthenticatedUser> {
     const accessToken = this.readBearerToken(authorization);
     const { issuer, jwks } = this;
     if (issuer === undefined || jwks === undefined) {
-      throw new ServiceUnavailableException("Supabase authentication is not configured");
+      throw new ServiceUnavailableException(
+        "Supabase authentication is not configured",
+      );
     }
 
     const algorithm = this.readAlgorithm(accessToken);
@@ -111,7 +115,9 @@ export class SupabaseAuthService {
       ) {
         throw new UnauthorizedException("Invalid or expired access token");
       }
-      throw new ServiceUnavailableException("Supabase authentication is unavailable");
+      throw new ServiceUnavailableException(
+        "Supabase authentication is unavailable",
+      );
     }
   }
 
@@ -123,7 +129,9 @@ export class SupabaseAuthService {
     });
 
     if (this.issuer === undefined || publishableKey === undefined) {
-      throw new ServiceUnavailableException("Supabase authentication is not configured");
+      throw new ServiceUnavailableException(
+        "Supabase authentication is not configured",
+      );
     }
 
     let response: Response;
@@ -136,26 +144,34 @@ export class SupabaseAuthService {
         signal: AbortSignal.timeout(10_000),
       });
     } catch {
-      throw new ServiceUnavailableException("Supabase authentication is unavailable");
+      throw new ServiceUnavailableException(
+        "Supabase authentication is unavailable",
+      );
     }
 
     if (response.status === 401 || response.status === 403) {
       throw new UnauthorizedException("Invalid or expired access token");
     }
     if (!response.ok) {
-      throw new ServiceUnavailableException("Supabase authentication is unavailable");
+      throw new ServiceUnavailableException(
+        "Supabase authentication is unavailable",
+      );
     }
 
     let responseBody: unknown;
     try {
       responseBody = await response.json();
     } catch {
-      throw new ServiceUnavailableException("Supabase returned an invalid user response");
+      throw new ServiceUnavailableException(
+        "Supabase returned an invalid user response",
+      );
     }
 
     const parsed = supabaseUserSchema.safeParse(responseBody);
     if (!parsed.success) {
-      throw new ServiceUnavailableException("Supabase returned an invalid user response");
+      throw new ServiceUnavailableException(
+        "Supabase returned an invalid user response",
+      );
     }
 
     return {

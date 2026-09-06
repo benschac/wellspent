@@ -23,10 +23,8 @@ export function useWebSocket({
   const handleMessage = useEffectEvent((data: unknown) => onMessage(data));
   const handleOpen = useEffectEvent(() => onOpen?.());
   const listen = useEventListener();
-  const {
-    clear: clearReconnectTimeout,
-    schedule: scheduleReconnect,
-  } = useSetTimeout();
+  const { clear: clearReconnectTimeout, schedule: scheduleReconnect } =
+    useSetTimeout();
 
   useEffect(() => {
     if (!url) {

@@ -58,7 +58,11 @@ export class LiveActivityPushService {
 
     await Promise.all(
       registrations.map(async (registration) => {
-        const payload = this.createPayload(state, event, registration.realtimeUrl);
+        const payload = this.createPayload(
+          state,
+          event,
+          registration.realtimeUrl,
+        );
 
         try {
           const response = await this.client.sendLiveActivityPush(

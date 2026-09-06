@@ -15,7 +15,9 @@ export class GoogleCalendarConfig {
 
   assertEnabled(): void {
     if (!this.enabled) {
-      throw new ServiceUnavailableException("Google Calendar integration is disabled");
+      throw new ServiceUnavailableException(
+        "Google Calendar integration is disabled",
+      );
     }
   }
 

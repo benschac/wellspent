@@ -16,7 +16,10 @@ export class AssistantController {
           throw errors.SERVICE_UNAVAILABLE();
         }
 
-        const stream = await this.assistantService.stream(input.messages, signal);
+        const stream = await this.assistantService.stream(
+          input.messages,
+          signal,
+        );
 
         if (stream === undefined) {
           throw errors.BAD_REQUEST();

@@ -39,7 +39,9 @@ describe("GoogleCalendarService", () => {
   it("stores a one-time OAuth state and returns the authorization URL", async () => {
     const subject = createSubject();
 
-    await expect(subject.service.beginAuthorization("user-id")).resolves.toEqual({
+    await expect(
+      subject.service.beginAuthorization("user-id"),
+    ).resolves.toEqual({
       authorizationUrl: "https://accounts.google.com/auth",
     });
     expect(subject.createOauthState).toHaveBeenCalledTimes(1);

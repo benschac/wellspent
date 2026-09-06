@@ -1,8 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import type {
-  Profile,
-  UpdateProfileInput,
-} from "@repo/api-contract";
+import type { Profile, UpdateProfileInput } from "@repo/api-contract";
 import {
   type ProfileChanges,
   ProfileRepository,

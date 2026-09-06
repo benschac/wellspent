@@ -26,7 +26,9 @@ export class GoogleCalendarService {
     private readonly repository: GoogleCalendarRepository,
   ) {}
 
-  async beginAuthorization(userId: string): Promise<{ authorizationUrl: string }> {
+  async beginAuthorization(
+    userId: string,
+  ): Promise<{ authorizationUrl: string }> {
     this.config.assertEnabled();
     const state = this.crypto.randomToken();
     const codeVerifier = this.crypto.randomToken(48);
@@ -55,17 +57,23 @@ export class GoogleCalendarService {
   }): Promise<{ calendarId: string; connected: true }> {
     this.config.assertEnabled();
     if (input.error !== undefined) {
-      throw new BadRequestException(`Google authorization failed: ${input.error}`);
+      throw new BadRequestException(
+        `Google authorization failed: ${input.error}`,
+      );
     }
     if (input.code === undefined || input.state === undefined) {
-      throw new BadRequestException("Google authorization code and state are required");
+      throw new BadRequestException(
+        "Google authorization code and state are required",
+      );
     }
 
     const oauthState = await this.repository.consumeOauthState(
       this.crypto.sha256(input.state),
     );
     if (oauthState === undefined) {
-      throw new UnauthorizedException("Google OAuth state is invalid or expired");
+      throw new UnauthorizedException(
+        "Google OAuth state is invalid or expired",
+      );
     }
 
     const existing = await this.repository.findConnectionByUserId(
@@ -205,7 +213,9 @@ export class GoogleCalendarService {
       input.resourceId === undefined ||
       input.resourceState === undefined
     ) {
-      throw new BadRequestException("Google notification headers are incomplete");
+      throw new BadRequestException(
+        "Google notification headers are incomplete",
+      );
     }
     if (
       input.channelId.length > 64 ||
