@@ -15,6 +15,13 @@
       "when": 1788106994782,
       "tag": "20260830162314_create_profile_on_auth_user",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788652993991,
+      "tag": "20260906000313_focus_sessions_and_work_events",
+      "breakpoints": true
     }
   ]
 }

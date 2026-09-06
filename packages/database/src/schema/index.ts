@@ -1,6 +1,8 @@
 import { sql } from "drizzle-orm";
 import {
   check,
+  bigint,
+  primaryKey,
   foreignKey,
   index,
   integer,
@@ -48,6 +50,62 @@ export const profiles = appSchema.table(
     }).onDelete("cascade"),
   ],
 ).enableRLS();
+
+export const focusSessions = appSchema.table("focus_sessions", {
+  id: uuid("id").primaryKey(),
+  userId: uuid("user_id").notNull().references(() => profiles.id, {onDelete: "cascade"}),
+  intention: text("intention").notNull(),
+  status: text("status").$type<"running" | "paused" | "completed">().notNull(),
+  elapsedMs: bigint("elapsed_ms", {mode: "number"}).notNull().default(0),
+  runningSince: timestamp("running_since", {withTimezone: true}),
+  revision: integer("revision").notNull().default(1),
+  completedAt: timestamp("completed_at", {withTimezone: true}),
+  recapText: text("recap_text"),
+  recapRevision: integer("recap_revision").notNull().default(0),
+  ...timestamps,
+}, (table) => [
+  index("focus_sessions_user_created_idx").on(table.userId, table.createdAt),
+  check("focus_sessions_state_check", sql`(${table.status} = 'running' and ${table.runningSince} is not null and ${table.completedAt} is null) or (${table.status} = 'paused' and ${table.runningSince} is null and ${table.completedAt} is null) or (${table.status} = 'completed' and ${table.runningSince} is null and ${table.completedAt} is not null)`),
+  check("focus_sessions_counters_check", sql`${table.elapsedMs} >= 0 and ${table.revision} >= 1 and ${table.recapRevision} >= 0`),
+]).enableRLS();
+
+export const focusTransitions = appSchema.table("focus_transitions", {
+  sessionId: uuid("session_id").notNull().references(() => focusSessions.id, {onDelete: "cascade"}),
+  commandId: uuid("command_id").notNull(),
+  action: text("action").$type<"start" | "pause" | "resume" | "finish">().notNull(),
+  revision: integer("revision").notNull(),
+  occurredAt: timestamp("occurred_at", {withTimezone: true}).notNull(),
+  receivedAt: timestamp("received_at", {withTimezone: true}).notNull().defaultNow(),
+  fingerprint: text("fingerprint").notNull(),
+}, (table) => [
+  primaryKey({columns: [table.sessionId, table.commandId]}),
+  uniqueIndex("focus_transitions_revision_unique").on(table.sessionId, table.revision),
+  check("focus_transitions_action_check", sql`${table.action} in ('start', 'pause', 'resume', 'finish')`),
+]).enableRLS();
+
+export const focusWorkEvents = appSchema.table("focus_work_events", {
+  sessionId: uuid("session_id").notNull().references(() => focusSessions.id, {onDelete: "cascade"}),
+  id: uuid("id").notNull(),
+  source: text("source").$type<"codex" | "manual">().notNull(),
+  sourceSessionId: text("source_session_id").notNull(),
+  kind: text("kind").$type<"tool_completed" | "turn_completed" | "note">().notNull(),
+  summary: text("summary").notNull(),
+  evidenceUrl: text("evidence_url"),
+  occurredAt: timestamp("occurred_at", {withTimezone: true}).notNull(),
+  receivedAt: timestamp("received_at", {withTimezone: true}).notNull().defaultNow(),
+  fingerprint: text("fingerprint").notNull(),
+}, (table) => [
+  primaryKey({columns: [table.sessionId, table.id]}),
+  index("focus_work_events_time_idx").on(table.sessionId, table.occurredAt),
+  check("focus_work_events_source_check", sql`(${table.source} = 'codex' and ${table.kind} in ('tool_completed', 'turn_completed')) or (${table.source} = 'manual' and ${table.kind} = 'note')`),
+]).enableRLS();
+
+export const focusCaptureTokens = appSchema.table("focus_capture_tokens", {
+  sessionId: uuid("session_id").primaryKey().references(() => focusSessions.id, {onDelete: "cascade"}),
+  tokenHash: text("token_hash").notNull(),
+  expiresAt: timestamp("expires_at", {withTimezone: true}).notNull(),
+  createdAt: timestamp("created_at", {withTimezone: true}).notNull().defaultNow(),
+}).enableRLS();
 
 export const googleCalendarConnections = appSchema.table(
   "google_calendar_connections",

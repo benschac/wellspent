@@ -62,7 +62,7 @@ select is(
       and pg_class.relkind = 'r'
       and pg_class.relrowsecurity
   ),
-  7,
+  11,
   'all application tables keep default-deny RLS as defense in depth'
 );
 
