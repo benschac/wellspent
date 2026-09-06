@@ -19,6 +19,8 @@ const server = {
   GOOGLE_CALENDAR_ENABLED: z.stringbool().default(false),
   GOOGLE_CALENDAR_TOKEN_ENCRYPTION_KEY: z.string().optional(),
   GOOGLE_CALENDAR_WEBHOOK_URL: z.url().optional(),
+  GOOGLE_SHEETS_ENABLED: z.stringbool().default(false),
+  GOOGLE_SHEETS_OAUTH_REDIRECT_URI: z.url().optional(),
   GOOGLE_OAUTH_CLIENT_ID: z.string().min(1).optional(),
   GOOGLE_OAUTH_CLIENT_SECRET: z.string().min(1).optional(),
   GOOGLE_OAUTH_REDIRECT_URI: z.url().optional(),
@@ -41,6 +43,8 @@ export interface Environment {
   GOOGLE_CALENDAR_ENABLED: boolean;
   GOOGLE_CALENDAR_TOKEN_ENCRYPTION_KEY?: string | undefined;
   GOOGLE_CALENDAR_WEBHOOK_URL?: string | undefined;
+  GOOGLE_SHEETS_ENABLED: boolean;
+  GOOGLE_SHEETS_OAUTH_REDIRECT_URI?: string | undefined;
   GOOGLE_OAUTH_CLIENT_ID?: string | undefined;
   GOOGLE_OAUTH_CLIENT_SECRET?: string | undefined;
   GOOGLE_OAUTH_REDIRECT_URI?: string | undefined;
@@ -85,20 +89,20 @@ export function validateEnvironment(
     }
   }
 
-  if (validated.GOOGLE_CALENDAR_ENABLED) {
+  if (validated.GOOGLE_CALENDAR_ENABLED || validated.GOOGLE_SHEETS_ENABLED) {
     const requiredKeys = [
       "GOOGLE_CALENDAR_TOKEN_ENCRYPTION_KEY",
-      "GOOGLE_CALENDAR_WEBHOOK_URL",
       "GOOGLE_OAUTH_CLIENT_ID",
       "GOOGLE_OAUTH_CLIENT_SECRET",
-      "GOOGLE_OAUTH_REDIRECT_URI",
       "SUPABASE_PUBLISHABLE_KEY",
       "SUPABASE_URL",
     ] as const;
 
     for (const key of requiredKeys) {
       if (validated[key] === undefined) {
-        throw new Error(`${key} is required when Google Calendar is enabled`);
+        throw new Error(
+          `${key} is required when a Google integration is enabled`,
+        );
       }
     }
 
@@ -111,7 +115,22 @@ export function validateEnvironment(
         "GOOGLE_CALENDAR_TOKEN_ENCRYPTION_KEY must be a base64-encoded 32-byte key",
       );
     }
+  }
 
+  if (
+    validated.GOOGLE_SHEETS_ENABLED &&
+    !validated.GOOGLE_SHEETS_OAUTH_REDIRECT_URI
+  ) {
+    throw new Error(
+      "GOOGLE_SHEETS_OAUTH_REDIRECT_URI is required when Google Sheets is enabled",
+    );
+  }
+  if (validated.GOOGLE_CALENDAR_ENABLED) {
+    if (!validated.GOOGLE_OAUTH_REDIRECT_URI) {
+      throw new Error(
+        "GOOGLE_OAUTH_REDIRECT_URI is required when Google Calendar is enabled",
+      );
+    }
     if (!validated.GOOGLE_CALENDAR_WEBHOOK_URL?.startsWith("https://")) {
       throw new Error("GOOGLE_CALENDAR_WEBHOOK_URL must use HTTPS");
     }

@@ -1,6 +1,5 @@
 import * as nodeCrypto from "node:crypto";
 import {
-  BadGatewayException,
   BadRequestException,
   Inject,
   Injectable,
@@ -10,6 +9,8 @@ import {
 } from "@nestjs/common";
 
 import { CryptoService } from "../crypto/crypto.service.js";
+import { GoogleRepository } from "../google/google.repository.js";
+import { GoogleOAuthService } from "../google/google-oauth.service.js";
 import { GoogleCalendarConfig } from "./google-calendar.config.js";
 import { GoogleCalendarRepository } from "./google-calendar.repository.js";
 import {
@@ -24,33 +25,20 @@ export class GoogleCalendarService {
   constructor(
     @Inject(GoogleCalendarClient)
     private readonly client: GoogleCalendarClient,
-    private readonly config: GoogleCalendarConfig,
-    private readonly crypto: CryptoService,
+    @Inject(GoogleCalendarConfig) private readonly config: GoogleCalendarConfig,
+    @Inject(CryptoService) private readonly crypto: CryptoService,
+    @Inject(GoogleCalendarRepository)
     private readonly repository: GoogleCalendarRepository,
+    @Inject(GoogleOAuthService) private readonly oauth: GoogleOAuthService,
+    @Inject(GoogleRepository)
+    private readonly googleRepository: GoogleRepository,
   ) {}
 
   async beginAuthorization(
     userId: string,
   ): Promise<{ authorizationUrl: string }> {
     this.config.assertEnabled();
-    const state = this.crypto.randomToken();
-    const codeVerifier = this.crypto.randomToken(48);
-    await this.repository.createOauthState({
-      encryptedCodeVerifier: this.crypto.encryptAes256Gcm(
-        codeVerifier,
-        this.config.encryptionKey,
-      ),
-      expiresAt: new Date(Date.now() + 10 * 60 * 1000),
-      stateHash: this.crypto.sha256(state),
-      userId,
-    });
-
-    return {
-      authorizationUrl: this.client.buildAuthorizationUrl({
-        codeChallenge: this.crypto.sha256(codeVerifier),
-        state,
-      }),
-    };
+    return this.oauth.beginAuthorization(userId, "calendar");
   }
 
   async completeAuthorization(input: {
@@ -59,61 +47,28 @@ export class GoogleCalendarService {
     state?: string;
   }): Promise<{ calendarId: string; connected: true }> {
     this.config.assertEnabled();
-    if (input.error !== undefined) {
-      throw new BadRequestException(
-        `Google authorization failed: ${input.error}`,
-      );
-    }
-    if (input.code === undefined || input.state === undefined) {
-      throw new BadRequestException(
-        "Google authorization code and state are required",
-      );
-    }
-
-    const oauthState = await this.repository.consumeOauthState(
-      this.crypto.sha256(input.state),
+    const authorization = await this.oauth.completeAuthorization(
+      "calendar",
+      input,
     );
-    if (oauthState === undefined) {
-      throw new UnauthorizedException(
-        "Google OAuth state is invalid or expired",
-      );
-    }
-
     const existing = await this.repository.findConnectionByUserId(
-      oauthState.userId,
+      authorization.userId,
     );
-    const tokens = await this.client.exchangeAuthorizationCode({
-      code: input.code,
-      codeVerifier: this.crypto.decryptAes256Gcm(
-        oauthState.encryptedCodeVerifier,
-        this.config.encryptionKey,
-      ),
-    });
-    const refreshToken =
-      tokens.refreshToken ??
-      (existing === undefined
-        ? undefined
-        : this.crypto.decryptAes256Gcm(
-            existing.encryptedRefreshToken,
-            this.config.encryptionKey,
-          ));
-    if (refreshToken === undefined) {
-      throw new BadGatewayException(
-        "Google did not return a refresh token; reconnect with consent",
-      );
-    }
+    const credentials = await this.googleRepository.find(authorization.userId);
+    if (!credentials)
+      throw new UnauthorizedException("Google connection no longer exists");
 
     const calendarId =
       existing?.calendarId ??
-      (await this.client.createCalendar(tokens.accessToken));
+      (await this.client.createCalendar(authorization.accessToken));
     const syncToken = await this.fetchFullSyncToken(
-      tokens.accessToken,
+      authorization.accessToken,
       calendarId,
     );
     const channelId = nodeCrypto.randomUUID();
     const channelToken = this.crypto.randomToken();
     const channel = await this.client.createWatch({
-      accessToken: tokens.accessToken,
+      accessToken: authorization.accessToken,
       address: this.config.webhookUrl,
       calendarId,
       channelId,
@@ -122,12 +77,11 @@ export class GoogleCalendarService {
 
     const connection = await this.repository.upsertConnection({
       calendarId,
-      encryptedRefreshToken: this.crypto.encryptAes256Gcm(
-        refreshToken,
-        this.config.encryptionKey,
-      ),
-      grantedScopes: tokens.scopes,
-      userId: oauthState.userId,
+      // Legacy columns retained for a non-destructive migration. All consumers
+      // read the canonical Google credential record through GoogleOAuthService.
+      encryptedRefreshToken: credentials.encryptedRefreshToken,
+      grantedScopes: credentials.grantedScopes,
+      userId: authorization.userId,
     });
     await this.repository.saveSubscription({
       calendarId,
@@ -156,9 +110,11 @@ export class GoogleCalendarService {
     const subscription = await this.repository.findSubscriptionByConnectionId(
       connection.id,
     );
+    const authorization = await this.oauth.status(userId, "calendar");
     return {
-      connected: connection.status === "connected",
-      reconnectRequired: connection.status === "reconnect_required",
+      connected: connection.status === "connected" && authorization.authorized,
+      reconnectRequired:
+        connection.status === "reconnect_required" || !authorization.authorized,
       ...(connection.calendarId === null
         ? {}
         : { calendarId: connection.calendarId }),
@@ -170,28 +126,24 @@ export class GoogleCalendarService {
 
   async disconnect(userId: string): Promise<void> {
     this.config.assertEnabled();
+    await this.googleRepository.cancelStates(userId, "calendar");
     const connection = await this.repository.findConnectionByUserId(userId);
     if (connection === undefined) {
       return;
     }
-    const refreshToken = this.crypto.decryptAes256Gcm(
-      connection.encryptedRefreshToken,
-      this.config.encryptionKey,
-    );
     const subscription = await this.repository.findSubscriptionByConnectionId(
       connection.id,
     );
 
     try {
       if (subscription !== undefined) {
-        const accessToken = await this.client.refreshAccessToken(refreshToken);
+        const accessToken = await this.oauth.getAccessToken(userId, "calendar");
         await this.client.stopWatch({
           accessToken,
           channelId: subscription.channelId,
           resourceId: subscription.resourceId,
         });
       }
-      await this.client.revokeToken(refreshToken);
     } catch (error) {
       this.logger.warn(
         `Google cleanup failed during disconnect: ${error instanceof Error ? error.message : "unknown error"}`,
@@ -270,17 +222,12 @@ export class GoogleCalendarService {
 
     let accessToken: string;
     try {
-      accessToken = await this.client.refreshAccessToken(
-        this.crypto.decryptAes256Gcm(
-          connection.encryptedRefreshToken,
-          this.config.encryptionKey,
-        ),
+      accessToken = await this.oauth.getAccessToken(
+        connection.userId,
+        "calendar",
       );
     } catch (error) {
-      if (
-        error instanceof GoogleCalendarApiError &&
-        (error.status === 400 || error.status === 401)
-      ) {
+      if (error instanceof UnauthorizedException) {
         await this.repository.markReconnectRequired(connection.id);
       }
       throw error;
@@ -325,11 +272,9 @@ export class GoogleCalendarService {
       return;
     }
 
-    const accessToken = await this.client.refreshAccessToken(
-      this.crypto.decryptAes256Gcm(
-        connection.encryptedRefreshToken,
-        this.config.encryptionKey,
-      ),
+    const accessToken = await this.oauth.getAccessToken(
+      connection.userId,
+      "calendar",
     );
     const channelToken = this.crypto.randomToken();
     const channel = await this.client.createWatch({

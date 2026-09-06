@@ -1,6 +1,8 @@
 import { describe, expect, it, mock } from "bun:test";
 import { randomBytes } from "node:crypto";
 import { CryptoService } from "../src/crypto/crypto.service.js";
+import type { GoogleRepository } from "../src/google/google.repository.js";
+import type { GoogleOAuthService } from "../src/google/google-oauth.service.js";
 import type { GoogleCalendarConfig } from "../src/google-calendar/google-calendar.config.js";
 import type { GoogleCalendarRepository } from "../src/google-calendar/google-calendar.repository.js";
 import { GoogleCalendarService } from "../src/google-calendar/google-calendar.service.js";
@@ -23,7 +25,24 @@ function createSubject() {
   const client = {
     buildAuthorizationUrl,
   } as unknown as GoogleCalendarClient;
-  const service = new GoogleCalendarService(client, config, crypto, repository);
+  const beginAuthorization = mock(() =>
+    Promise.resolve({ authorizationUrl: "https://accounts.google.com/auth" }),
+  );
+  const oauth = {
+    beginAuthorization,
+    getAccessToken: mock(() => Promise.resolve("shared-access-token")),
+  } as unknown as GoogleOAuthService;
+  const googleRepository = {
+    cancelStates: mock(async () => {}),
+  } as unknown as GoogleRepository;
+  const service = new GoogleCalendarService(
+    client,
+    config,
+    crypto,
+    repository,
+    oauth,
+    googleRepository,
+  );
 
   return {
     buildAuthorizationUrl,
@@ -32,11 +51,14 @@ function createSubject() {
     enqueuePullChanges,
     repository,
     service,
+    beginAuthorization,
+    client,
+    oauth,
   };
 }
 
 describe("GoogleCalendarService", () => {
-  it("stores a one-time OAuth state and returns the authorization URL", async () => {
+  it("delegates Calendar authorization to the shared Google credential owner", async () => {
     const subject = createSubject();
 
     await expect(
@@ -44,8 +66,12 @@ describe("GoogleCalendarService", () => {
     ).resolves.toEqual({
       authorizationUrl: "https://accounts.google.com/auth",
     });
-    expect(subject.createOauthState).toHaveBeenCalledTimes(1);
-    expect(subject.buildAuthorizationUrl).toHaveBeenCalledTimes(1);
+    expect(subject.beginAuthorization).toHaveBeenCalledWith(
+      "user-id",
+      "calendar",
+    );
+    expect(subject.createOauthState).not.toHaveBeenCalled();
+    expect(subject.buildAuthorizationUrl).not.toHaveBeenCalled();
   });
 
   it("authenticates webhook channel metadata before enqueueing work", async () => {
@@ -74,5 +100,34 @@ describe("GoogleCalendarService", () => {
       messageNumber: "2",
       resourceState: "exists",
     });
+  });
+
+  it("disconnects Calendar without revoking the shared Google grant", async () => {
+    const subject = createSubject();
+    const revokeToken = mock(() => Promise.resolve());
+    const stopWatch = mock(() => Promise.resolve());
+    const deleteConnection = mock(() => Promise.resolve());
+    Object.assign(subject.client, { stopWatch, revokeToken });
+    Object.assign(subject.repository, {
+      findConnectionByUserId: mock(() =>
+        Promise.resolve({ id: "connection-id" }),
+      ),
+      findSubscriptionByConnectionId: mock(() =>
+        Promise.resolve({ channelId: "channel", resourceId: "resource" }),
+      ),
+      deleteConnection,
+    });
+    await subject.service.disconnect("user-id");
+    expect(subject.oauth.getAccessToken).toHaveBeenCalledWith(
+      "user-id",
+      "calendar",
+    );
+    expect(stopWatch).toHaveBeenCalledWith({
+      accessToken: "shared-access-token",
+      channelId: "channel",
+      resourceId: "resource",
+    });
+    expect(deleteConnection).toHaveBeenCalledWith("connection-id");
+    expect(revokeToken).not.toHaveBeenCalled();
   });
 });

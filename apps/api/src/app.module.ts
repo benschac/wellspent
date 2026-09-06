@@ -8,6 +8,7 @@ import { DatabaseModule } from "./database/database.module.js";
 import { ApplicationEventBusModule } from "./events/application-event-bus.module.js";
 import { FocusModule } from "./focus/focus.module.js";
 import { GoogleCalendarModule } from "./google-calendar/google-calendar.module.js";
+import { GoogleSheetsModule } from "./google-sheets/google-sheets.module.js";
 import { HealthModule } from "./health/health.module.js";
 import { ProfileModule } from "./profile/profile.module.js";
 import { RealtimeModule } from "./realtime/realtime.module.js";
@@ -32,6 +33,7 @@ const orpcLogger = new Logger("oRPC");
     AssistantModule,
     DatabaseModule,
     GoogleCalendarModule,
+    GoogleSheetsModule,
     HealthModule,
     ProfileModule,
     RealtimeModule,
