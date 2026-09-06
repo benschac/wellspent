@@ -10,6 +10,7 @@ import { GoogleCalendarModule } from "./google-calendar/google-calendar.module.j
 import { HealthModule } from "./health/health.module.js";
 import { ProfileModule } from "./profile/profile.module.js";
 import { RealtimeModule } from "./realtime/realtime.module.js";
+import { FocusModule } from "./focus/focus.module.js";
 
 const orpcLogger = new Logger("oRPC");
 
@@ -34,6 +35,7 @@ const orpcLogger = new Logger("oRPC");
     HealthModule,
     ProfileModule,
     RealtimeModule,
+    FocusModule,
   ],
 })
 export class AppModule {}

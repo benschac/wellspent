@@ -8,15 +8,23 @@ import { OpenAPILink } from "@orpc/openapi/fetch";
 import { createTanstackQueryUtils } from "@orpc/tanstack-query";
 import type { RouterUtils } from "@orpc/tanstack-query";
 import { apiContract } from "@repo/api-contract";
+export { focusSessionSchema } from "@repo/api-contract";
 
 export type ApiClient = JsonifiedClient<
   RouterContractClient<typeof apiContract>
 >;
 
-export function createApiClient(origin: string): ApiClient {
+export function createApiClient(
+  origin: string,
+  options: { getAccessToken?: () => Promise<string | null> } = {},
+): ApiClient {
   const link = new OpenAPILink(apiContract, {
     origin,
     url: "/api",
+    headers: async () => {
+      const token = await options.getAccessToken?.();
+      return token ? { Authorization: `Bearer ${token}` } : {};
+    },
   });
 
   return createORPCClient(link);

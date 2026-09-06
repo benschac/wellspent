@@ -3,11 +3,15 @@ import { Logger, ValidationPipe } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
 import { WsAdapter } from "@nestjs/platform-ws";
+import type { NestExpressApplication } from "@nestjs/platform-express";
 import { AppModule } from "./app.module.js";
 import type { Environment } from "./config/environment.js";
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  // Fifty bounded evidence excerpts may exceed Express's default 100 KiB,
+  // particularly when UTF-8 text uses multiple bytes per character.
+  app.useBodyParser("json", { limit: "512kb" });
   const config = app.get(ConfigService<Environment, true>);
   const port = config.get("PORT", { infer: true });
   const allowedOrigins = config
