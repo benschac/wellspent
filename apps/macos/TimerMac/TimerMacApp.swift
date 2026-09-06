@@ -2,28 +2,23 @@ import SwiftUI
 
 @main
 struct TimerMacApp: App {
-    @State private var model = TimerModel()
+    @NSApplicationDelegateAdaptor(TimerAppDelegate.self) private var delegate
 
     var body: some Scene {
-        Window("Timer", id: "main") {
-            TimerWindowView()
-                .environment(model)
-        }
-        .defaultSize(width: 560, height: 480)
-        .windowResizability(.contentMinSize)
-
         MenuBarExtra {
-            TimerPopoverView()
-                .environment(model)
+            TimerMenuView()
+                .environment(delegate.model)
+                .environment(delegate.sidebar)
         } label: {
-            Label(model.menuBarTitle, systemImage: "timer")
-                .accessibilityLabel(model.accessibilityTimerLabel)
+            Label(delegate.model.menuBarTitle, systemImage: "timer")
+                .accessibilityLabel(delegate.model.accessibilityTimerLabel)
         }
-        .menuBarExtraStyle(.window)
-
-        Settings {
-            SettingsView()
-                .environment(model)
+        .menuBarExtraStyle(.menu)
+        .commands {
+            CommandGroup(replacing: .appSettings) {
+                Button("Settings…", action: delegate.sidebar.showSettings)
+                    .keyboardShortcut(",", modifiers: .command)
+            }
         }
     }
 }

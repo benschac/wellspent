@@ -1,4 +1,4 @@
-struct RealtimeTimerState: Decodable {
+struct RealtimeTimerState: Decodable, Sendable {
     let elapsedMilliseconds: Double
     let isRunning: Bool
     let revision: Int

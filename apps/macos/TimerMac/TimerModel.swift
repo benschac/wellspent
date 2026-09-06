@@ -26,24 +26,27 @@ final class TimerModel {
 
     @ObservationIgnored private let settingsStore: SettingsStore
     @ObservationIgnored private let keychainStore: KeychainStore
+    @ObservationIgnored private let realtimeClient: TimerRealtimeClient
+    @ObservationIgnored private let clock: TimerClock
     @ObservationIgnored private var baselineElapsedMilliseconds = 0.0
-    @ObservationIgnored private var baselineSystemUptime = ProcessInfo.processInfo.systemUptime
-    @ObservationIgnored private var connectionGeneration = 0
-    @ObservationIgnored private var pendingCommands: [TimerAction] = []
-    @ObservationIgnored private var connectionTask: Task<Void, Never>?
-    @ObservationIgnored private var flushTask: Task<Void, Never>?
-    @ObservationIgnored private var flushGeneration: Int?
+    @ObservationIgnored private var baselineSystemUptime: TimeInterval
+    @ObservationIgnored private var realtimeEventsTask: Task<Void, Never>?
+    @ObservationIgnored private var realtimeOperationTask: Task<Void, Never>?
     @ObservationIgnored private var tickerTask: Task<Void, Never>?
     @ObservationIgnored private var wakeTask: Task<Void, Never>?
     @ObservationIgnored private var sleepTask: Task<Void, Never>?
-    @ObservationIgnored private var webSocketTask: URLSessionWebSocketTask?
 
     init(
         settingsStore: SettingsStore = SettingsStore(),
-        keychainStore: KeychainStore = KeychainStore()
+        keychainStore: KeychainStore = KeychainStore(),
+        realtimeClient: TimerRealtimeClient = TimerRealtimeClient(),
+        clock: TimerClock = .live
     ) {
         self.settingsStore = settingsStore
         self.keychainStore = keychainStore
+        self.realtimeClient = realtimeClient
+        self.clock = clock
+        baselineSystemUptime = clock.systemUptime()
         apiBaseURL = settingsStore.apiBaseURL
         selectedDurationMinutes = settingsStore.durationMinutes
         accessToken = keychainStore.readToken()
@@ -52,12 +55,16 @@ final class TimerModel {
     }
 
     isolated deinit {
-        connectionTask?.cancel()
-        flushTask?.cancel()
+        realtimeEventsTask?.cancel()
+        realtimeOperationTask?.cancel()
         tickerTask?.cancel()
         wakeTask?.cancel()
         sleepTask?.cancel()
-        webSocketTask?.cancel(with: .goingAway, reason: nil)
+
+        let realtimeClient = realtimeClient
+        Task {
+            await realtimeClient.shutdown()
+        }
     }
 
     var totalDurationMilliseconds: Double {
@@ -101,7 +108,7 @@ final class TimerModel {
         }
 
         baselineElapsedMilliseconds = displayElapsedMilliseconds
-        baselineSystemUptime = ProcessInfo.processInfo.systemUptime
+        baselineSystemUptime = clock.systemUptime()
         isRunning = true
         commands.append(.start)
         updateTicker()
@@ -157,8 +164,23 @@ final class TimerModel {
     }
 
     private func startLifecycle() {
-        guard wakeTask == nil, sleepTask == nil else {
+        guard
+            realtimeEventsTask == nil,
+            wakeTask == nil,
+            sleepTask == nil
+        else {
             return
+        }
+
+        let events = realtimeClient.events
+        realtimeEventsTask = Task { @MainActor [weak self] in
+            for await event in events {
+                guard let self else {
+                    return
+                }
+
+                handle(event: event)
+            }
         }
 
         wakeTask = Task { @MainActor [weak self] in
@@ -201,136 +223,41 @@ final class TimerModel {
     }
 
     private func reconnect() {
-        connectionGeneration += 1
-        let generation = connectionGeneration
-
-        connectionTask?.cancel()
-        flushTask?.cancel()
-        flushTask = nil
-        flushGeneration = nil
-        webSocketTask?.cancel(with: .goingAway, reason: nil)
-        webSocketTask = nil
-
-        guard TimerProjection.webSocketURL(from: apiBaseURL) != nil else {
+        guard let socketURL = TimerProjection.webSocketURL(from: apiBaseURL) else {
             connectionState = .disconnected
             errorMessage = "The configured API URL is invalid."
             return
         }
 
-        connectionTask = Task { @MainActor [weak self] in
-            await self?.runConnectionLoop(generation: generation)
+        let accessToken = accessToken
+        scheduleRealtimeOperation { realtimeClient in
+            await realtimeClient.connect(
+                socketURL: socketURL,
+                accessToken: accessToken
+            )
         }
     }
 
     private func suspendConnection() {
-        connectionGeneration += 1
-        connectionTask?.cancel()
-        connectionTask = nil
-        flushTask?.cancel()
-        flushTask = nil
-        flushGeneration = nil
-        webSocketTask?.cancel(with: .goingAway, reason: nil)
-        webSocketTask = nil
-        connectionState = .disconnected
+        scheduleRealtimeOperation { realtimeClient in
+            await realtimeClient.suspend()
+        }
     }
 
-    private func runConnectionLoop(generation: Int) async {
-        var reconnectDelay = 1
-
-        while !Task.isCancelled, generation == connectionGeneration {
-            connectionState = reconnectDelay == 1 ? .connecting : .reconnecting
-
-            guard let socketURL = TimerProjection.webSocketURL(from: apiBaseURL) else {
-                connectionState = .disconnected
-                return
-            }
-
-            var request = URLRequest(url: socketURL)
-            if !accessToken.isEmpty {
-                request.setValue(
-                    "Bearer \(accessToken)",
-                    forHTTPHeaderField: "Authorization"
-                )
-            }
-
-            let socket = URLSession.shared.webSocketTask(with: request)
-            webSocketTask = socket
-            socket.resume()
-
-            do {
-                let initialMessage = try await socket.receive()
-                guard
-                    !Task.isCancelled,
-                    isCurrentConnection(socket, generation: generation)
-                else {
-                    socket.cancel(with: .goingAway, reason: nil)
-                    return
-                }
-
-                handle(message: initialMessage)
-                connectionState = .connected
+    private func handle(event: TimerRealtimeClientEvent) {
+        switch event {
+        case .connectionStateChanged(let state):
+            connectionState = state
+            if state == .connected {
                 errorMessage = nil
-                reconnectDelay = 1
-                schedulePendingCommandFlush()
-
-                while !Task.isCancelled, generation == connectionGeneration {
-                    let message = try await socket.receive()
-                    guard
-                        !Task.isCancelled,
-                        isCurrentConnection(socket, generation: generation)
-                    else {
-                        break
-                    }
-
-                    handle(message: message)
-                }
-            } catch {
-                if !Task.isCancelled, generation == connectionGeneration {
-                    connectionState = .reconnecting
-                    errorMessage = "Realtime sync is unavailable: \(error.localizedDescription)"
-                }
             }
-
-            socket.cancel(with: .goingAway, reason: nil)
-            if webSocketTask === socket {
-                webSocketTask = nil
-            }
-
-            guard !Task.isCancelled, generation == connectionGeneration else {
-                return
-            }
-
-            do {
-                try await Task.sleep(for: .seconds(reconnectDelay))
-            } catch {
-                return
-            }
-            reconnectDelay = min(reconnectDelay * 2, 30)
+        case .stateReceived(let state):
+            apply(state: state)
+        case .connectionFailed(let message):
+            errorMessage = "Realtime sync is unavailable: \(message)"
+        case .commandQueued:
+            errorMessage = "A timer action is queued until sync reconnects."
         }
-    }
-
-    private func handle(message: URLSessionWebSocketTask.Message) {
-        let data: Data
-
-        switch message {
-        case .data(let messageData):
-            data = messageData
-        case .string(let text):
-            data = Data(text.utf8)
-        @unknown default:
-            return
-        }
-
-        guard
-            let envelope = try? JSONDecoder().decode(
-                RealtimeStateEnvelope.self,
-                from: data
-            ), envelope.event == "timer.state"
-        else {
-            return
-        }
-
-        apply(state: envelope.data)
     }
 
     private func apply(state: RealtimeTimerState) {
@@ -340,11 +267,11 @@ final class TimerModel {
 
         let projectedElapsed = TimerProjection.elapsedMilliseconds(
             for: state,
-            now: .now
+            now: clock.now()
         )
         latestRevision = state.revision
         baselineElapsedMilliseconds = projectedElapsed
-        baselineSystemUptime = ProcessInfo.processInfo.systemUptime
+        baselineSystemUptime = clock.systemUptime()
         displayElapsedMilliseconds = projectedElapsed
         isRunning = state.isRunning
         updateTicker()
@@ -357,7 +284,7 @@ final class TimerModel {
 
         let uptimeDelta = max(
             0,
-            ProcessInfo.processInfo.systemUptime - baselineSystemUptime
+            clock.systemUptime() - baselineSystemUptime
         )
         displayElapsedMilliseconds = baselineElapsedMilliseconds + uptimeDelta * 1_000
     }
@@ -384,83 +311,25 @@ final class TimerModel {
     }
 
     private func enqueue(_ commands: [TimerAction]) {
-        pendingCommands.append(contentsOf: commands)
-
-        guard connectionState == .connected else {
-            return
+        scheduleRealtimeOperation { realtimeClient in
+            await realtimeClient.enqueue(commands)
         }
-
-        schedulePendingCommandFlush()
     }
 
-    private func schedulePendingCommandFlush() {
-        guard
-            connectionState == .connected,
-            let socket = webSocketTask,
-            !pendingCommands.isEmpty
-        else {
-            return
-        }
+    private func scheduleRealtimeOperation(
+        _ operation: @escaping @Sendable (TimerRealtimeClient) async -> Void
+    ) {
+        let previousOperation = realtimeOperationTask
+        let realtimeClient = realtimeClient
 
-        let generation = connectionGeneration
-        guard flushGeneration != generation else {
-            return
-        }
+        realtimeOperationTask = Task {
+            await previousOperation?.value
 
-        flushGeneration = generation
-        flushTask = Task { @MainActor [weak self] in
-            await self?.flushPendingCommands(
-                generation: generation,
-                socket: socket
-            )
-
-            guard let self, flushGeneration == generation else {
+            guard !Task.isCancelled else {
                 return
             }
 
-            flushTask = nil
-            flushGeneration = nil
-            schedulePendingCommandFlush()
+            await operation(realtimeClient)
         }
-    }
-
-    private func flushPendingCommands(
-        generation: Int,
-        socket: URLSessionWebSocketTask
-    ) async {
-        while connectionState == .connected,
-            isCurrentConnection(socket, generation: generation),
-            let action = pendingCommands.first
-        {
-            let message = """
-                {"event":"timer.command","data":{"action":"\(action.rawValue)"}}
-                """
-
-            do {
-                try await socket.send(.string(message))
-
-                guard isCurrentConnection(socket, generation: generation) else {
-                    return
-                }
-
-                pendingCommands.removeFirst()
-            } catch {
-                guard isCurrentConnection(socket, generation: generation) else {
-                    return
-                }
-
-                connectionState = .reconnecting
-                errorMessage = "A timer action is queued until sync reconnects."
-                socket.cancel(with: .goingAway, reason: nil)
-                return
-            }
-        }
-    }
-
-    private func isCurrentConnection(
-        _ socket: URLSessionWebSocketTask,
-        generation: Int
-    ) -> Bool {
-        generation == connectionGeneration && webSocketTask === socket
     }
 }

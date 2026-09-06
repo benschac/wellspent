@@ -1,4 +1,4 @@
-enum ConnectionState: Equatable {
+enum ConnectionState: Equatable, Sendable {
     case connecting
     case connected
     case reconnecting

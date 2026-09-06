@@ -2,6 +2,7 @@ import SwiftUI
 
 struct TimerWindowView: View {
     @Environment(TimerModel.self) private var model
+    @Environment(TimerSidebarController.self) private var sidebar
 
     var body: some View {
         VStack {
@@ -36,7 +37,7 @@ struct TimerWindowView: View {
 
                 Spacer()
 
-                SettingsLink {
+                Button(action: sidebar.showSettings) {
                     Label("Settings", systemImage: "gearshape")
                 }
             }

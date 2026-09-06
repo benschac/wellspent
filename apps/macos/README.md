@@ -1,6 +1,6 @@
 # Timer for macOS
 
-A native SwiftUI desktop and menu-bar projection of the repository's
+A native SwiftUI/AppKit floating sidebar and menu-bar projection of the repository's
 authoritative timer state. The existing Tauri desktop app remains available in
 `apps/desktop`.
 
@@ -8,16 +8,63 @@ authoritative timer state. The existing Tauri desktop app remains available in
 
 1. Start the API with `bun run dev --filter=@repo/api` from the repository root.
 2. Open `TimerMac.xcodeproj` and run the `TimerMac` scheme. The app opens a
-   regular desktop window, appears in the Dock, and keeps its menu-bar controls.
+   frosted timer sidebar on the right edge of the primary display and keeps its
+   menu-bar controls. It runs without a Dock icon or an initial desktop window.
    You can also run `.derivedData/Build/Products/Debug/TimerMac.app` after a
    package build.
-3. Open Settings from the desktop window or menu-bar popover to change the API
+3. Open Settings from the sidebar gear or menu-bar menu to change the API
    URL. The default is `http://localhost:3001`.
 
 An optional bearer token can be saved in Settings. It is stored in the macOS
 Keychain and attached to the WebSocket upgrade request. The current shared timer
 gateway does not reject unauthenticated clients, so adding a token is
 forward-compatible rather than an authorization boundary today.
+
+## Floating controls
+
+- Click the compact timer to start/resume or pause. Drag the timer face to move
+  the widget; moving at least 4 points counts as a drag and cannot also toggle
+  the timer. The gear remains a separate settings button. Hover opens nothing.
+- On supported trackpads, one subtle alignment haptic accompanies the liquid
+  connection breaking. It is synchronized to drawing and fires once per pickup,
+  so moving back and forth near the separation point does not chatter.
+- Drop within 78 points of a usable screen edge for a short magnetic settling
+  animation. Farther away, the grabbed point stays where it was released. Top/bottom
+  attachments and detached widgets use a horizontal layout; left/right
+  attachments use a vertical layout. Snapping provides alignment feedback on
+  supported trackpads. Reduce Motion disables the liquid deformation and animated settling.
+- Settings contains duration, reset, an explicit Open Timer Window button,
+  magnetic-edge and position-lock toggles, and connection configuration.
+  The menu bar uses a compact native menu instead of another timer popover.
+- Placement and visibility are remembered across launches. Position is stored
+  relative to the display's usable area so resolution changes remain safe.
+  A disconnected preferred display falls back to the primary display until it
+  reconnects. Reset Position provides a recovery action in Settings.
+- The panel joins all Spaces and supports full-screen app Spaces. It follows the
+  display's usable frame as the Dock or display layout changes. Transparent
+  corners pass mouse clicks through; no global keyboard shortcut or new system
+  permission is required.
+
+The floating presentation is implemented in `TimerSidebarController` and the
+`TimerSidebar*` views. `TimerDragView` owns native mouse events in screen coordinates;
+`TimerSidebarLayout` owns snapping and placement. `TimerMotionClock` drives geometry
+in sync with the display and a critically damped spring on release. The shape and
+content morph together while pulling away. `TimerLiquidShape` supplies one continuous
+outline to the AppKit frosted backdrop, tint, and rim. The whole shoulder broadens
+into a short neck, separating at a 28-point gap and retracting over the next 18
+points. The wall remnant starts at the original attachment size and stays aligned
+to that contact during perpendicular pulls. Curves fit the body and wall footprint
+without rectangular clipping. This is a surface-tension-inspired presentation
+model, not a physical fluid simulation. Drag progress follows the
+hand directly; only release uses easing. Reduce Transparency uses an opaque
+fallback, and Reduce Motion disables deformation. Controls stay in a separate,
+undistorted layer. Window shadows are disabled during morphing. Tests verify
+native frost coverage through the neck, separation, and bounds on all four edges,
+and export rendered stages. The grabbed ring or label stays under
+the pointer, including when window bounds expand for the neck. Picking up a
+settling widget immediately stops the spring. `TimerAppDelegate` owns the single shared
+`TimerModel`; AppKit owns panel and auxiliary-window lifetimes. This does not
+change the realtime protocol or timer projection.
 
 ## Monorepo commands
 
