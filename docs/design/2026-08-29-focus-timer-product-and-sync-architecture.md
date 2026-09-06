@@ -1,8 +1,10 @@
 # Focus Timer Product and Sync Architecture
 
-**Status:** Decision-complete; implementation in progress before the first durable session-domain slice
+**Status:** Decision-complete; first authenticated web session/evidence slice implemented; native synchronization gates remain
 
-**Last updated:** 2026-08-30
+**Last updated:** 2026-09-05
+
+**Current implementation note:** [Durable focus sessions and CLI context](../focus-sessions.md) records the new Supabase-authenticated web flow, persisted timer transitions, offline browser command outbox, Codex capture adapter, and editable recaps. The August 30 progress checkpoint below is historical: its missing timer tables and web outbox now have a first implementation. Native clients, the general device/cursor synchronization protocol, and the broader platform gates remain separate work.
 
 **Purpose:** Preserve the product direction, lock the foundational platform and synchronization decisions, define the implementation gates, and track progress against them.
 

@@ -107,16 +107,22 @@ Local Supabase lifecycle commands:
 ```bash
 bun run supabase:start
 bun run supabase:start:full
+bun run supabase:start:lite
 bun run supabase:status
 bun run supabase:stop
 ```
 
-The default start command runs the services used by the current architecture:
-Postgres, Auth, REST, the API gateway, and Mailpit. `supabase:start:full` also
-starts Realtime, Storage, Studio (`http://127.0.0.1:54423`), and the Edge
-Functions runtime. Both commands omit optional analytics, Vector log shipping,
-and image transformation containers. Use the full stack when Docker has enough
-memory available; Supabase recommends at least 7 GB for local development.
+Use Docker Desktop with `docker context use desktop-linux` before these commands.
+The project is named `timer-desktop`; older `timer` volumes are kept separately.
+The default start command runs the full stack, including Realtime, Storage,
+Studio (`http://127.0.0.1:54423`), database metadata, and the Edge Functions
+runtime. Local MCP is available at `http://127.0.0.1:54421/mcp` through Studio.
+Use the `app` schema when inspecting Timer tables through MCP or Studio. This
+local MCP endpoint is separate from a connector configured for hosted Supabase.
+`supabase:start:lite` runs only Postgres, Auth, REST, the API gateway, and Mailpit;
+it does not provide Studio or MCP. Both modes omit optional analytics, Vector
+log shipping, and image transformation containers. Use the pinned commands above
+because an older global Supabase CLI may reject the `local_smtp` configuration.
 
 To rebuild the local database from committed migrations and `supabase/seed.sql`:
 

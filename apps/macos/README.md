@@ -33,7 +33,14 @@ forward-compatible rather than an authorization boundary today.
   attachments and detached widgets use a horizontal layout; left/right
   attachments use a vertical layout. Snapping provides alignment feedback on
   supported trackpads. Reduce Motion disables the liquid deformation and animated settling.
-- Settings contains duration, reset, an explicit Open Timer Window button,
+- The timer counts up from zero using the shared realtime elapsed state. Pause
+  preserves elapsed time; Resume continues it without a duration limit. Reset
+  clears elapsed time and preserves whether the timer is running, matching the
+  mobile and desktop clients. The ring sweeps forward once per minute using an
+  animation timeline targeting 60 frames per second. It samples the same monotonic
+  timer clock without publishing per-frame model updates, stops rendering frames
+  while paused, and uses a one-second cadence with Reduce Motion enabled.
+- Settings contains reset, an explicit Open Timer Window button,
   magnetic-edge and position-lock toggles, and connection configuration.
   The menu bar uses a compact native menu instead of another timer popover.
 - Placement and visibility are remembered across launches. Position is stored
