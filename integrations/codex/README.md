@@ -63,7 +63,7 @@ To disconnect, remove these hook handlers and `unset TIMER_CAPTURE_TOKEN` in the
 ## Verification
 
 ```sh
-bun test integrations/codex/timer-capture.test.mjs
+bun run test:capture
 node --check integrations/codex/timer-capture.mjs
 ```
 

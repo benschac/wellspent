@@ -11,6 +11,7 @@
   ],
   "workspaces": [
     "apps/*",
+    "integrations/*",
     "packages/*"
   ],
   "scripts": {
@@ -35,6 +36,10 @@
     "supabase:status": "bunx supabase@2.116.0 status",
     "supabase:stop": "bunx supabase@2.116.0 stop",
     "test": "turbo run test",
+    "test:capture": "turbo run test:capture",
+    "test:fast": "turbo run test:focus test:capture",
+    "test:focus": "turbo run test:focus",
+    "test:focus:db:local": "turbo run test:focus:db:local",
     "typecheck": "turbo run typecheck"
   },
   "devDependencies": {

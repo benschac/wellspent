@@ -2,6 +2,7 @@
   "extends": "@repo/typescript-config/nestjs.json",
   "compilerOptions": {
     "allowImportingTsExtensions": true,
+    "experimentalDecorators": true,
     "outDir": "./dist",
     "rewriteRelativeImportExtensions": true,
     "rootDir": "./src"

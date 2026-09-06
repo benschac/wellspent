@@ -33,7 +33,16 @@
       "outputs": ["public/canvaskit.wasm"]
     },
     "test": {
-      "dependsOn": ["build"]
+      "cache": false
+    },
+    "test:focus": {
+      "cache": false
+    },
+    "test:capture": {
+      "cache": false
+    },
+    "test:focus:db:local": {
+      "cache": false
     },
     "typecheck": {
       "dependsOn": ["transit"]

@@ -9,6 +9,8 @@
     "lint": "biome check .",
     "skia:web": "setup-skia-web public",
     "start": "next start --port 3000",
+    "test": "bun test",
+    "test:focus": "bun test app/focus",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
