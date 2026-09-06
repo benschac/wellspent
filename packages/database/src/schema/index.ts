@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   bigint,
+  boolean,
   check,
   foreignKey,
   index,
@@ -194,6 +195,45 @@ export const googleCalendarConnections = appSchema
       ),
     ],
   )
+  .enableRLS();
+
+// Canonical Google credentials. Feature tables own only integration state.
+export const googleConnections = appSchema
+  .table("google_connections", {
+    userId: uuid("user_id")
+      .primaryKey()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
+    googleSubject: text("google_subject"),
+    encryptedRefreshToken: text("encrypted_refresh_token").notNull(),
+    grantedScopes: text("granted_scopes").array().notNull(),
+    reconnectRequired: boolean("reconnect_required").notNull().default(false),
+    ...timestamps,
+  })
+  .enableRLS();
+
+export const googleOauthStates = appSchema
+  .table(
+    "google_oauth_states",
+    {
+      stateHash: text("state_hash").primaryKey(),
+      userId: uuid("user_id")
+        .notNull()
+        .references(() => authUsers.id, { onDelete: "cascade" }),
+      integration: text("integration").$type<"calendar" | "sheets">().notNull(),
+      encryptedCodeVerifier: text("encrypted_code_verifier").notNull(),
+      expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    },
+    (table) => [index("google_oauth_states_expiry_idx").on(table.expiresAt)],
+  )
+  .enableRLS();
+
+export const googleSheetsConnections = appSchema
+  .table("google_sheets_connections", {
+    userId: uuid("user_id")
+      .primaryKey()
+      .references(() => googleConnections.userId, { onDelete: "cascade" }),
+    ...timestamps,
+  })
   .enableRLS();
 
 export const googleCalendarOauthStates = appSchema

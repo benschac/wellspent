@@ -22,6 +22,20 @@
       "when": 1788652993991,
       "tag": "20260906000313_focus_sessions_and_work_events",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788729961623,
+      "tag": "20260906212601_shared_google_credentials",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788729969475,
+      "tag": "20260906212609_migrate_calendar_google_credentials",
+      "breakpoints": true
     }
   ]
 }
