@@ -1,0 +1,11 @@
+{
+  "platforms": [
+    "ios"
+  ],
+  "apple": {
+    "modules": [
+      "ExpoLiquidUIModule"
+    ],
+    "podspecPath": "ExpoLiquidUI.podspec"
+  }
+}

@@ -1,4 +1,5 @@
 import AppKit
+import LiquidUI
 import Observation
 import QuartzCore
 import SwiftUI

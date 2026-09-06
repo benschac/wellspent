@@ -73,6 +73,14 @@ export default function RootLayout() {
             }}
           />
           <Drawer.Screen
+            name="liquid"
+            options={{
+              drawerLabel: "Liquid animation",
+              title: "Liquid animation",
+              swipeEnabled: false,
+            }}
+          />
+          <Drawer.Screen
             name="about"
             options={{
               drawerLabel: "About",

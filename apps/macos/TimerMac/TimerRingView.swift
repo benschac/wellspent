@@ -9,17 +9,23 @@ struct TimerRingView: View {
             Circle()
                 .stroke(.white.opacity(0.18), lineWidth: 4)
 
-            Circle()
-                .trim(from: 0, to: model.progress)
-                .stroke(
-                    model.isOvertime ? Color.orange : Color.mint,
-                    style: StrokeStyle(lineWidth: 4, lineCap: .round)
-                )
-                .rotationEffect(.degrees(-90))
+            TimelineView(
+                .animation(minimumInterval: reduceMotion ? 1 : 1.0 / 60, paused: !model.isRunning)
+            ) { _ in
+                Circle()
+                    .trim(from: 0, to: model.minuteProgress)
+                    .stroke(
+                        Color.mint,
+                        style: StrokeStyle(lineWidth: 4, lineCap: .round)
+                    )
+                    .rotationEffect(.degrees(-90))
+                    // Sample the clock directly; interpolating the trim would
+                    // animate backwards when a minute wraps or the timer resets.
+                    .transaction { $0.animation = nil }
+            }
 
             Image(
-                systemName: model.isOvertime
-                    ? "checkmark" : !model.isRunning && model.displayElapsedMilliseconds > 0 ? "pause.fill" : "timer"
+                systemName: !model.isRunning && model.displayElapsedMilliseconds > 0 ? "pause.fill" : "timer"
             )
             .contentTransition(.opacity)
             .animation(.easeInOut(duration: reduceMotion ? 0.12 : 0.2), value: model.isRunning)

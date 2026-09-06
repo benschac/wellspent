@@ -1,13 +1,11 @@
 import Foundation
+import LiquidUI
 
 enum TimerSidebarLayout {
     static let snapDistance: CGFloat = 78
 
     static func size(for edge: TimerSidebarEdge?) -> CGSize {
-        TimerSidebarGeometry(
-            horizontal: edge?.isHorizontal == false ? 0 : 1,
-            detachment: edge == nil ? 1 : 0
-        ).size
+        TimerSidebarGeometry.size(for: edge)
     }
 
     static func frame(for placement: TimerSidebarPlacement, in visibleFrame: CGRect) -> CGRect {

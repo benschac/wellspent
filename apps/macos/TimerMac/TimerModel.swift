@@ -5,8 +5,6 @@ import Observation
 @MainActor
 @Observable
 final class TimerModel {
-    static let durationOptions = [5, 15, 25, 45, 60]
-
     private(set) var displayElapsedMilliseconds = 0.0
     private(set) var isRunning = false
     private(set) var connectionState = ConnectionState.disconnected
@@ -14,15 +12,6 @@ final class TimerModel {
     private(set) var errorMessage: String?
     private(set) var apiBaseURL: String
     private(set) var accessToken: String
-
-    var selectedDurationMinutes: Int {
-        didSet {
-            settingsStore.save(
-                apiBaseURL: apiBaseURL,
-                durationMinutes: selectedDurationMinutes
-            )
-        }
-    }
 
     @ObservationIgnored private let settingsStore: SettingsStore
     @ObservationIgnored private let keychainStore: KeychainStore
@@ -48,7 +37,6 @@ final class TimerModel {
         self.clock = clock
         baselineSystemUptime = clock.systemUptime()
         apiBaseURL = settingsStore.apiBaseURL
-        selectedDurationMinutes = settingsStore.durationMinutes
         accessToken = keychainStore.readToken()
 
         startLifecycle()
@@ -67,52 +55,41 @@ final class TimerModel {
         }
     }
 
-    var totalDurationMilliseconds: Double {
-        Double(selectedDurationMinutes) * 60_000
+    var minuteProgress: Double {
+        projectedElapsedMilliseconds.truncatingRemainder(dividingBy: 60_000) / 60_000
     }
 
-    var remainingMilliseconds: Double {
-        max(0, totalDurationMilliseconds - displayElapsedMilliseconds)
-    }
-
-    var progress: Double {
-        guard totalDurationMilliseconds > 0 else {
-            return 0
+    // The ring samples this at animation cadence without publishing model updates.
+    private var projectedElapsedMilliseconds: Double {
+        guard isRunning else {
+            return displayElapsedMilliseconds
         }
 
-        return min(1, displayElapsedMilliseconds / totalDurationMilliseconds)
-    }
-
-    var isOvertime: Bool {
-        displayElapsedMilliseconds >= totalDurationMilliseconds
+        let uptimeDelta = max(0, clock.systemUptime() - baselineSystemUptime)
+        return baselineElapsedMilliseconds + uptimeDelta * 1_000
     }
 
     var menuBarTitle: String {
-        TimerFormatting.clock(milliseconds: remainingMilliseconds)
+        TimerFormatting.clock(milliseconds: displayElapsedMilliseconds)
     }
 
     var accessibilityTimerLabel: String {
         TimerFormatting.accessibilityLabel(
-            milliseconds: remainingMilliseconds,
-            isComplete: isOvertime
+            milliseconds: displayElapsedMilliseconds
         )
     }
 
     func startOrResume() {
-        var commands: [TimerAction] = []
-
-        if isOvertime {
-            baselineElapsedMilliseconds = 0
-            displayElapsedMilliseconds = 0
-            commands.append(.reset)
+        guard !isRunning else {
+            enqueue([.start])
+            return
         }
 
         baselineElapsedMilliseconds = displayElapsedMilliseconds
         baselineSystemUptime = clock.systemUptime()
         isRunning = true
-        commands.append(.start)
         updateTicker()
-        enqueue(commands)
+        enqueue([.start])
     }
 
     func pause() {
@@ -123,12 +100,12 @@ final class TimerModel {
         enqueue([.pause])
     }
 
-    func stop() {
+    func reset() {
         baselineElapsedMilliseconds = 0
+        baselineSystemUptime = clock.systemUptime()
         displayElapsedMilliseconds = 0
-        isRunning = false
         updateTicker()
-        enqueue([.pause, .reset])
+        enqueue([.reset])
     }
 
     func applySettings(apiBaseURL: String, accessToken: String) {
@@ -144,10 +121,7 @@ final class TimerModel {
             try keychainStore.saveToken(trimmedToken)
             self.apiBaseURL = trimmedURL
             self.accessToken = trimmedToken
-            settingsStore.save(
-                apiBaseURL: trimmedURL,
-                durationMinutes: selectedDurationMinutes
-            )
+            settingsStore.save(apiBaseURL: trimmedURL)
             errorMessage = nil
             reconnect()
         } catch {
@@ -282,11 +256,7 @@ final class TimerModel {
             return
         }
 
-        let uptimeDelta = max(
-            0,
-            clock.systemUptime() - baselineSystemUptime
-        )
-        displayElapsedMilliseconds = baselineElapsedMilliseconds + uptimeDelta * 1_000
+        displayElapsedMilliseconds = projectedElapsedMilliseconds
     }
 
     private func updateTicker() {

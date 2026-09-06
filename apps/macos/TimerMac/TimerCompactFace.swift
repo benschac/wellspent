@@ -1,3 +1,4 @@
+import LiquidUI
 import SwiftUI
 
 struct TimerCompactFace: View {
@@ -14,8 +15,7 @@ struct TimerCompactFace: View {
                     .font(.system(size: 17, weight: .medium, design: .rounded))
                     .monospacedDigit()
                 Text(
-                    model.isOvertime
-                        ? "DONE" : model.isRunning ? "FOCUS" : model.displayElapsedMilliseconds > 0 ? "PAUSED" : "READY"
+                    model.isRunning ? "FOCUS" : model.displayElapsedMilliseconds > 0 ? "PAUSED" : "READY"
                 )
                 .contentTransition(.opacity)
                 .animation(.easeInOut(duration: reduceMotion ? 0.12 : 0.2), value: model.isRunning)

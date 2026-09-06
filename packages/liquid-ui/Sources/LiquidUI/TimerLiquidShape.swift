@@ -2,13 +2,20 @@ import SwiftUI
 
 /// One contour for the native frost, tint, and rim. The bridge is part of the
 /// body outline, so there is no internal edge or differently shaded join.
-struct TimerLiquidShape: Shape {
-    var bodyFrame: CGRect
-    var anchor: CGPoint?
-    var edge: TimerSidebarEdge
-    var detachment: CGFloat
+public struct TimerLiquidShape: Shape {
+    public var bodyFrame: CGRect
+    public var anchor: CGPoint?
+    public var edge: TimerSidebarEdge
+    public var detachment: CGFloat
 
-    func path(in rect: CGRect) -> Path {
+    public init(bodyFrame: CGRect, anchor: CGPoint?, edge: TimerSidebarEdge, detachment: CGFloat) {
+        self.bodyFrame = bodyFrame
+        self.anchor = anchor
+        self.edge = edge
+        self.detachment = detachment
+    }
+
+    public func path(in rect: CGRect) -> Path {
         guard let anchor, detachment > 0, detachment < 1 else {
             return TimerSidebarShape(edge: edge, detachment: detachment).path(in: bodyFrame)
         }
@@ -45,18 +52,20 @@ struct TimerLiquidShape: Shape {
 
     // A short capillary-style release, independent of the longer controls morph.
     // These are presentation distances in points, not a physical fluid solver.
-    static let separationDistance: CGFloat = 28
-    static let retractionDistance: CGFloat = 18
+    public static let separationDistance: CGFloat = 28
+    public static let retractionDistance: CGFloat = 18
 
-    static func wallRadius(edge: TimerSidebarEdge, gap: CGFloat) -> CGFloat {
-        let size = TimerSidebarLayout.size(for: edge)
+    public static func wallRadius(edge: TimerSidebarEdge, gap: CGFloat) -> CGFloat {
+        let size = TimerSidebarGeometry.size(for: edge)
         let originalRadius = (edge.isHorizontal ? size.width : size.height) / 2
         let tension = smoothstep(gap / separationDistance)
         let recoil = recoil(at: gap)
         return (originalRadius * (1 - tension) + 26 * tension) * (1 - recoil)
     }
 
-    private func connectedPath(depth: CGFloat, length: CGFloat, gap: CGFloat, wallCenter: CGFloat) -> Path {
+    private func connectedPath(depth: CGFloat, length: CGFloat, gap: CGFloat, wallCenter: CGFloat)
+        -> Path
+    {
         let body = TimerSidebarShape(edge: .right, detachment: detachment)
         let center = length / 2
         let cornerProgress = min(1, detachment * 4)
@@ -76,7 +85,8 @@ struct TimerLiquidShape: Shape {
         // making a deep U-shaped slot in a gap only two or three points wide.
         let middle = depth + gap / 2
         let waistCenter = (center + wallCenter) / 2
-        let neckRoom = min(bodyRoot - abs(waistCenter - center), wallRoot - abs(waistCenter - wallCenter))
+        let neckRoom = min(
+            bodyRoot - abs(waistCenter - center), wallRoot - abs(waistCenter - wallCenter))
         let neck = max(0, neckRoom) * (1 - pull * pull)
         let wall = depth + gap
         let shoulder = min(28, depth / 2, length / 4) * (1 - cornerProgress)

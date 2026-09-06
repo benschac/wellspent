@@ -1,11 +1,16 @@
 import SwiftUI
 
 /// Rounded shoulders turn back toward the display edge at both ends.
-struct TimerSidebarShape: Shape {
-    var edge: TimerSidebarEdge? = .right
-    var detachment: CGFloat = 0
+public struct TimerSidebarShape: Shape {
+    public var edge: TimerSidebarEdge? = .right
+    public var detachment: CGFloat = 0
 
-    var animatableData: CGFloat {
+    public init(edge: TimerSidebarEdge? = .right, detachment: CGFloat = 0) {
+        self.edge = edge
+        self.detachment = detachment
+    }
+
+    public var animatableData: CGFloat {
         get { detachment }
         set { detachment = newValue }
     }
@@ -14,7 +19,7 @@ struct TimerSidebarShape: Shape {
     // layout morph leaves tabs above and below an already-floating body.
     private var roundness: CGFloat { min(1, max(0, detachment * 4)) }
 
-    func path(in rect: CGRect) -> Path {
+    public func path(in rect: CGRect) -> Path {
         guard let edge, roundness < 1 else { return Path(roundedRect: rect, cornerRadius: 26) }
         let depth = edge.isHorizontal ? rect.height : rect.width
         let length = edge.isHorizontal ? rect.width : rect.height
@@ -31,8 +36,9 @@ struct TimerSidebarShape: Shape {
         )
     }
 
-    func rightEdgePath(in rect: CGRect, close: Bool = true, wallCorners: Bool = true, wallInset: CGFloat? = nil) -> Path
-    {
+    public func rightEdgePath(
+        in rect: CGRect, close: Bool = true, wallCorners: Bool = true, wallInset: CGFloat? = nil
+    ) -> Path {
         let progress = roundness
         let shoulder: CGFloat = min(28, rect.width / 2, rect.height / 4) * (1 - progress)
         let corner: CGFloat =
@@ -60,7 +66,8 @@ struct TimerSidebarShape: Shape {
                 to: CGPoint(x: rect.maxX - shoulder - endRadius, y: rect.minY + shoulder),
                 control: CGPoint(x: rect.maxX, y: rect.minY + shoulder))
         } else {
-            path.move(to: CGPoint(x: rect.maxX - (wallInset ?? (shoulder + endRadius)), y: rect.minY + shoulder))
+            path.move(
+                to: CGPoint(x: rect.maxX - (wallInset ?? (shoulder + endRadius)), y: rect.minY + shoulder))
         }
         path.addLine(to: CGPoint(x: rect.minX + corner, y: rect.minY + shoulder))
         addCorner(
@@ -72,7 +79,8 @@ struct TimerSidebarShape: Shape {
             to: CGPoint(x: rect.minX + corner, y: rect.maxY - shoulder),
             control: CGPoint(x: rect.minX, y: rect.maxY - shoulder)
         )
-        path.addLine(to: CGPoint(x: rect.maxX - (wallInset ?? (shoulder + endRadius)), y: rect.maxY - shoulder))
+        path.addLine(
+            to: CGPoint(x: rect.maxX - (wallInset ?? (shoulder + endRadius)), y: rect.maxY - shoulder))
         if wallCorners {
             addCorner(
                 to: CGPoint(x: rect.maxX, y: rect.maxY - endRadius),

@@ -1,4 +1,5 @@
 import Foundation
+import LiquidUI
 
 struct TimerSidebarPlacement: Codable, Equatable {
     var displayID: String?

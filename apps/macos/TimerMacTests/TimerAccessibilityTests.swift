@@ -4,28 +4,27 @@ import Testing
 
 struct TimerAccessibilityTests {
     @Test
-    func remainingTimeUsesSingularUnits() {
+    func elapsedTimeUsesSingularUnits() {
         #expect(
             TimerFormatting.accessibilityLabel(milliseconds: 61_000)
-                == "1 minute, 1 second remaining"
+                == "1 minute, 1 second elapsed"
         )
     }
 
     @Test
-    func remainingTimeUsesPluralUnits() {
+    func elapsedTimeUsesPluralUnits() {
         #expect(
             TimerFormatting.accessibilityLabel(milliseconds: 122_000)
-                == "2 minutes, 2 seconds remaining"
+                == "2 minutes, 2 seconds elapsed"
         )
     }
 
     @Test
-    func completedTimerHasCompletionLabel() {
+    func longSessionStillReportsElapsedTime() {
         #expect(
             TimerFormatting.accessibilityLabel(
-                milliseconds: 0,
-                isComplete: true
-            ) == "Time complete"
+                milliseconds: 7_200_000
+            ) == "120 minutes, 0 seconds elapsed"
         )
     }
 }

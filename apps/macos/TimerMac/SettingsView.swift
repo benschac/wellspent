@@ -11,13 +11,12 @@ struct SettingsView: View {
 
         Form {
             Section("Timer") {
-                DurationPickerView()
                 HStack {
                     Button(
                         "Open Timer Window", systemImage: "arrow.up.left.and.arrow.down.right",
                         action: sidebar.showMainWindow)
                     Spacer()
-                    Button("Reset Timer", action: model.stop)
+                    Button("Reset Timer", action: model.reset)
                         .disabled(!model.isRunning && model.displayElapsedMilliseconds == 0)
                 }
             }

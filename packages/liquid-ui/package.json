@@ -1,0 +1,21 @@
+{
+  "name": "@repo/liquid-ui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index",
+  "types": "src/index.ts",
+  "peerDependencies": {
+    "expo": "*",
+    "@expo/ui": "*",
+    "react": "*",
+    "react-native": "*"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.2",
+    "typescript": "~6.0.3"
+  }
+}

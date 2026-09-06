@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+        B00000000000000000000001 /* LiquidUI in Frameworks */ = {isa = PBXBuildFile; productRef = B00000000000000000000003 /* LiquidUI */; };
+        B00000000000000000000002 /* LiquidUI in Frameworks */ = {isa = PBXBuildFile; productRef = B00000000000000000000004 /* LiquidUI */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		A00000000000000000000016 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -39,6 +44,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+                B00000000000000000000001 /* LiquidUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -46,6 +52,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+                B00000000000000000000002 /* LiquidUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -90,6 +97,7 @@
 			);
 			name = TimerMac;
 			packageProductDependencies = (
+                B00000000000000000000003 /* LiquidUI */,
 			);
 			productName = TimerMac;
 			productReference = A00000000000000000000005 /* TimerMac.app */;
@@ -113,6 +121,7 @@
 			);
 			name = TimerMacTests;
 			packageProductDependencies = (
+                B00000000000000000000004 /* LiquidUI */,
 			);
 			productName = TimerMacTests;
 			productReference = A00000000000000000000006 /* TimerMacTests.xctest */;
@@ -147,6 +156,9 @@
 			mainGroup = A00000000000000000000001;
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
+            packageReferences = (
+                B00000000000000000000005 /* XCLocalSwiftPackageReference "../../packages/liquid-ui" */,
+            );
 			productRefGroup = A00000000000000000000002 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -198,6 +210,24 @@
 			targetProxy = A00000000000000000000016 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
+
+/* Begin XCLocalSwiftPackageReference section */
+        B00000000000000000000005 /* XCLocalSwiftPackageReference "../../packages/liquid-ui" */ = {
+            isa = XCLocalSwiftPackageReference;
+            relativePath = "../../packages/liquid-ui";
+        };
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+        B00000000000000000000003 /* LiquidUI */ = {
+            isa = XCSwiftPackageProductDependency;
+            productName = LiquidUI;
+        };
+        B00000000000000000000004 /* LiquidUI */ = {
+            isa = XCSwiftPackageProductDependency;
+            productName = LiquidUI;
+        };
+/* End XCSwiftPackageProductDependency section */
 
 /* Begin XCBuildConfiguration section */
 		A00000000000000000000021 /* Debug */ = {

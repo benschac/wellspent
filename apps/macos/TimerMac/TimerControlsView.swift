@@ -18,7 +18,7 @@ struct TimerControlsView: View {
             .buttonStyle(.borderedProminent)
             .keyboardShortcut(.space, modifiers: [])
 
-            Button("Stop", systemImage: "stop.fill", action: model.stop)
+            Button("Reset", systemImage: "arrow.counterclockwise", action: model.reset)
                 .keyboardShortcut(".", modifiers: .command)
                 .disabled(!model.isRunning && model.displayElapsedMilliseconds == 0)
         }

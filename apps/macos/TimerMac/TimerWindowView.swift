@@ -19,7 +19,6 @@ struct TimerWindowView: View {
             Spacer()
 
             TimerReadoutView()
-            DurationPickerView()
             TimerControlsView()
 
             if let errorMessage = model.errorMessage {

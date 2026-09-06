@@ -1,4 +1,5 @@
 import AppKit
+import LiquidUI
 import QuartzCore
 
 /// One refresh-synchronized clock owns both dragging and release settling.
@@ -22,8 +23,6 @@ final class TimerMotionClock: NSObject {
     @objc private func step(_ link: CADisplayLink) { tick?(link.targetTimestamp) }
 
     static func settlingProgress(at elapsed: Double) -> CGFloat {
-        // Critically damped spring: fast catch, gentle arrival, no screen-edge overshoot.
-        let t = max(0, elapsed) * 22
-        return 1 - (1 + t) * exp(-t)
+        TimerLiquidMotion.settlingProgress(at: elapsed)
     }
 }

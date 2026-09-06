@@ -5,7 +5,7 @@ struct TimerReadoutView: View {
 
     var body: some View {
         VStack {
-            Text(model.isOvertime ? "Time complete" : "Focus remaining")
+            Text("Focus elapsed")
                 .font(.headline)
                 .foregroundStyle(.secondary)
 
@@ -15,15 +15,6 @@ struct TimerReadoutView: View {
                 .contentTransition(.numericText())
                 .accessibilityLabel(model.accessibilityTimerLabel)
                 .accessibilityAddTraits(.updatesFrequently)
-
-            ProgressView(value: model.progress)
-                .accessibilityLabel("Focus progress")
-                .accessibilityValue(
-                    Text(
-                        model.progress,
-                        format: .percent.precision(.fractionLength(0))
-                    )
-                )
         }
     }
 }

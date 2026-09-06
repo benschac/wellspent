@@ -78,6 +78,7 @@
         "@expo/metro-runtime": "~57.0.14",
         "@expo/ui": "~57.0.14",
         "@repo/api-client": "workspace:*",
+        "@repo/liquid-ui": "workspace:*",
         "@repo/timer": "workspace:*",
         "@shopify/react-native-skia": "2.6.2",
         "@t3-oss/env-core": "0.13.11",
@@ -222,6 +223,20 @@
         "eslint-config-expo": "57.0.2",
         "eslint-config-next": "16.3.3",
         "typescript-eslint": "8.68.0",
+      },
+    },
+    "packages/liquid-ui": {
+      "name": "@repo/liquid-ui",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@types/react": "~19.2.2",
+        "typescript": "~6.0.3",
+      },
+      "peerDependencies": {
+        "@expo/ui": "*",
+        "expo": "*",
+        "react": "*",
+        "react-native": "*",
       },
     },
     "packages/timer": {
@@ -834,6 +849,8 @@
     "@repo/desktop": ["@repo/desktop@workspace:apps/desktop"],
 
     "@repo/eslint-config": ["@repo/eslint-config@workspace:packages/eslint-config"],
+
+    "@repo/liquid-ui": ["@repo/liquid-ui@workspace:packages/liquid-ui"],
 
     "@repo/macos": ["@repo/macos@workspace:apps/macos"],
 

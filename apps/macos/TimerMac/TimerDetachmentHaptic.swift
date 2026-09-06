@@ -1,4 +1,5 @@
 import Foundation
+import LiquidUI
 
 /// One detachment tick per pickup. Hovering around the separation boundary or
 /// pulling back and forth cannot repeatedly fire the trackpad.
