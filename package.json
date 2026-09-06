@@ -24,6 +24,8 @@
     "db:reset:local": "turbo run db:reset:local --filter=@repo/database",
     "db:studio": "turbo run db:studio --filter=@repo/database",
     "dev": "turbo run dev",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
     "ios:device": "bun run --cwd apps/mobile ios:device",
     "lint": "turbo run lint",
     "skia:web": "turbo run skia:web",
@@ -35,6 +37,7 @@
     "typecheck": "turbo run typecheck"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.12",
     "turbo": "2.10.12"
   }
 }

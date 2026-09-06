@@ -309,3 +309,9 @@ h1 {
     transition: none;
   }
 }
+
+.focus-home-link {
+  align-items: center;
+  display: inline-flex;
+  text-decoration: none;
+}

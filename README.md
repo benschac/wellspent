@@ -9,7 +9,7 @@ A Bun-managed Turborepo containing:
 - `packages/api-client`: shared typed OpenAPI client factory
 - `packages/database`: shared Drizzle schema, PostgreSQL client, and migrations
 - `packages/typescript-config`: reusable TypeScript configurations
-- `packages/eslint-config`: reusable ESLint flat configurations
+- `biome.json`: shared JavaScript/TypeScript linting and formatting
 
 The web and mobile apps depend on the client package, the client depends on the
 contract, and the NestJS app implements the contract. Apps never import one
@@ -76,9 +76,13 @@ URLs are left unchanged. Only public, non-secret values belong in
 
 ```bash
 bun run lint
+bun run format:check
 bun run typecheck
 bun run build
 ```
+
+Run `bun run format` to apply Biome formatting across JavaScript, TypeScript,
+JSON, and CSS files.
 
 Manage the PostgreSQL schema with Drizzle-generated SQL and the Supabase CLI:
 
