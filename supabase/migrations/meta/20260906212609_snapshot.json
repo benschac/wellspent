@@ -39,14 +39,10 @@
         "focus_capture_tokens_session_id_focus_sessions_id_fk": {
           "name": "focus_capture_tokens_session_id_focus_sessions_id_fk",
           "tableFrom": "focus_capture_tokens",
-          "columnsFrom": [
-            "session_id"
-          ],
+          "columnsFrom": ["session_id"],
           "tableTo": "focus_sessions",
           "schemaTo": "app",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -166,14 +162,10 @@
         "focus_sessions_user_id_profiles_id_fk": {
           "name": "focus_sessions_user_id_profiles_id_fk",
           "tableFrom": "focus_sessions",
-          "columnsFrom": [
-            "user_id"
-          ],
+          "columnsFrom": ["user_id"],
           "tableTo": "profiles",
           "schemaTo": "app",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -268,14 +260,10 @@
         "focus_transitions_session_id_focus_sessions_id_fk": {
           "name": "focus_transitions_session_id_focus_sessions_id_fk",
           "tableFrom": "focus_transitions",
-          "columnsFrom": [
-            "session_id"
-          ],
+          "columnsFrom": ["session_id"],
           "tableTo": "focus_sessions",
           "schemaTo": "app",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -283,10 +271,7 @@
       "compositePrimaryKeys": {
         "focus_transitions_session_id_command_id_pk": {
           "name": "focus_transitions_session_id_command_id_pk",
-          "columns": [
-            "session_id",
-            "command_id"
-          ]
+          "columns": ["session_id", "command_id"]
         }
       },
       "uniqueConstraints": {},
@@ -392,14 +377,10 @@
         "focus_work_events_session_id_focus_sessions_id_fk": {
           "name": "focus_work_events_session_id_focus_sessions_id_fk",
           "tableFrom": "focus_work_events",
-          "columnsFrom": [
-            "session_id"
-          ],
+          "columnsFrom": ["session_id"],
           "tableTo": "focus_sessions",
           "schemaTo": "app",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -407,10 +388,7 @@
       "compositePrimaryKeys": {
         "focus_work_events_session_id_id_pk": {
           "name": "focus_work_events_session_id_id_pk",
-          "columns": [
-            "session_id",
-            "id"
-          ]
+          "columns": ["session_id", "id"]
         }
       },
       "uniqueConstraints": {},
@@ -501,14 +479,10 @@
         "google_calendar_connections_user_id_auth_users_id_fk": {
           "name": "google_calendar_connections_user_id_auth_users_id_fk",
           "tableFrom": "google_calendar_connections",
-          "columnsFrom": [
-            "user_id"
-          ],
+          "columnsFrom": ["user_id"],
           "tableTo": "users",
           "schemaTo": "auth",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -669,14 +643,10 @@
         "gcal_event_links_connection_id_fk": {
           "name": "gcal_event_links_connection_id_fk",
           "tableFrom": "google_calendar_event_links",
-          "columnsFrom": [
-            "connection_id"
-          ],
+          "columnsFrom": ["connection_id"],
           "tableTo": "google_calendar_connections",
           "schemaTo": "app",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -811,14 +781,10 @@
         "gcal_inbound_changes_connection_id_fk": {
           "name": "gcal_inbound_changes_connection_id_fk",
           "tableFrom": "google_calendar_inbound_changes",
-          "columnsFrom": [
-            "connection_id"
-          ],
+          "columnsFrom": ["connection_id"],
           "tableTo": "google_calendar_connections",
           "schemaTo": "app",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -975,14 +941,10 @@
         "gcal_jobs_connection_id_fk": {
           "name": "gcal_jobs_connection_id_fk",
           "tableFrom": "google_calendar_jobs",
-          "columnsFrom": [
-            "connection_id"
-          ],
+          "columnsFrom": ["connection_id"],
           "tableTo": "google_calendar_connections",
           "schemaTo": "app",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -1096,14 +1058,10 @@
         "google_calendar_oauth_states_user_id_auth_users_id_fk": {
           "name": "google_calendar_oauth_states_user_id_auth_users_id_fk",
           "tableFrom": "google_calendar_oauth_states",
-          "columnsFrom": [
-            "user_id"
-          ],
+          "columnsFrom": ["user_id"],
           "tableTo": "users",
           "schemaTo": "auth",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -1254,14 +1212,10 @@
         "gcal_subscriptions_connection_id_fk": {
           "name": "gcal_subscriptions_connection_id_fk",
           "tableFrom": "google_calendar_subscriptions",
-          "columnsFrom": [
-            "connection_id"
-          ],
+          "columnsFrom": ["connection_id"],
           "tableTo": "google_calendar_connections",
           "schemaTo": "app",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -1327,14 +1281,10 @@
         "google_connections_user_id_users_id_fk": {
           "name": "google_connections_user_id_users_id_fk",
           "tableFrom": "google_connections",
-          "columnsFrom": [
-            "user_id"
-          ],
+          "columnsFrom": ["user_id"],
           "tableTo": "users",
           "schemaTo": "auth",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -1401,14 +1351,10 @@
         "google_oauth_states_user_id_users_id_fk": {
           "name": "google_oauth_states_user_id_users_id_fk",
           "tableFrom": "google_oauth_states",
-          "columnsFrom": [
-            "user_id"
-          ],
+          "columnsFrom": ["user_id"],
           "tableTo": "users",
           "schemaTo": "auth",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -1449,14 +1395,10 @@
         "google_sheets_connections_user_id_google_connections_user_id_fk": {
           "name": "google_sheets_connections_user_id_google_connections_user_id_fk",
           "tableFrom": "google_sheets_connections",
-          "columnsFrom": [
-            "user_id"
-          ],
+          "columnsFrom": ["user_id"],
           "tableTo": "google_connections",
           "schemaTo": "app",
-          "columnsTo": [
-            "user_id"
-          ],
+          "columnsTo": ["user_id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -1515,14 +1457,10 @@
         "profiles_id_auth_users_id_fk": {
           "name": "profiles_id_auth_users_id_fk",
           "tableFrom": "profiles",
-          "columnsFrom": [
-            "id"
-          ],
+          "columnsFrom": ["id"],
           "tableTo": "users",
           "schemaTo": "auth",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }

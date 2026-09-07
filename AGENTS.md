@@ -9,6 +9,11 @@
 - Verify with the smallest relevant test, typecheck, lint, build, or static check. Read the result before claiming completion.
 - Final reports state the outcome, changed files, validation evidence, and any remaining risk.
 
+## TypeScript safety
+
+- Never use non-null assertions (`value!`), including in tests. Use explicit runtime guards or assertion helpers that narrow the type and fail clearly when a required value is missing. Biome's `style.noNonNullAssertion` must remain an error.
+- For intentional negative type tests, use `// @ts-expect-error: <reason>` on the invalid operation. Do not use it to bypass missing null checks in ordinary code or tests.
+
 ## Date and time
 
 - For TypeScript date/time logic, use the `date-fns` skill when available and the repository's existing date-fns helpers. Parse and validate external timestamps at boundaries; pass `Date` values through date operations.

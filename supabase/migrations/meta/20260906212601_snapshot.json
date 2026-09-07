@@ -41,12 +41,8 @@
           "tableFrom": "focus_capture_tokens",
           "tableTo": "focus_sessions",
           "schemaTo": "app",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -168,12 +164,8 @@
           "tableFrom": "focus_sessions",
           "tableTo": "profiles",
           "schemaTo": "app",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -270,12 +262,8 @@
           "tableFrom": "focus_transitions",
           "tableTo": "focus_sessions",
           "schemaTo": "app",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -283,10 +271,7 @@
       "compositePrimaryKeys": {
         "focus_transitions_session_id_command_id_pk": {
           "name": "focus_transitions_session_id_command_id_pk",
-          "columns": [
-            "session_id",
-            "command_id"
-          ]
+          "columns": ["session_id", "command_id"]
         }
       },
       "uniqueConstraints": {},
@@ -394,12 +379,8 @@
           "tableFrom": "focus_work_events",
           "tableTo": "focus_sessions",
           "schemaTo": "app",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -407,10 +388,7 @@
       "compositePrimaryKeys": {
         "focus_work_events_session_id_id_pk": {
           "name": "focus_work_events_session_id_id_pk",
-          "columns": [
-            "session_id",
-            "id"
-          ]
+          "columns": ["session_id", "id"]
         }
       },
       "uniqueConstraints": {},
@@ -503,12 +481,8 @@
           "tableFrom": "google_calendar_connections",
           "tableTo": "users",
           "schemaTo": "auth",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -671,12 +645,8 @@
           "tableFrom": "google_calendar_event_links",
           "tableTo": "google_calendar_connections",
           "schemaTo": "app",
-          "columnsFrom": [
-            "connection_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["connection_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -813,12 +783,8 @@
           "tableFrom": "google_calendar_inbound_changes",
           "tableTo": "google_calendar_connections",
           "schemaTo": "app",
-          "columnsFrom": [
-            "connection_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["connection_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -977,12 +943,8 @@
           "tableFrom": "google_calendar_jobs",
           "tableTo": "google_calendar_connections",
           "schemaTo": "app",
-          "columnsFrom": [
-            "connection_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["connection_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1098,12 +1060,8 @@
           "tableFrom": "google_calendar_oauth_states",
           "tableTo": "users",
           "schemaTo": "auth",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1256,12 +1214,8 @@
           "tableFrom": "google_calendar_subscriptions",
           "tableTo": "google_calendar_connections",
           "schemaTo": "app",
-          "columnsFrom": [
-            "connection_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["connection_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1329,12 +1283,8 @@
           "tableFrom": "google_connections",
           "tableTo": "users",
           "schemaTo": "auth",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1403,12 +1353,8 @@
           "tableFrom": "google_oauth_states",
           "tableTo": "users",
           "schemaTo": "auth",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1451,12 +1397,8 @@
           "tableFrom": "google_sheets_connections",
           "tableTo": "google_connections",
           "schemaTo": "app",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "user_id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["user_id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1517,12 +1459,8 @@
           "tableFrom": "profiles",
           "tableTo": "users",
           "schemaTo": "auth",
-          "columnsFrom": [
-            "id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
