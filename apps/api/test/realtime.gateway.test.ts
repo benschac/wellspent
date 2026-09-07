@@ -1,8 +1,10 @@
 import { describe, expect, it, mock } from "bun:test";
 import { WsException } from "@nestjs/websockets";
+import { realtimeTimerCommandAckSchema } from "@repo/api-contract";
 import type { LiveActivityPushService } from "../src/realtime/live-activity-push.service.js";
 import { RealtimeGateway } from "../src/realtime/realtime.gateway.js";
 import type { RealtimeService } from "../src/realtime/realtime.service.js";
+import { RealtimeTimerCommandPipe } from "../src/realtime/realtime-timer-command.pipe.js";
 
 describe("persisted timer gateway", () => {
   function subject() {
@@ -68,5 +70,97 @@ describe("persisted timer gateway", () => {
         message: "Timer state could not be saved. Reconnect and try again.",
       });
     }
+  });
+
+  it("returns a correlated acknowledgement of the committed state", async () => {
+    const { gateway, state } = subject();
+    const reply = await gateway.handleTimerCommand({
+      action: "pause",
+      commandId: "request-1",
+    });
+    expect(reply).toEqual({
+      event: "timer.command.ack",
+      data: { commandId: "request-1", state },
+    });
+    expect(realtimeTimerCommandAckSchema.safeParse(reply?.data).success).toBe(
+      true,
+    );
+  });
+
+  it("acknowledges no-op commands with their unchanged revision", async () => {
+    const { gateway, state } = subject();
+    const reply = await gateway.handleTimerCommand({
+      action: "start",
+      commandId: "already-running",
+    });
+    expect(reply?.data).toEqual({ commandId: "already-running", state });
+  });
+
+  it("does not acknowledge before persistence resolves", async () => {
+    const { gateway, state, applyTimerCommand } = subject();
+    let commit!: (value: typeof state) => void;
+    applyTimerCommand.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          commit = resolve;
+        }),
+    );
+    let acknowledged = false;
+    const reply = gateway
+      .handleTimerCommand({
+        action: "pause",
+        commandId: "pending-write",
+      })
+      .then((result) => {
+        acknowledged = true;
+        return result;
+      });
+    await Promise.resolve();
+    expect(acknowledged).toBe(false);
+    commit(state);
+    expect((await reply)?.data).toEqual({ commandId: "pending-write", state });
+  });
+
+  it("preserves the reply-free legacy command protocol", async () => {
+    const { gateway } = subject();
+    expect(
+      await gateway.handleTimerCommand({ action: "pause" }),
+    ).toBeUndefined();
+  });
+
+  it("correlates sanitized write errors without returning an acknowledgement", async () => {
+    const { gateway, applyTimerCommand } = subject();
+    applyTimerCommand.mockRejectedValueOnce(
+      new Error("private database error"),
+    );
+    try {
+      await gateway.handleTimerCommand({
+        action: "start",
+        commandId: "failed-write",
+      });
+      throw new Error("Expected command failure");
+    } catch (error) {
+      expect(error).toBeInstanceOf(WsException);
+      expect((error as WsException).getError()).toEqual({
+        code: "TIMER_UNAVAILABLE",
+        message: "Timer state could not be saved. Reconnect and try again.",
+        commandId: "failed-write",
+      });
+    }
+  });
+
+  it("validates optional bounded command IDs at the real message boundary", () => {
+    const pipe = new RealtimeTimerCommandPipe();
+    expect(pipe.transform({ action: "start" })).toEqual({ action: "start" });
+    const command = { action: "pause", commandId: "a".repeat(128) };
+    expect(pipe.transform(command)).toEqual(command);
+    for (const commandId of ["", "a".repeat(129), null, 42]) {
+      expect(() => pipe.transform({ action: "start", commandId })).toThrow(
+        WsException,
+      );
+    }
+    expect(() => pipe.transform({ action: "start", unknown: true })).toThrow(
+      WsException,
+    );
   });
 });

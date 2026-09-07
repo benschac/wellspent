@@ -105,6 +105,7 @@ async function connectPeer() {
   const peer = {
     socket,
     next,
+    messages,
     async command(action, afterRevision) {
       socket.send(JSON.stringify({ event: "timer.command", data: { action } }));
       return (
@@ -190,8 +191,54 @@ try {
   );
   const stopped = await peer.command("pause", reset.revision);
   const second = await connectPeer();
+  const noOpId = randomUUID();
   peer.socket.send(
-    JSON.stringify({ event: "timer.command", data: { action: "pause" } }),
+    JSON.stringify({
+      event: "timer.command",
+      data: { action: "pause", commandId: noOpId },
+    }),
+  );
+  const noOpAck = await peer.next(
+    (message) =>
+      message.event === "timer.command.ack" &&
+      message.data.commandId === noOpId,
+  );
+  assert.deepEqual(
+    noOpAck.data.state,
+    stopped,
+    "No-op acknowledgement must preserve the snapshot",
+  );
+  const resetId = randomUUID();
+  peer.socket.send(
+    JSON.stringify({
+      event: "timer.command",
+      data: { action: "reset", commandId: resetId },
+    }),
+  );
+  const resetAck = await peer.next(
+    (message) =>
+      message.event === "timer.command.ack" &&
+      message.data.commandId === resetId,
+  );
+  assert.equal(resetAck.data.state.revision, stopped.revision + 1);
+  const persistedAck = await connectPeer();
+  assert.deepEqual(
+    persistedAck.initial,
+    resetAck.data.state,
+    "Acknowledged state must already be persisted",
+  );
+  // A subsequent pong acts as a same-socket barrier: the other peer receives
+  // broadcasts but never another client's direct acknowledgements.
+  second.socket.send(
+    JSON.stringify({
+      event: "realtime.ping",
+      data: { sentAt: new Date().toISOString() },
+    }),
+  );
+  await second.next((message) => message.event === "realtime.pong");
+  assert.equal(
+    second.messages.some((message) => message.event === "timer.command.ack"),
+    false,
   );
   // Concurrent state-changing commands must not overwrite each other's revisions.
   for (let index = 0; index < 10; index++) {
@@ -202,10 +249,13 @@ try {
   await peer.next(
     (message) =>
       message.event === "timer.state" &&
-      message.data.revision === stopped.revision + 10,
+      message.data.revision === resetAck.data.state.revision + 10,
   );
   const afterConcurrent = await connectPeer();
-  assert.equal(afterConcurrent.initial.revision, stopped.revision + 10);
+  assert.equal(
+    afterConcurrent.initial.revision,
+    resetAck.data.state.revision + 10,
+  );
   assert.equal(afterConcurrent.initial.isRunning, false);
   assert.equal(afterConcurrent.initial.elapsedMs, 0);
 
@@ -217,14 +267,26 @@ try {
     ),
   );
   peer.socket.send(
-    JSON.stringify({ event: "timer.command", data: { action: "start" } }),
+    JSON.stringify({
+      event: "timer.command",
+      data: { action: "start", commandId: "failed-write" },
+    }),
   );
   const failure = await peer.next((message) => message.event === "exception");
   assert.equal(failure.data.code, "TIMER_UNAVAILABLE");
+  assert.equal(failure.data.commandId, "failed-write");
+  assert.equal(
+    peer.messages.some(
+      (message) =>
+        message.event === "timer.command.ack" &&
+        message.data.commandId === "failed-write",
+    ),
+    false,
+  );
   const unchanged = await connectPeer();
   assert.deepEqual(unchanged.initial, afterConcurrent.initial);
   console.log(
-    "PASS: running, paused, and reset state survive three abrupt API restarts; downtime, concurrent commands, and failed writes preserve timer semantics.",
+    "PASS: three abrupt API restarts preserve timer state; correlated acknowledgements confirm committed changes and no-ops only to their sender; failed writes return correlated errors.",
   );
 } catch (error) {
   // Test output is bounded and contains no intentional credential logging.

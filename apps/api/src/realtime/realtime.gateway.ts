@@ -12,10 +12,12 @@ import {
   type RealtimePing,
   type RealtimePong,
   type RealtimeTimerCommand,
+  type RealtimeTimerCommandAck,
   type RealtimeTimerLiveActivityRegistration,
   type RealtimeTimerState,
   realtimePingEvent,
   realtimePongEvent,
+  realtimeTimerCommandAckEvent,
   realtimeTimerCommandEvent,
   realtimeTimerLiveActivityRegisterEvent,
   realtimeTimerStateEvent,
@@ -80,14 +82,25 @@ export class RealtimeGateway implements OnGatewayConnection {
   @SubscribeMessage(realtimeTimerCommandEvent)
   async handleTimerCommand(
     @MessageBody(RealtimeTimerCommandPipe) command: RealtimeTimerCommand,
-  ): Promise<void> {
+  ): Promise<WsResponse<RealtimeTimerCommandAck> | undefined> {
     try {
-      await this.realtimeService.applyTimerCommand(command);
+      const state = await this.realtimeService.applyTimerCommand(command);
+      // Nest returns this reply to the requesting socket only. Even a no-op
+      // needs confirmation; broadcasts alone cannot acknowledge a local action.
+      if (command.commandId !== undefined) {
+        return {
+          event: realtimeTimerCommandAckEvent,
+          data: { commandId: command.commandId, state },
+        };
+      }
     } catch {
       this.logger.error("Unable to persist shared timer command");
       throw new WsException({
         code: "TIMER_UNAVAILABLE",
         message: "Timer state could not be saved. Reconnect and try again.",
+        ...(command.commandId !== undefined
+          ? { commandId: command.commandId }
+          : {}),
       });
     }
   }
