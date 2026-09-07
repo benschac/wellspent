@@ -36,6 +36,13 @@
       "when": 1788729969475,
       "tag": "20260906212609_migrate_calendar_google_credentials",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788734552747,
+      "tag": "20260906224232_persist_realtime_timer",
+      "breakpoints": true
     }
   ]
 }

@@ -74,6 +74,17 @@ URLs are left unchanged. Only public, non-secret values belong in
 
 ## Useful commands
 
+Start with `bun run test:fast` for focus behavior and CLI capture; use
+`bun run test:focus` or `bun run test:capture` for narrower checks.
+`bun run test:focus:db:local` runs rollback-only tests against the already
+running, migrated Timer database on port 54422. Tests have no Turbo build
+prerequisite. `bun run test` also includes macOS Xcode tests, which compile
+their native target. Builds remain separate below.
+
+See [verification workflows](docs/verification.md), the
+[current architecture checkpoint](docs/design/2026-08-29-focus-timer-product-and-sync-architecture.md#6-current-repository-boundary),
+and [agent workflows and skill audit](docs/agent-workflows.md).
+
 ```bash
 bun run lint
 bun run format:check
@@ -158,10 +169,19 @@ The server replies with `realtime.pong`, echoing `sentAt` and adding
 `timer.state` snapshot to every connected client so web and mobile controls
 converge immediately.
 
-This realtime timer is currently an in-memory connected-device path. API
-restarts reset it, and it does not replace the durable HTTP catch-up, local
-outbox, authentication, and Postgres/Supabase Realtime architecture described
-in the design record.
+The shared realtime timer stores its snapshot in `app.realtime_timer_state`.
+Start/pause/reset commits the new state before broadcasting. Reconnecting
+clients receive that stored revision and timestamp after an API restart;
+running timers include downtime, and paused timers stay paused. Apply the
+`persist_realtime_timer` migration before running this API version. The first
+rollout cannot reconstruct a timer that existed only in the old process's
+memory; a missing stored row initializes once at zero, paused.
+
+This remains one shared timer, separate from authenticated `/focus` sessions
+and their history. It does not yet provide durable native offline commands,
+account isolation, or cross-process live fan-out. Live Activity registrations
+also remain in memory. Database failures report an error rather than silently
+resetting the timer. See [realtime persistence verification](docs/verification.md#shared-timer-restart-persistence).
 
 ### Live Activity remote updates
 
@@ -177,9 +197,9 @@ Notifications authentication key and configure the API values documented in
 (`com.benschac.timer`), not the widget extension identifier, and select the
 sandbox APNs environment for development-signed builds.
 
-The current registration registry follows the timer's existing in-memory
-prototype boundary: API restarts discard both timer state and Live Activity
-tokens. This path updates activities already created by the iOS app. Remote
+The registration registry remains in memory: API restarts discard Live Activity
+tokens, while the timer snapshot survives in Postgres. This path updates
+activities already created by the iOS app. Remote
 push-to-start requires a durable device registration so the server can avoid
 creating duplicate activities and is not part of this slice.
 
@@ -236,8 +256,8 @@ Endpoints:
 - `GET /api/integrations/google-calendar/callback` — Google OAuth callback.
 - `GET /api/integrations/google-calendar/status` — authenticated connection and
   watch status.
-- `DELETE /api/integrations/google-calendar` — authenticated disconnect and
-  token revocation.
+- `DELETE /api/integrations/google-calendar` — authenticated Calendar-only
+  disconnect; shared Google credentials remain available to Sheets.
 - `POST /api/integrations/google-calendar/webhook` — authenticated through the
   stored Google channel token rather than a user bearer token.
 
@@ -247,3 +267,10 @@ incremental synchronization, and stores each deduplicated change in
 `app.google_calendar_inbound_changes`. A later timer-domain slice should consume
 that inbox and emit outbound Calendar projections only after durable timer
 transitions commit; it must not synchronize a ticking counter every second.
+
+## Google Sheets backend integration
+
+The API can export selected completed focus sessions to a new spreadsheet using
+Google's official SDK. Sheets and Calendar share encrypted Google credentials,
+with incremental consent and independent feature disconnects. See
+[Google Sheets setup, endpoints, and verification](docs/google-sheets.md).

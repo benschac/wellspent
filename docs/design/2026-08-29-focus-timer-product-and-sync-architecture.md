@@ -2,9 +2,9 @@
 
 **Status:** Decision-complete; first authenticated web session/evidence slice implemented; native synchronization gates remain
 
-**Last updated:** 2026-09-05
+**Last updated:** 2026-09-06
 
-**Current implementation note:** [Durable focus sessions and CLI context](../focus-sessions.md) records the new Supabase-authenticated web flow, persisted timer transitions, offline browser command outbox, Codex capture adapter, and editable recaps. The August 30 progress checkpoint below is historical: its missing timer tables and web outbox now have a first implementation. Native clients, the general device/cursor synchronization protocol, and the broader platform gates remain separate work.
+**Current implementation note:** [Durable focus sessions and CLI context](../focus-sessions.md) records the Supabase-authenticated web flow, persisted timer transitions, offline browser command outbox, Codex capture adapter, and editable recaps. Sections 6 and 26 distinguish this implementation from remaining work. Other architectural sections describe the target, not proof of shipped behavior: native durable sessions, IndexedDB/SQLite repositories, the device/cursor protocol, and broader platform gates remain incomplete.
 
 **Purpose:** Preserve the product direction, lock the foundational platform and synchronization decisions, define the implementation gates, and track progress against them.
 
@@ -162,36 +162,42 @@ Tauri offers React/TypeScript UI reuse, a small system-webview shell, Rust for l
 
 ## 6. Current repository boundary
 
-As observed on 2026-08-30, the working tree contains:
+As inspected on 2026-09-06, the repository has two separate timer paths:
 
-- `apps/web`: Next.js App Router application.
-- `apps/mobile`: Expo Router application.
-- `apps/api`: NestJS API with oRPC integration.
-- `apps/desktop`: Tauri 2 shell with a React/Vite timer interface.
+- `apps/web/app/focus`: authenticated multi-session start/pause/resume/finish, evidence, and editable recaps. The original web stopwatch remains a separate prototype.
+- `apps/api/src/focus`: authenticated oRPC procedures, persisted commands and projections, independent recap revisions, and session-scoped capture credentials.
+- `apps/mobile`: Expo Router client with the prototype timer and iOS Live Activity/widget integration.
+- `apps/desktop`: Tauri 2 shell with the prototype React/Vite timer interface.
+- `apps/macos`: native SwiftUI/AppKit floating sidebar and menu-bar controls, still using the prototype WebSocket timer.
 - `packages/api-contract`: shared runtime-validated API contract.
 - `packages/api-client`: shared typed client.
-- `packages/database`: Drizzle/Postgres package with an unexposed `app` schema containing the optional application profile and Google Calendar integration tables, but no canonical timer/session tables.
+- `packages/database`: Drizzle/Postgres package with private `app` profile, Calendar, focus-session, transition, evidence, and capture-token tables. The focus migration is `supabase/migrations/20260906000313_focus_sessions_and_work_events.sql`.
 - `packages/timer`: shared stopwatch, timer rendering, and WebSocket client hooks used by the web, mobile, and desktop interfaces.
+- `integrations/codex`: standalone capture adapter with a private local spool, stable delivery IDs, explicit acknowledgements, rejection quarantine, and synthetic transport tests.
 
-The current product prototype provides immediate monotonic start, pause, resume, and reset controls across web, mobile, and desktop. A Nest WebSocket gateway broadcasts one process-memory timer state to connected clients. The mobile client also contains an iOS Live Activity and widget prototype, including APNs updates for activities already started by the application. Supabase JWT verification, automatic application-profile provisioning, authenticated profile read/update procedures, and durable Google Calendar integration plumbing exist in the API and database, and the Tauri shell renders the shared timer interface.
+The durable focus path locks a session, checks command identity and timer revision, and commits its transition and projection in one Postgres transaction. Its current lifecycle is running/paused/completed; creation starts the timer. Recap edits and evidence uploads do not advance timer revisions. Generated recaps are deterministic, not LLM-generated. These behaviors are owned by `apps/api/src/focus/focus.repository.ts`, `focus-domain.ts`, and `packages/api-contract/src/contract.ts`.
 
-These are useful platform and delivery prototypes, but they do not implement the selected synchronization architecture. API restarts still discard the shared timer and Live Activity registrations. No versioned session-domain package, multi-session state machine, SQLite or IndexedDB `SessionRepository`, durable outbox, canonical timer Postgres tables, device registry, HTTP upload/catch-up API, contiguous sequence recovery, Legend-State binding, or sync acceptance harness exists yet.
+The browser writes account-scoped commands and cached session snapshots to `localStorage` through `focus-outbox.ts`; `use-focus-sessions.ts` replays commands and refreshes the latest 100 sessions every ten seconds and on reconnect. This is useful offline persistence, but is not the transactional IndexedDB event repository or durable cursor-based catch-up specified below. Conflict handling currently blocks the account's replay queue and offers explicit pending-command discard; per-session rejection/rebase remains work.
+
+The separate `apps/api/src/realtime` path now persists its start/pause/reset snapshot in `app.realtime_timer_state` through `RealtimeTimerRepository`. Each command locks the row and commits before broadcast; reconnect reads the stored revision/timestamp. Running time includes API downtime, paused time does not, and reset preserves running status. This requires the `20260906224232_persist_realtime_timer.sql` migration; the initial rollout cannot reconstruct old process-only state. Live Activity registrations remain in memory, and the shared timer is still anonymous and separate from authenticated focus-session history. Native clients do not yet control those focus sessions. No shared `@repo/session-domain` package, SQLite/IndexedDB repository, device registry, versioned user event stream, contiguous cursor recovery, or repository-to-Legend binding exists yet.
 
 ### 6.1 Implementation progress checkpoint
 
-This checkpoint includes the current staged and unstaged implementation as of 2026-08-30. Progress is evaluated against the gates in sections 18, 19, and 26 rather than by code volume alone.
+This checkpoint reflects source inspected on 2026-09-06. Existing tests and smoke helpers are evidence of available verification, not an assertion that every platform or deployment gate passed. Run the scoped commands in [verification](../verification.md) and record the execution environment before claiming acceptance.
 
 | Phase | Progress | Evidence and remaining gate |
 | ----- | -------- | --------------------------- |
-| Phase 0: protocol and measurement harness | **Partial** | The design record specifies the state machine, event contract, repository boundary, reconnect behavior, and failure matrix. Executable domain schemas, reducer/conformance tests, deterministic fault injection, and latency instrumentation remain. |
-| Phase 1: platform and custom-sync foundations | **Prototype groundwork only** | Expo 57 clients, a Next.js client, WebSocket transport, Tauri shell, and iOS Live Activity delivery code exist. The Android/Next custom-sync vertical slice, Legend-State physical-device proof, macOS capability gate, LAN spike, and recorded gate evidence remain. |
-| Phase 2: local-first multi-session clients | **Not started** | SQLite and IndexedDB repositories, durable events/outbox/cursor, optimistic projections, corrections, archives, overlap reports, and shared conformance tests remain. |
-| Phase 3: cloud-mediated synchronization | **Early partial** | Supabase JWT verification, automatic application-profile provisioning, and authenticated profile persistence through Nest exist. Authenticated device records, timer tables, idempotent event ingestion, HTTP push/catch-up, per-session revisions, per-user sequences, Realtime gap recovery, Android persistent controls, and measurements remain. |
-| Phase 4: macOS focus capabilities | **Shell only** | The Tauri timer window exists. Menu-bar lifecycle, global shortcuts, focus integration, application/site blocking, local-only activity observation, signing evidence, and a custom native bridge remain. No Tauri-versus-SwiftUI decision has passed the capability gate. |
-| Phase 5: reflection and AI | **Integration plumbing only** | Google Calendar authorization, webhook, job, and inbound-change infrastructure exist, but the timer domain does not consume it. Daily/weekly review, evidence-backed AI summaries, and user-approved insights remain. |
+| Phase 0: protocol and measurement harness | **Narrow behavior implemented** | Focus Zod contracts, server transition/evidence tests, and browser projection tests exist. Shared domain ownership, versioned sync envelopes, repository conformance/fault fixtures, and latency instrumentation remain. |
+| Phase 1: platform and custom-sync foundations | **Separate web and native paths** | Durable authenticated web flow and Expo/Tauri/SwiftUI prototype clients exist. Physical Android-to-web durable synchronization, repository-independent Legend proof, and broader Mac capability evidence remain. |
+| Phase 2: local-first multi-session clients | **Browser command persistence implemented** | `focus-outbox.ts` and tests cover account-scoped commands, reload, replay, and cross-tab acknowledgement. Transactional IndexedDB/SQLite events, cursor, migrations/rebuilds, per-session conflict recovery, corrections, archives, and overlap reports remain. |
+| Phase 3: cloud-mediated synchronization | **Durable HTTP commands implemented** | Auth/profile ownership, focus tables, atomic transitions, command deduplication, and per-session revisions exist. Local rollback integration tests and an HTTP/restart smoke helper exist. Device authorization, user stream sequences, catch-up, Realtime gap recovery, native controls, compatibility, and deployment measurements remain. |
+| Phase 4: macOS focus capabilities | **Native presentation implemented** | SwiftUI/AppKit sidebar, dragging/placement, menu-bar controls, Keychain settings, and Xcode tests exist alongside Tauri. Durable session integration, global shortcuts, blocking, observation, and distribution/capability evidence remain; the full shell capability gate is not established here. |
+| Phase 5: reflection and AI | **Session-to-recap slice implemented** | Manual notes, CLI evidence, focused-time sections, deterministic recaps, and independent user edits exist. Real harness acceptance, daily/weekly overlap-aware review, LLM summaries, and Calendar-to-session integration remain. |
 | Phase 6: teams and organizations | **Not started** | Tenant, membership, role, shared-project, visibility, and team-reporting models remain. |
 
-No core synchronization acceptance slice or platform feasibility gate has passed yet. The repository is approximately one-fifth complete in broad scaffolding and prototype terms, but the sequential implementation checkpoint remains immediately before slice 1 in section 26.
+The shared WebSocket timer has a separate persistence check: `bun run --cwd apps/api test:realtime:restart:local` builds the actual API and exercises abrupt process restarts against a disposable local database. It covers snapshot recovery, downtime, concurrent revisions, and failed commits; it does not pass the native offline synchronization gate.
+
+The complete section 19.1 Android/Next synchronization gate remains open. The next milestone extends the durable focus implementation; it does not recreate its authentication, tables, or existing commands. No completion percentage is inferred from scaffolding or test count.
 
 ## 7. Core architectural distinction
 
@@ -1057,18 +1063,17 @@ These defaults resolve the remaining technical details without expanding the pro
 
 ## 26. Recommended next implementation sequence
 
-Implementation can begin as bounded vertical slices using the defaults in section 25. The first slice starts with a narrow technical PRD for **Local-first multi-session control and one-user multi-device synchronization** and lands the shared domain contract in the same milestone. The PRD and implementation should proceed in this order:
+**Current checkpoint (2026-09-06):** authenticated web sessions, atomic Postgres commands, a browser `localStorage` outbox, CLI evidence capture, and editable recaps are implemented. The domain contract and browser projection logic still have separate owners; transactional repositories, native durable sessions, and device/cursor synchronization remain. Section 6 records the source boundaries.
 
-**Current checkpoint (2026-08-30):** none of slices 1 through 6 has passed its gate. Supabase authentication and automatic application-profile persistence provide a reusable portion of slice 4, while the existing WebSocket timer, Tauri shell, iOS Live Activity, and Google Calendar work are prototypes or later-slice groundwork. The next gated deliverable is slice 1; later groundwork does not remove its dependency on the shared event contract and reducer semantics.
+**Next milestone:** make the current session flow recover durably across browser and native process termination, then converge through authenticated HTTP. Start from the implemented narrow lifecycle. Add broader events only with their product behavior and tests.
 
-1. **Shared domain contract:** add Zod schemas and generated TypeScript types for the versioned event union and push outcomes, plus a pure projection reducer and transition tests. This slice has no network or storage dependency.
-2. **Native local-first slice:** add the SQLite schema, migrations, `appendPending` transaction, projection rebuild, and repository conformance tests. Bind committed projections to Legend-State, persist only a small classified UI-state fixture through the Expo SQLite plugin, and prove cold-start and process-death recovery on physical Android with Expo 57.
-3. **Web parity slice:** implement the IndexedDB repository against the same conformance suite and use Legend's IndexedDB plugin for the same non-canonical UI-state fixture.
-4. **Server command slice:** add Postgres schemas, idempotent event ingestion, per-session revision validation, accepted/idempotent/rejected outcomes, Supabase authentication, and device registration or revocation.
-5. **Synchronization slice:** add deterministic HTTP upload and catch-up, Supabase Realtime notifications, contiguous cursor recovery, and focused fault injection.
-6. **Acceptance slice:** measure latency and run the duplicate-delivery, lost-acknowledgement, process-death, migration, compatibility, and projection-equivalence checks before broadening product scope.
-7. **Platform follow-ons:** run the Tauri capability and LAN feasibility spikes after the trustworthy session foundation exists; neither blocks the first local-only timer slice.
+1. **Shared session rules.** Extract the existing command schemas and pure timing/projection behavior into `@repo/session-domain`; keep framework, HTTP errors, and storage adapters outside it. Acceptance: server and browser consume shared behavior/fixtures; start/pause/resume/finish, original timestamps, independent recap revisions, and command replay retain their tested behavior. Introducing a second protocol or changing native clients is outside this task.
+2. **Transactional web repository.** Replace the browser outbox with IndexedDB behind a repository interface and connect `/focus` to it. Acceptance: account-scoped legacy snapshots and pending commands migrate with unchanged IDs, timestamps, and revisions; migration can resume after interruption without duplicates; source records are retained until the migrated transaction is committed and verified. Test atomic pending/projection writes, reload with and without pending work, multi-tab enqueue/acknowledgement, unavailable storage, and rebuild equivalence. Demonstrate offline pause/reopen/resume/finish and reconnect in a real browser. Keep unrelated-session replay moving when one session conflicts, retain rejected originals, and show the affected session's correction. Device registration and native UI are deferred to subsequent tasks.
+3. **Expo mobile persistence and sync (Android acceptance first).** Extend the existing React Native app in `apps/mobile`; `expo-sqlite` is already installed. It supplies the device-local SQLite database on Android and iOS, separate from backend Postgres. Implement local tables/migrations, atomic pending-command/projection writes, and the repository adapter against shared fixtures; connect authenticated native controls and replay to the durable focus API. No separate Android app, second backend, or new SQL package is implied. Acceptance: start on web, pause on physical Android, operate offline, terminate/reopen the mobile app, reconnect, and observe one explainable history on both clients. Verify local actions after token expiry, account isolation, and SQLite/IndexedDB projection equivalence. Bind reactive UI state to committed repository projections without making its persistence canonical; the planned Legend integration is separate from the SQLite storage engine. Follow with iOS lifecycle/device acceptance for the same mobile implementation.
+4. **Complete synchronization semantics.** Extend the existing focus tables/API with authorized device records, versioned events, durable per-user ordering, explicit outcomes, and HTTP catch-up. Acceptance: lost acknowledgements, stale revisions, independent sessions, out-of-order delivery, device revocation, and unsupported versions have deterministic outcomes; cursor advancement and local application are atomic. Realtime accelerates delivery only after HTTP recovery works. This work can accompany the Android peer where required to satisfy its acceptance.
+5. **Full acceptance and remaining clients.** Run section 19's compatibility, migration, fault, and physical-device checks; record latency separately from correctness. Migrate the Mac and remaining clients to the same durable session model. Preserve existing native presentation behavior. Choose the long-term Mac shell from capability evidence; do not infer app blocking or distribution readiness from its UI.
+6. **Daily review and platform follow-ons.** Build overlap-aware daily review on accepted history and editable evidence. Keep LAN, teams, broader observation, and blocking as separately scoped follow-ons.
 
-Each slice stops at its gate and records evidence before the next begins. A failing Legend integration may be replaced without changing repository semantics; a failing repository durability or convergence gate blocks the milestone.
+Each task handoff names its outcome, owning paths, preserved behavior, acceptance checks, and deferred work. Use [verification](../verification.md) for executable commands and proof boundaries. Record passed, failed, and unrun checks with the checkout and environment; a test helper's existence is not a passed gate. A failing Legend integration may be replaced without changing repository semantics; failed durability or convergence blocks the corresponding milestone.
 
 Everything else—AI, teams, app blocking, and broad activity observation—should depend on that trustworthy session foundation rather than complicate its first implementation.

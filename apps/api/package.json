@@ -11,6 +11,8 @@
     "test": "bun test",
     "test:focus": "bun test test/focus-domain.test.ts",
     "test:focus:db:local": "FOCUS_TEST_DATABASE_URL='postgresql://postgres:postgres@127.0.0.1:54422/postgres' bun test test/focus.repository.integration.test.ts",
+    "test:realtime": "bun test test/realtime.service.test.ts test/realtime.gateway.test.ts test/timer-state-changed.listener.test.ts",
+    "test:realtime:restart:local": "node test/realtime-restart.smoke.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

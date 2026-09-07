@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import type {
   RealtimePing,
   RealtimePong,
@@ -6,6 +6,7 @@ import type {
   RealtimeTimerState,
 } from "@repo/api-contract";
 import { ApplicationEventBus } from "../events/application-event-bus.service.js";
+import { RealtimeTimerRepository } from "./realtime-timer.repository.js";
 import {
   type TimerStateChangedEvent,
   timerStateChangedEvent,
@@ -13,14 +14,12 @@ import {
 
 @Injectable()
 export class RealtimeService {
-  constructor(private readonly eventBus: ApplicationEventBus) {}
-
-  private timerState: RealtimeTimerState = {
-    elapsedMs: 0,
-    isRunning: false,
-    revision: 0,
-    updatedAt: new Date().toISOString(),
-  };
+  constructor(
+    @Inject(ApplicationEventBus)
+    private readonly eventBus: ApplicationEventBus,
+    @Inject(RealtimeTimerRepository)
+    private readonly timerRepository: RealtimeTimerRepository,
+  ) {}
 
   createPong(ping: RealtimePing): RealtimePong {
     return {
@@ -29,56 +28,17 @@ export class RealtimeService {
     };
   }
 
-  getTimerState(): RealtimeTimerState {
-    return { ...this.timerState };
+  getTimerState(): Promise<RealtimeTimerState> {
+    return this.timerRepository.get();
   }
 
-  applyTimerCommand(command: RealtimeTimerCommand): RealtimeTimerState {
-    const previousRevision = this.timerState.revision;
-    const now = Date.now();
-    const currentElapsedMs = this.timerState.isRunning
-      ? this.timerState.elapsedMs +
-        Math.max(0, now - Date.parse(this.timerState.updatedAt))
-      : this.timerState.elapsedMs;
+  async applyTimerCommand(
+    command: RealtimeTimerCommand,
+  ): Promise<RealtimeTimerState> {
+    const { state, changed } = await this.timerRepository.apply(command);
 
-    switch (command.action) {
-      case "start":
-        if (this.timerState.isRunning) {
-          return this.getTimerState();
-        }
-
-        this.timerState = {
-          elapsedMs: currentElapsedMs,
-          isRunning: true,
-          revision: this.timerState.revision + 1,
-          updatedAt: new Date(now).toISOString(),
-        };
-        break;
-      case "pause":
-        if (!this.timerState.isRunning) {
-          return this.getTimerState();
-        }
-
-        this.timerState = {
-          elapsedMs: currentElapsedMs,
-          isRunning: false,
-          revision: this.timerState.revision + 1,
-          updatedAt: new Date(now).toISOString(),
-        };
-        break;
-      case "reset":
-        this.timerState = {
-          elapsedMs: 0,
-          isRunning: this.timerState.isRunning,
-          revision: this.timerState.revision + 1,
-          updatedAt: new Date(now).toISOString(),
-        };
-        break;
-    }
-
-    const state = this.getTimerState();
-
-    if (state.revision !== previousRevision) {
+    // The transaction has committed before either WebSocket or APNs publication.
+    if (changed) {
       this.eventBus.publish<TimerStateChangedEvent>(timerStateChangedEvent, {
         action: command.action,
         state,

@@ -53,9 +53,7 @@ Fifteen-minute sections use actual accumulated timer-running intervals, excludin
 Fast checks:
 
 ```sh
-bun run --cwd apps/api test
-bun test integrations/codex
-bun test apps/web/app/focus
+bun run test:fast
 bun run --cwd apps/api typecheck
 bun run --cwd apps/web typecheck
 bun run --cwd apps/web build
@@ -65,7 +63,9 @@ bun run --cwd packages/database db:check
 Rollback-only database behavior tests, with local Supabase running and migrations applied:
 
 ```sh
-FOCUS_TEST_DATABASE_URL='postgresql://postgres:postgres@127.0.0.1:54422/postgres' bun test apps/api/test/focus.repository.integration.test.ts
+bun run test:focus:db:local
 ```
 
 The existing `supabase/tests/app_schema_test.sql` verifies automatic profile creation, cascade deletion, and private-schema access. The HTTP smoke helper in `apps/api/test/focus-http.smoke.mjs` additionally exercises real Supabase signup/JWTs, mounted oRPC paths, status codes, token scope, hook delivery, and persistence across a Node API restart against local services only.
+
+See [verification workflows](verification.md) for narrower commands, separate builds/HTTP smoke, and the physical-device acceptance boundary. The named local database command never inherits a hosted database URL and fails rather than skipping when the local stack is unavailable.

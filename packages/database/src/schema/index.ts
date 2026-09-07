@@ -18,6 +18,30 @@ import { authUsers } from "drizzle-orm/supabase";
 
 export const appSchema = pgSchema("app");
 
+// The existing anonymous WebSocket timer remains one shared timer. This is its
+// durable snapshot, not a user-owned focus session or an event history.
+export const realtimeTimerState = appSchema
+  .table(
+    "realtime_timer_state",
+    {
+      id: integer("id").primaryKey().default(1),
+      elapsedMs: bigint("elapsed_ms", { mode: "number" }).notNull().default(0),
+      isRunning: boolean("is_running").notNull().default(false),
+      revision: integer("revision").notNull().default(0),
+      updatedAt: timestamp("updated_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+    },
+    (table) => [
+      check("realtime_timer_state_singleton", sql`${table.id} = 1`),
+      check(
+        "realtime_timer_state_counters",
+        sql`${table.elapsedMs} >= 0 and ${table.revision} >= 0`,
+      ),
+    ],
+  )
+  .enableRLS();
+
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
