@@ -1,5 +1,6 @@
 export type { FormattedElapsedTime } from "./time";
 export { formatElapsedTime } from "./time";
+export type { TimerSyncState, TimerSyncStatus } from "./timer-sync";
 export type {
   ListenForEvent,
   RemoveEventListener,

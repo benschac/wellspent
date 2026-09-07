@@ -26,6 +26,18 @@ import {
 } from "@/modules/timer-live-activity/src";
 
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
+const syncStatusLabels = {
+  connecting: "Connecting",
+  connected: "Connected",
+  offline: "Offline",
+  error: "Sync error",
+};
+const syncStatusColors = {
+  connecting: "#d5e3ed",
+  connected: "#58f4c2",
+  offline: "#ffd28a",
+  error: "#ffc1c1",
+};
 
 interface AnimatedTimerReadoutProps {
   elapsedMs: SharedValue<number>;
@@ -112,6 +124,7 @@ function AnimatedTimerReadout({ elapsedMs, size }: AnimatedTimerReadoutProps) {
 export default function HomeScreen() {
   const { width } = useWindowDimensions();
   const [timerRealtimeUrl, setTimerRealtimeUrl] = useState(getTimerRealtimeUrl);
+  const [showConnectionDetails, setShowConnectionDetails] = useState(false);
   const {
     elapsedMs,
     elapsedSnapshotAtMs,
@@ -121,6 +134,7 @@ export default function HomeScreen() {
     realtimeRevision,
     reset,
     start,
+    sync,
   } = useStopwatch({
     realtimeUrl: timerRealtimeUrl,
     updateIntervalMs: 1_000,
@@ -337,6 +351,84 @@ export default function HomeScreen() {
           size={dialSize}
         />
         <AnimatedTimerReadout elapsedMs={animatedElapsedMs} size={dialSize} />
+      </View>
+
+      <View
+        style={{
+          backgroundColor: "#101e2b",
+          borderColor: "#263d51",
+          borderCurve: "continuous",
+          borderRadius: 16,
+          borderWidth: 1,
+          gap: 8,
+          padding: 16,
+          width: "100%",
+        }}
+      >
+        <Text
+          accessibilityLiveRegion="polite"
+          selectable
+          style={{
+            color: syncStatusColors[sync.status],
+            fontSize: 14,
+            fontWeight: "700",
+            lineHeight: 21,
+          }}
+        >
+          {syncStatusLabels[sync.status]}
+          {"\n"}
+          <Text style={{ color: "#a8bac9", fontSize: 13, fontWeight: "400" }}>
+            {sync.message}
+          </Text>
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ expanded: showConnectionDetails }}
+          onPress={() => setShowConnectionDetails((visible) => !visible)}
+          style={({ pressed }) => ({
+            justifyContent: "center",
+            minHeight: 44,
+            opacity: pressed ? 0.65 : 1,
+          })}
+        >
+          <Text style={{ color: "#a8bac9", fontSize: 13 }}>
+            {showConnectionDetails
+              ? "Hide connection details"
+              : "Connection details"}
+          </Text>
+        </Pressable>
+        {showConnectionDetails ? (
+          <View style={{ gap: 12 }}>
+            <Text
+              selectable
+              style={{ color: "#d5e3ed", fontSize: 13, lineHeight: 20 }}
+            >
+              API WebSocket{"\n"}
+              {sync.endpoint || "Not configured"}
+            </Text>
+            <Text
+              selectable
+              style={{
+                color: "#d5e3ed",
+                fontSize: 13,
+                fontVariant: ["tabular-nums"],
+              }}
+            >
+              Unconfirmed actions: {sync.pendingCount}
+            </Text>
+            <Text
+              selectable
+              style={{
+                color: "#d5e3ed",
+                fontSize: 13,
+                fontVariant: ["tabular-nums"],
+              }}
+            >
+              Last confirmed revision:{" "}
+              {sync.lastConfirmedRevision ?? "None yet"}
+            </Text>
+          </View>
+        ) : null}
       </View>
 
       <View style={{ flexDirection: "row", gap: 12, width: "100%" }}>

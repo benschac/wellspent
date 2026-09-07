@@ -4,11 +4,11 @@ import {
   type RealtimeTimerState,
   realtimeTimerCommandEvent,
   realtimeTimerLiveActivityRegisterEvent,
-  realtimeTimerStateEvent,
-  realtimeTimerStateSchema,
 } from "@repo/api-contract";
+import { Effect, Schema } from "effect";
 import { useEffect, useRef, useState } from "react";
-
+import { type TimerSyncState, TimerSyncTracker } from "./timer-sync";
+import { decodeTimerSyncMessage } from "./timer-sync-message";
 import { useRaf } from "./use-raf";
 import { useWebSocket } from "./use-web-socket";
 
@@ -23,6 +23,7 @@ export interface Stopwatch {
   realtimeRevision: number | null;
   reset: () => void;
   start: () => void;
+  sync: TimerSyncState;
 }
 
 export interface UseStopwatchOptions {
@@ -38,7 +39,16 @@ interface ElapsedSnapshot {
 
 type TimerAction = RealtimeTimerCommand["action"];
 
+const decodeSentCommand = Schema.decodeUnknownEffect(
+  Schema.fromJsonString(
+    Schema.Struct({
+      data: Schema.Struct({ commandId: Schema.NonEmptyString }),
+    }),
+  ),
+);
+
 const readClock = (): number => globalThis.performance?.now() ?? Date.now();
+let commandSequence = 0;
 
 export function useStopwatch(options: UseStopwatchOptions = {}): Stopwatch {
   const { realtimeUrl, reconnectDelayMs = 1_000, updateIntervalMs } = options;
@@ -54,6 +64,22 @@ export function useStopwatch(options: UseStopwatchOptions = {}): Stopwatch {
   const isRunningRef = useRef(false);
   const latestRevisionRef = useRef(-1);
   const startedAtRef = useRef<number | null>(null);
+  const syncTrackerRef = useRef<TimerSyncTracker | null>(null);
+  const [sync, setSync] = useState<TimerSyncState>(
+    () => new TimerSyncTracker(realtimeUrl, () => {}).state,
+  );
+
+  useEffect(() => {
+    const tracker = new TimerSyncTracker(realtimeUrl, setSync);
+    syncTrackerRef.current = tracker;
+    latestRevisionRef.current = -1;
+    setRealtimeRevision(null);
+    setSync(tracker.state);
+    return () => {
+      tracker.dispose();
+      syncTrackerRef.current = null;
+    };
+  }, [realtimeUrl]);
 
   const updateElapsed = () => {
     const startedAt = startedAtRef.current;
@@ -117,35 +143,30 @@ export function useStopwatch(options: UseStopwatchOptions = {}): Stopwatch {
     onOpen: () => {
       latestRevisionRef.current = -1;
     },
+    onStatusChange: (status) =>
+      syncTrackerRef.current?.connectionChanged(status),
+    onSent: (data) => {
+      const message = Effect.runSync(
+        decodeSentCommand(data).pipe(Effect.catch(() => Effect.succeed(null))),
+      );
+      if (message) syncTrackerRef.current?.sent(message.data.commandId);
+    },
     onMessage: (data) => {
-      if (typeof data !== "string") {
-        return;
-      }
-
-      try {
-        const message = JSON.parse(data) as {
-          data?: unknown;
-          event?: unknown;
-        };
-
-        if (message.event === realtimeTimerStateEvent) {
-          const state = realtimeTimerStateSchema.safeParse(message.data);
-
-          if (state.success) {
-            applyRealtimeState(state.data);
-          }
-        }
-      } catch {
-        // Ignore malformed frames and keep the last valid timer state.
-      }
+      const tracker = syncTrackerRef.current;
+      if (!tracker) return;
+      const state = tracker.receive(decodeTimerSyncMessage(data));
+      if (state) applyRealtimeState(state);
     },
   });
 
   const sendAction = (action: TimerAction) => {
+    // Correlation only: no dependency on native crypto and no promise of dedupe.
+    const commandId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${++commandSequence}`;
+    syncTrackerRef.current?.queued(commandId);
     sendRealtimeMessage(
       JSON.stringify({
         event: realtimeTimerCommandEvent,
-        data: { action },
+        data: { action, commandId },
       }),
     );
   };
@@ -212,5 +233,6 @@ export function useStopwatch(options: UseStopwatchOptions = {}): Stopwatch {
     realtimeRevision,
     reset,
     start,
+    sync,
   };
 }

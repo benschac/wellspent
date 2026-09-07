@@ -240,6 +240,7 @@ const assistantChatOutputSchema: Schema<
 export const realtimePingEvent = "realtime.ping" as const;
 export const realtimePongEvent = "realtime.pong" as const;
 export const realtimeTimerCommandEvent = "timer.command" as const;
+export const realtimeTimerCommandAckEvent = "timer.command.ack" as const;
 export const realtimeTimerLiveActivityRegisterEvent =
   "timer.live_activity.register" as const;
 export const realtimeTimerStateEvent = "timer.state" as const;
@@ -258,6 +259,8 @@ export const realtimePongSchema = z.object({
 export const realtimeTimerCommandSchema = z
   .object({
     action: z.enum(["start", "pause", "reset"]),
+    // Correlates a reply to this request; it is not a durable idempotency key.
+    commandId: z.string().min(1).max(128).optional(),
   })
   .strict();
 
@@ -283,6 +286,13 @@ export const realtimeTimerStateSchema = z
     isRunning: z.boolean(),
     revision: z.number().int().nonnegative(),
     updatedAt: z.iso.datetime(),
+  })
+  .strict();
+
+export const realtimeTimerCommandAckSchema = z
+  .object({
+    commandId: z.string().min(1).max(128),
+    state: realtimeTimerStateSchema,
   })
   .strict();
 
@@ -347,6 +357,9 @@ export type UpdateProfileInput = z.infer<typeof updateProfileInputSchema>;
 export type RealtimePing = z.infer<typeof realtimePingSchema>;
 export type RealtimePong = z.infer<typeof realtimePongSchema>;
 export type RealtimeTimerCommand = z.infer<typeof realtimeTimerCommandSchema>;
+export type RealtimeTimerCommandAck = z.infer<
+  typeof realtimeTimerCommandAckSchema
+>;
 export type RealtimeTimerLiveActivityRegistration = z.infer<
   typeof realtimeTimerLiveActivityRegistrationSchema
 >;

@@ -1,11 +1,13 @@
 import { useEffect, useEffectEvent, useRef } from "react";
 
-import { useEventListener } from "./use-event-listener";
-import { useSetTimeout } from "./use-set-timeout";
+import type { SocketConnectionStatus } from "./timer-sync";
+import { createWebSocketTransport } from "./web-socket-transport";
 
 export interface UseWebSocketOptions {
   onMessage: (data: unknown) => void;
   onOpen?: () => void;
+  onStatusChange?: (status: SocketConnectionStatus) => void;
+  onSent?: (data: string) => void;
   reconnectDelayMs?: number;
   url: string | undefined;
 }
@@ -15,85 +17,42 @@ export type SendWebSocketMessage = (data: string) => void;
 export function useWebSocket({
   onMessage,
   onOpen,
+  onStatusChange,
+  onSent,
   reconnectDelayMs = 1_000,
   url,
 }: UseWebSocketOptions): SendWebSocketMessage {
-  const pendingMessagesRef = useRef<string[]>([]);
-  const socketRef = useRef<WebSocket | null>(null);
+  const transportRef = useRef<ReturnType<
+    typeof createWebSocketTransport
+  > | null>(null);
   const handleMessage = useEffectEvent((data: unknown) => onMessage(data));
   const handleOpen = useEffectEvent(() => onOpen?.());
-  const listen = useEventListener();
-  const { clear: clearReconnectTimeout, schedule: scheduleReconnect } =
-    useSetTimeout();
+  const handleStatus = useEffectEvent((status: SocketConnectionStatus) =>
+    onStatusChange?.(status),
+  );
+  const handleSent = useEffectEvent((data: string) => onSent?.(data));
+  const readReconnectDelay = useEffectEvent(() => reconnectDelayMs);
 
   useEffect(() => {
     if (!url) {
+      handleStatus("offline");
       return;
     }
-
-    let shouldReconnect = true;
-
-    const connect = () => {
-      const socket = new WebSocket(url);
-      socketRef.current = socket;
-
-      const removeOpenListener = listen(socket, "open", () => {
-        if (socketRef.current !== socket) {
-          return;
-        }
-
-        handleOpen();
-
-        const pendingMessages = pendingMessagesRef.current;
-        pendingMessagesRef.current = [];
-
-        for (const message of pendingMessages) {
-          socket.send(message);
-        }
-      });
-      const removeMessageListener = listen(socket, "message", (event) => {
-        if (socketRef.current === socket) {
-          handleMessage(event.data);
-        }
-      });
-      const removeCloseListener = listen(socket, "close", () => {
-        removeOpenListener();
-        removeMessageListener();
-        removeCloseListener();
-
-        if (socketRef.current === socket) {
-          socketRef.current = null;
-        }
-
-        if (shouldReconnect) {
-          scheduleReconnect(connect, reconnectDelayMs);
-        }
-      });
-    };
-
-    connect();
-
+    const transport = createWebSocketTransport({
+      url,
+      reconnectDelayMs: readReconnectDelay(),
+      getReconnectDelayMs: readReconnectDelay,
+      onMessage: handleMessage,
+      onOpen: handleOpen,
+      onStatusChange: handleStatus,
+      onSent: handleSent,
+    });
+    transportRef.current = transport;
     return () => {
-      shouldReconnect = false;
-      pendingMessagesRef.current = [];
-      clearReconnectTimeout();
-
-      socketRef.current?.close();
-      socketRef.current = null;
+      transport.dispose();
+      transportRef.current = null;
     };
-  }, [clearReconnectTimeout, listen, reconnectDelayMs, scheduleReconnect, url]);
+  }, [url]);
 
-  return (data: string) => {
-    if (!url) {
-      return;
-    }
-
-    const socket = socketRef.current;
-
-    if (socket?.readyState === WebSocket.OPEN) {
-      socket.send(data);
-    } else {
-      pendingMessagesRef.current.push(data);
-    }
-  };
+  return (data: string) => transportRef.current?.send(data);
 }

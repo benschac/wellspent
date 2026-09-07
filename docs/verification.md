@@ -74,6 +74,27 @@ Deploy/apply `20260906224232_persist_realtime_timer.sql` before using the persis
 
 ## Native acceptance
 
+### Shared timer sync indicators
+
+The homepage web timer, Expo mobile timer, and macOS timer expose Connecting, Connected, Offline, and Sync error. Connected requires a validated persisted snapshot, not merely an open socket. Diagnostics show the active WebSocket endpoint with credentials/query/fragment removed, the last server revision, and pending/unconfirmed action counts.
+
+Each new client command includes a correlation ID. Only its matching `timer.command.ack` confirms the save, including no-op commands; ordinary broadcasts and another client's acknowledgements do not. The API must run the matching acknowledgement implementation. Older APIs can still send snapshots, but cannot confirm these clients' actions, which time out as unconfirmed.
+
+```sh
+bun run --cwd apps/web test:realtime
+bun run --cwd apps/mobile test:realtime
+bun run --cwd apps/api test:realtime
+bun run --cwd apps/macos test
+```
+
+Web's command runs the shared lifecycle/confirmation tests plus rendered status tests. Mobile's command runs the same shared TypeScript behavior tests; it does not mount React Native or prove physical-device behavior. The macOS command builds and tests the native app. The existing isolated API restart smoke also verifies committed, sender-only acknowledgements, no-op acknowledgements, and correlated write errors.
+
+Manual check on each updated client: connect to the same local API, open connection details (macOS Settings), and verify endpoint/revision. Stop only the API: status should become Offline while local ticking continues. Restart it: a valid snapshot should restore Connected. Act while offline: the action must remain visibly pending until it is sent and specifically acknowledged. A failed or unacknowledged attempted save must remain unconfirmed/Sync error after reconnect, even if newer snapshots arrive. Invalid snapshot/ack payloads and storage failures must not appear as confirmed saves.
+
+Queues are memory-only, not durable offline repositories. Unsent work can flush on reconnect while the client stays open. Attempted sends with uncertain outcomes are not automatically replayed: correlation is not idempotency. Closing/reloading a client or changing its endpoint clears this bookkeeping. Mac also clears it on a token change. This work does not migrate native clients to authenticated `/focus` sessions.
+
+### Durable native sessions
+
 First identify which path the requested change affects: the current WebSocket prototype or durable focus sessions. As of September 6, native clients only implement the prototype. Report durable-session acceptance as unimplemented until its product integration exists; do not score a prototype test as convergence proof.
 
 For static/native checks, use the existing package commands:

@@ -2,6 +2,7 @@
 
 import { formatElapsedTime, useStopwatch } from "@repo/timer";
 import dynamic from "next/dynamic";
+import { TimerSyncStatus } from "./timer-sync-status";
 
 const dialSize = 300;
 const SkiaDial = dynamic(
@@ -17,7 +18,7 @@ interface TimerClientProps {
 }
 
 export function TimerClient({ realtimeUrl }: TimerClientProps) {
-  const { elapsedMs, isRunning, pause, reset, start } = useStopwatch({
+  const { elapsedMs, isRunning, pause, reset, start, sync } = useStopwatch({
     realtimeUrl,
   });
   const formattedTime = formatElapsedTime(elapsedMs);
@@ -43,6 +44,8 @@ export function TimerClient({ realtimeUrl }: TimerClientProps) {
           </span>
         </div>
       </div>
+
+      <TimerSyncStatus sync={sync} />
 
       <div className="timer-controls">
         <button

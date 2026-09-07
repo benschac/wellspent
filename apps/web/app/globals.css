@@ -122,6 +122,72 @@ h1 {
   width: min(100%, 360px);
 }
 
+.timer-sync {
+  background: #101e2b;
+  border: 1px solid #263d51;
+  border-radius: 16px;
+  padding: 14px 16px;
+  width: min(100%, 360px);
+}
+
+.timer-sync__status {
+  color: #d5e3ed;
+  font-size: 0.88rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.timer-sync__status--connected {
+  color: #58f4c2;
+}
+
+.timer-sync__status--offline {
+  color: #ffd28a;
+}
+
+.timer-sync__status--error {
+  color: #ffc1c1;
+}
+
+.timer-sync__message {
+  color: #a8bac9;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  margin: 6px 0 0;
+}
+
+.timer-sync__diagnostics {
+  color: #a8bac9;
+  font-size: 0.78rem;
+  margin-top: 12px;
+}
+
+.timer-sync__diagnostics summary {
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.timer-sync__diagnostics summary:focus-visible {
+  outline: 3px solid rgb(88 244 194 / 35%);
+  outline-offset: 3px;
+}
+
+.timer-sync__diagnostics dl {
+  margin: 12px 0 0;
+}
+
+.timer-sync__diagnostics dt {
+  margin-top: 10px;
+}
+
+.timer-sync__diagnostics dd {
+  color: #d5e3ed;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
+  margin: 3px 0 0;
+  overflow-wrap: anywhere;
+}
+
 .timer-button {
   background: #101e2b;
   border: 1px solid #263d51;
