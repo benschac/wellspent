@@ -63,8 +63,8 @@ export class RealtimeGateway implements OnGatewayConnection {
     try {
       const state = await this.realtimeService.getTimerState();
       if (client.readyState === 1) this.sendTimerState(client, state);
-    } catch {
-      this.logger.error("Unable to load persisted shared timer state");
+    } catch (error) {
+      this.logger.error("Unable to load persisted shared timer state", error);
       client.close(1011, "Timer storage unavailable");
     }
   }
@@ -93,8 +93,8 @@ export class RealtimeGateway implements OnGatewayConnection {
           data: { commandId: command.commandId, state },
         };
       }
-    } catch {
-      this.logger.error("Unable to persist shared timer command");
+    } catch (error) {
+      this.logger.error("Unable to persist shared timer command", error);
       throw new WsException({
         code: "TIMER_UNAVAILABLE",
         message: "Timer state could not be saved. Reconnect and try again.",
