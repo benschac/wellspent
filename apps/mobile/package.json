@@ -12,6 +12,7 @@
     "ios": "expo run:ios",
     "ios:device": "expo run:ios --device \"Deez iPhone\" --configuration Debug",
     "lint": "biome check .",
+    "test:realtime": "bun run --cwd ../../packages/timer test:realtime",
     "skia:web": "setup-skia-web public",
     "typecheck": "tsc --noEmit",
     "web": "expo start --web"

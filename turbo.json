@@ -27,7 +27,8 @@
       "persistent": true
     },
     "lint": {
-      "dependsOn": ["transit"]
+      "dependsOn": ["transit"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/biome.json"]
     },
     "skia:web": {
       "outputs": ["public/canvaskit.wasm"]

@@ -8,6 +8,8 @@
     "./skia": "./src/timer-dial.tsx"
   },
   "scripts": {
+    "test": "bun test test",
+    "test:realtime": "bun test test",
     "lint": "biome check .",
     "typecheck": "tsc --noEmit"
   },
