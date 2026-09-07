@@ -20,6 +20,25 @@ These checks do not demonstrate browser IndexedDB transactions, React lifecycle 
 
 ## Static checks, builds, and HTTP smoke
 
+### Vercel API compilation
+
+The API's `vercel.json` installs with Bun 1.4.0 and `--frozen-lockfile` because
+Bun 1.3 cannot read this repository's version-2 lockfile. Keep this version in
+sync with the root `packageManager` when upgrading Bun.
+
+Vercel compiles the API again after `nest build`. Keep `module` and `strict`
+explicit in `apps/api/tsconfig.json`: Vercel's compiler applies defaults before
+resolving inherited options. ESM output with Bundler resolution avoids mixed
+Drizzle import/require declarations in that compiler's custom resolver. The DOM
+library supplies the standard fetch types used by Node; `types: ["node"]` keeps
+Node globals explicit. These settings do not change the Node runtime.
+
+The API build's Turbo passthrough list declares runtime configuration without
+hashing secrets into compilation inputs. Passing the Nest build alone does not
+prove Vercel's second compilation or a deployed HTTP response.
+
+### Package checks
+
 Choose the relevant package, rather than running every build after a small change:
 
 ```sh

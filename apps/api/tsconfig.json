@@ -3,9 +3,14 @@
   "compilerOptions": {
     "allowImportingTsExtensions": true,
     "experimentalDecorators": true,
+    "lib": ["ES2023", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "outDir": "./dist",
     "rewriteRelativeImportExtensions": true,
-    "rootDir": "./src"
+    "rootDir": "./src",
+    "strict": true,
+    "types": ["node"]
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]

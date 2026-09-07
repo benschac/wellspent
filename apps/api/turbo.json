@@ -3,6 +3,22 @@
   "tasks": {
     "dev": {
       "env": ["AI_GATEWAY_API_KEY", "AI_MODEL", "DATABASE_URL"]
+    },
+    "build": {
+      "passThroughEnv": [
+        "AI_GATEWAY_API_KEY",
+        "AI_MODEL",
+        "APPLE_APNS_*",
+        "APPLE_LIVE_ACTIVITY_PUSH_ENABLED",
+        "CORS_ORIGIN",
+        "DATABASE_URL",
+        "GOOGLE_CALENDAR_*",
+        "GOOGLE_SHEETS_*",
+        "GOOGLE_OAUTH_*",
+        "PORT",
+        "SUPABASE_PUBLISHABLE_KEY",
+        "SUPABASE_URL"
+      ]
     }
   }
 }
