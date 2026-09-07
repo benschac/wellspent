@@ -1,4 +1,5 @@
 import { ScrollView, Text, View } from "react-native";
+import { BackendProfileBanner } from "@/components/backend-profile-banner";
 
 export default function SettingsScreen() {
   return (
@@ -6,6 +7,7 @@ export default function SettingsScreen() {
       contentContainerStyle={{ gap: 12, padding: 24 }}
       contentInsetAdjustmentBehavior="automatic"
     >
+      <BackendProfileBanner />
       <View
         style={{
           backgroundColor: "#14201d",

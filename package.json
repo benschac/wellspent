@@ -36,6 +36,7 @@
     "supabase:status": "bunx supabase@2.116.0 status",
     "supabase:stop": "bunx supabase@2.116.0 stop",
     "test": "turbo run test",
+    "test:profiles": "node --test scripts/backend-profile.test.mjs",
     "test:capture": "turbo run test:capture",
     "test:fast": "turbo run test:focus test:capture",
     "test:focus": "turbo run test:focus",

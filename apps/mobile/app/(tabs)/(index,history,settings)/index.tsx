@@ -16,6 +16,7 @@ import Animated, {
   useFrameCallback,
   useSharedValue,
 } from "react-native-reanimated";
+import { BackendProfileBanner } from "@/components/backend-profile-banner";
 import { getTimerRealtimeUrl } from "@/lib/api";
 import { TimerWidget, type TimerWidgetProps } from "@/lib/timer-widget";
 import {
@@ -320,6 +321,7 @@ export default function HomeScreen() {
         paddingBottom: 48,
       }}
     >
+      <BackendProfileBanner />
       <View style={{ alignItems: "center", gap: 8 }}>
         <Text
           selectable
