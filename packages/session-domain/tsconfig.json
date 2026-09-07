@@ -1,0 +1,9 @@
+{
+  "extends": "@repo/typescript-config/library.json",
+  "include": ["src/**/*.ts"],
+  "compilerOptions": {
+    "types": ["node"],
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true
+  }
+}

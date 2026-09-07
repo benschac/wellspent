@@ -18,6 +18,7 @@
     "@ai-sdk/react": "4.0.88",
     "@radix-ui/react-icons": "1.3.2",
     "@repo/api-client": "workspace:*",
+    "@repo/session-domain": "workspace:*",
     "@repo/timer": "workspace:*",
     "@shopify/react-native-skia": "2.6.2",
     "@supabase/supabase-js": "2.115.0",

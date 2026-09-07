@@ -6,6 +6,7 @@
       "name": "timer-monorepo",
       "devDependencies": {
         "@biomejs/biome": "2.5.12",
+        "effect": "4.0.0-rc.112",
         "turbo": "2.10.12",
       },
     },
@@ -24,6 +25,7 @@
         "@orpc/server": "2.0.0-beta.32",
         "@repo/api-contract": "workspace:*",
         "@repo/database": "workspace:*",
+        "@repo/session-domain": "workspace:*",
         "@t3-oss/env-core": "0.13.11",
         "ai": "7.0.85",
         "class-transformer": "0.5.1",
@@ -142,6 +144,7 @@
         "@ai-sdk/react": "4.0.88",
         "@radix-ui/react-icons": "1.3.2",
         "@repo/api-client": "workspace:*",
+        "@repo/session-domain": "workspace:*",
         "@repo/timer": "workspace:*",
         "@shopify/react-native-skia": "2.6.2",
         "@supabase/supabase-js": "2.115.0",
@@ -191,6 +194,7 @@
       "dependencies": {
         "@orpc/contract": "2.0.0-beta.32",
         "@orpc/openapi": "2.0.0-beta.32",
+        "@repo/session-domain": "workspace:*",
         "ai": "7.0.85",
         "zod": "4.5.2",
       },
@@ -225,6 +229,20 @@
         "expo": "*",
         "react": "*",
         "react-native": "*",
+      },
+    },
+    "packages/session-domain": {
+      "name": "@repo/session-domain",
+      "version": "0.0.0",
+      "dependencies": {
+        "date-fns": "4.4.0",
+        "effect": "4.0.0-rc.112",
+        "zod": "4.5.2",
+      },
+      "devDependencies": {
+        "@repo/typescript-config": "workspace:*",
+        "@types/node": "26.4.0",
+        "typescript": "~6.0.3",
       },
     },
     "packages/timer": {
@@ -838,6 +856,8 @@
     "@repo/macos": ["@repo/macos@workspace:apps/macos"],
 
     "@repo/mobile": ["@repo/mobile@workspace:apps/mobile"],
+
+    "@repo/session-domain": ["@repo/session-domain@workspace:packages/session-domain"],
 
     "@repo/timer": ["@repo/timer@workspace:packages/timer"],
 

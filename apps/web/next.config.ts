@@ -3,7 +3,12 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
-  transpilePackages: ["@repo/api-client", "@repo/api-contract", "@repo/timer"],
+  transpilePackages: [
+    "@repo/api-client",
+    "@repo/api-contract",
+    "@repo/session-domain",
+    "@repo/timer",
+  ],
   webpack(config) {
     config.resolve.extensions = [
       ".web.mjs",

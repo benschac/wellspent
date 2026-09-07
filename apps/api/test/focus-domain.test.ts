@@ -1,5 +1,18 @@
 import { describe, expect, it } from "bun:test";
+import { ORPCError } from "@orpc/server";
 import type { FocusSession, WorkEvent } from "@repo/api-contract";
+import {
+  createFocusInputSchema,
+  transitionFocusInputSchema,
+} from "@repo/api-contract";
+import { projectCommand } from "@repo/session-domain";
+import {
+  finish as finishCommand,
+  pause as pauseCommand,
+  resume as resumeCommand,
+  start as startCommand,
+} from "@repo/session-domain/testing";
+import { parseISO } from "date-fns";
 import {
   buildFocusDetail,
   MAX_SEGMENTS,
@@ -34,6 +47,42 @@ const event = (minutes: number): WorkEvent => ({
 });
 
 describe("focus evidence projection", () => {
+  it("includes interval starts but excludes pause and finish boundaries", () => {
+    const events = [event(0), event(5), event(10), event(15)];
+    const result = buildFocusDetail(
+      session,
+      [
+        { action: "start", occurredAt: at(0) },
+        { action: "pause", occurredAt: at(5) },
+        { action: "resume", occurredAt: at(10) },
+        { action: "finish", occurredAt: at(15) },
+      ],
+      events,
+      at(30),
+    );
+    expect(result.segments).toHaveLength(1);
+    expect(result.segments[0]?.endOffsetMs).toBe(10 * 60000);
+    expect(result.segments[0]?.events).toEqual([events[0], events[2]]);
+    expect(result.events).toEqual(events);
+  });
+
+  it("ignores closes without an open interval and clamps backwards interval ends", () => {
+    const result = buildFocusDetail(
+      session,
+      [
+        { action: "pause", occurredAt: at(0) },
+        { action: "start", occurredAt: at(10) },
+        { action: "pause", occurredAt: at(5) },
+        { action: "finish", occurredAt: at(15) },
+        { action: "resume", occurredAt: at(20) },
+      ],
+      [event(10)],
+      at(15),
+    );
+    expect(result.segments).toEqual([]);
+    expect(result.segmentsTruncated).toBe(false);
+  });
+
   it("splits 45 focused minutes into three sections while excluding a 15-minute pause", () => {
     const events = [
       event(14),
@@ -198,5 +247,80 @@ describe("focus transitions", () => {
     expect(() => validateEventTime(at(6).toISOString(), start)).toThrow();
     expect(() => validateEventTime("bad", start)).toThrow();
     expect(validateEventTime(start.toISOString(), at(60))).toEqual(start);
+  });
+});
+
+describe("shared session lifecycle", () => {
+  it("matches browser projection for every persisted command without changing recap revisions", () => {
+    let sessions: FocusSession[] = [];
+    let previousAt = parseISO(startCommand.input.occurredAt);
+    for (const command of [
+      startCommand,
+      pauseCommand,
+      resumeCommand,
+      finishCommand,
+    ]) {
+      const projected = projectCommand(sessions, command);
+      const next = projected[0];
+      if (next === undefined) throw new Error("Missing projected session");
+      if (command.type === "transition") {
+        const current = sessions[0];
+        if (current === undefined) throw new Error("Missing preceding session");
+        const input = transitionFocusInputSchema.parse(command.input);
+        const at = validateEventTime(
+          input.occurredAt,
+          new Date("2026-09-06T00:00:00Z"),
+        );
+        const canonical = transitionState(
+          current,
+          input.action,
+          at,
+          previousAt,
+        );
+        expect(next).toEqual({
+          ...current,
+          ...canonical,
+          runningSince: canonical.runningSince?.toISOString() ?? null,
+          completedAt: canonical.completedAt?.toISOString() ?? null,
+          updatedAt: input.occurredAt,
+        });
+        expect(next.recapRevision).toBe(7);
+        expect(next.recapText).toBe("User recap");
+        previousAt = at;
+      } else {
+        expect(createFocusInputSchema.parse(command.input)).toEqual(
+          command.input,
+        );
+        next.recapRevision = 7;
+        next.recapText = "User recap";
+      }
+      sessions = projected;
+    }
+    expect(sessions[0]?.elapsedMs).toBe(30 * 60_000);
+    expect(
+      [startCommand, pauseCommand, resumeCommand, finishCommand].reduce(
+        projectCommand,
+        sessions,
+      ),
+    ).toEqual(sessions);
+  });
+
+  it("maps domain failures to the established HTTP codes", () => {
+    try {
+      validateEventTime("invalid", start);
+      throw new Error("Expected invalid time rejection");
+    } catch (error) {
+      expect(error).toBeInstanceOf(ORPCError);
+      if (!(error instanceof ORPCError)) throw error;
+      expect(error.code).toBe("BAD_REQUEST");
+    }
+    try {
+      transitionState(session, "resume", at(61), at(60));
+      throw new Error("Expected completed session rejection");
+    } catch (error) {
+      expect(error).toBeInstanceOf(ORPCError);
+      if (!(error instanceof ORPCError)) throw error;
+      expect(error.code).toBe("CONFLICT");
+    }
   });
 });

@@ -7,7 +7,7 @@ Run commands from the repository root after `bun install --frozen-lockfile`. Pac
 | Command | What it establishes |
 | --- | --- |
 | `bun run test:fast` | Runs both focus behavior and standalone capture suites, without app builds or database access. |
-| `bun run test:focus` | API transition/evidence rules and browser projection, outbox, and bearer-token behavior. |
+| `bun run test:focus` | Shared session-domain contracts/lifecycle, API transition/evidence rules, and browser projection, outbox, and bearer-token behavior. |
 | `bun run test:capture` | Synthetic hook capture, privacy defaults, durable spool/replay, acknowledgements, and rejection handling. |
 | `bun run --cwd apps/web test` | All web Bun tests; included in the full workspace test command. |
 | `bun run test:focus:db:local` | Actual repository transactions, ownership, revisions, deduplication, and token/evidence boundaries on local Postgres. |

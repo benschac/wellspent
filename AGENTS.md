@@ -9,6 +9,16 @@
 - Verify with the smallest relevant test, typecheck, lint, build, or static check. Read the result before claiming completion.
 - Final reports state the outcome, changed files, validation evidence, and any remaining risk.
 
+## Learning more about Effect
+
+This repository uses the Effect Typescript library.
+
+Before writing any Effect code, first read `node_modules/effect/AGENTS.md`
+**completely**, and follow the links in the file when required.
+
+If you need to learn more about particular Effect APIs and concepts that the
+guide doesn't cover, search through the source code in `node_modules/effect/src`.
+
 ## TypeScript safety
 
 - Never use non-null assertions (`value!`), including in tests. Use explicit runtime guards or assertion helpers that narrow the type and fail clearly when a required value is missing. Biome's `style.noNonNullAssertion` must remain an error.

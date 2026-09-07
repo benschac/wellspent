@@ -1,0 +1,27 @@
+{
+  "name": "@repo/session-domain",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/testing.ts"
+  },
+  "scripts": {
+    "lint": "biome check .",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test && bun run test:node",
+    "test:focus": "bun test && bun run test:node",
+    "test:node": "node --test src/session.test.ts"
+  },
+  "dependencies": {
+    "date-fns": "4.4.0",
+    "effect": "4.0.0-rc.112",
+    "zod": "4.5.2"
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "workspace:*",
+    "@types/node": "26.4.0",
+    "typescript": "~6.0.3"
+  }
+}
