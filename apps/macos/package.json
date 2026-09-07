@@ -3,6 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
+    "dev:local": "node ../../scripts/backend-profile.mjs macos local",
+    "dev:prod-api": "node ../../scripts/backend-profile.mjs macos prod-api",
     "build": "xcodebuild -project TimerMac.xcodeproj -scheme TimerMac -configuration Debug -destination 'platform=macOS' -derivedDataPath .derivedData CODE_SIGNING_ALLOWED=NO build",
     "format": "bash ./scripts/swift-format.sh format",
     "lint": "bash ./scripts/swift-format.sh lint",

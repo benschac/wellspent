@@ -3,7 +3,11 @@ import Security
 
 struct KeychainStore {
     private let service = "com.benjaminschachter.timer.macos"
-    private let account = "realtime-bearer-token"
+    let account: String
+
+    init(scope: String? = nil) {
+        account = scope.map { "realtime-bearer-token:\($0)" } ?? "realtime-bearer-token"
+    }
 
     func readToken() -> String {
         let query: [CFString: Any] = [

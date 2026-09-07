@@ -29,17 +29,17 @@ final class TimerModel {
 
     init(
         settingsStore: SettingsStore = SettingsStore(),
-        keychainStore: KeychainStore = KeychainStore(),
+        keychainStore: KeychainStore? = nil,
         realtimeClient: TimerRealtimeClient = TimerRealtimeClient(),
         clock: TimerClock = .live
     ) {
         self.settingsStore = settingsStore
-        self.keychainStore = keychainStore
+        self.keychainStore = keychainStore ?? KeychainStore(scope: settingsStore.launchAPIBaseURL)
         self.realtimeClient = realtimeClient
         self.clock = clock
         baselineSystemUptime = clock.systemUptime()
         apiBaseURL = settingsStore.apiBaseURL
-        accessToken = keychainStore.readToken()
+        accessToken = self.keychainStore.readToken()
 
         startLifecycle()
     }
@@ -93,7 +93,16 @@ final class TimerModel {
     }
 
     var menuBarTitle: String {
-        TimerFormatting.clock(milliseconds: displayElapsedMilliseconds)
+        let clock = TimerFormatting.clock(milliseconds: displayElapsedMilliseconds)
+        return isLaunchProfile && isProductionAPI ? "\(clock) · PROD" : clock
+    }
+
+    var isLaunchProfile: Bool { settingsStore.launchAPIBaseURL != nil }
+
+    var isProductionAPI: Bool { URL(string: apiBaseURL)?.host == "api.wellspent.day" }
+
+    var backendProfileLabel: String {
+        isProductionAPI ? "PRODUCTION API — actions affect real data" : "API: \(diagnosticEndpoint)"
     }
 
     var accessibilityTimerLabel: String {
@@ -134,6 +143,11 @@ final class TimerModel {
     func applySettings(apiBaseURL: String, accessToken: String) {
         let trimmedURL = apiBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedToken = accessToken.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if isLaunchProfile && trimmedURL != self.apiBaseURL {
+            errorMessage = "The launch profile owns this API URL. Quit and relaunch with dev:local or dev:prod-api."
+            return
+        }
 
         guard TimerProjection.webSocketURL(from: trimmedURL) != nil else {
             errorMessage = "Enter an HTTP, HTTPS, WS, or WSS API URL."

@@ -6,6 +6,31 @@ import os
 
 @MainActor
 struct TimerModelTests {
+    @Test(arguments: [
+        ("https://user:secret@example.com/base?token=secret#secret", "API: wss://example.com/api/ws"),
+        ("wss://us%65r:s%65cret@example.com:8443/base?api_key=secret#secret", "API: wss://example.com:8443/api/ws"),
+        ("http://localhost:3001", "API: ws://localhost:3001/api/ws"),
+        ("https://api.wellspent.day", "PRODUCTION API — actions affect real data"),
+        ("file:///secret?token=secret", "API: Invalid API URL"),
+    ])
+    func backendProfileLabelsRedactCredentials(apiBaseURL: String, expected: String) throws {
+        let suite = "backend-label-tests-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(apiBaseURL, forKey: "apiBaseURL")
+        // An invalidated session keeps valid endpoint cases offline.
+        let session = URLSession(configuration: .ephemeral)
+        session.invalidateAndCancel()
+        for environment in [[:], ["WELLSPENT_API_URL": apiBaseURL]] {
+            let model = TimerModel(
+                settingsStore: SettingsStore(defaults: defaults, environment: environment),
+                realtimeClient: TimerRealtimeClient(urlSession: session)
+            )
+            #expect(model.backendProfileLabel == expected)
+            #expect(model.apiBaseURL == apiBaseURL)
+        }
+    }
+
     @Test
     func anotherSnapshotDoesNotConfirmLocalActions() throws {
         let model = try makeModel(clock: TestClock())

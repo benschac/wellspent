@@ -5,6 +5,7 @@ struct TimerMenuView: View {
     @Environment(TimerSidebarController.self) private var sidebar
 
     var body: some View {
+        Text(model.backendProfileLabel)
         Text("Sync: \(model.syncStatus.label)")
         Text(model.saveStatus)
         Divider()

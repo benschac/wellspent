@@ -6,6 +6,9 @@ struct TimerWindowView: View {
 
     var body: some View {
         VStack {
+            Text(model.backendProfileLabel)
+                .font(.caption)
+                .foregroundStyle(model.isProductionAPI ? .orange : .secondary)
             HStack {
                 Label("Timer", systemImage: "timer")
                     .font(.title2)

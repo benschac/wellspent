@@ -37,6 +37,11 @@ struct SettingsView: View {
             }
 
             Section("Connection") {
+                Text(model.backendProfileLabel)
+                if model.isLaunchProfile {
+                    Text("The API URL is fixed for this launch. Quit and use dev:local or dev:prod-api to switch.")
+                        .font(.footnote)
+                }
                 ConnectionStatusView(state: model.syncStatus)
                 Text(model.saveStatus)
                     .font(.footnote)
@@ -55,6 +60,7 @@ struct SettingsView: View {
                 }
                 TextField("API URL", text: $apiBaseURL)
                     .textContentType(.URL)
+                    .disabled(model.isLaunchProfile)
 
                 SecureField("Bearer token", text: $accessToken)
                     .textContentType(.password)
