@@ -1,5 +1,13 @@
+import Foundation
+
 struct RealtimeCommandEnvelope: Encodable, Sendable {
     let action: TimerAction
+    let commandId: String
+
+    init(action: TimerAction, commandId: String = UUID().uuidString) {
+        self.action = action
+        self.commandId = commandId
+    }
 
     private enum CodingKeys: String, CodingKey {
         case event
@@ -8,6 +16,7 @@ struct RealtimeCommandEnvelope: Encodable, Sendable {
 
     private enum DataCodingKeys: String, CodingKey {
         case action
+        case commandId
     }
 
     func encode(to encoder: Encoder) throws {
@@ -19,5 +28,6 @@ struct RealtimeCommandEnvelope: Encodable, Sendable {
             forKey: .data
         )
         try data.encode(action, forKey: .action)
+        try data.encode(commandId, forKey: .commandId)
     }
 }

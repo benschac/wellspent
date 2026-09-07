@@ -1,6 +1,17 @@
 import Foundation
 
 enum TimerProjection {
+    static func diagnosticEndpoint(from apiBaseURL: String) -> String {
+        guard let url = webSocketURL(from: apiBaseURL),
+            var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        else { return "Invalid API URL" }
+        components.user = nil
+        components.password = nil
+        components.query = nil
+        components.fragment = nil
+        return components.string ?? "Invalid API URL"
+    }
+
     static func elapsedMilliseconds(
         for state: RealtimeTimerState,
         now: Date

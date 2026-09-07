@@ -6,6 +6,21 @@ import os
 
 @MainActor
 struct TimerModelTests {
+    @Test
+    func anotherSnapshotDoesNotConfirmLocalActions() throws {
+        let model = try makeModel(clock: TestClock())
+        model.handle(event: .deliveryChanged(pending: 2, unconfirmed: 1))
+        model.handle(
+            event: .stateReceived(
+                RealtimeTimerState(
+                    elapsedMilliseconds: 0, isRunning: false, revision: 14, updatedAt: "2026-09-06T12:00:00.000Z")))
+        model.handle(event: .connectionStateChanged(.connected))
+        #expect(model.latestRevision == 14)
+        #expect(model.pendingCommandCount == 2)
+        #expect(model.unconfirmedCommandCount == 1)
+        #expect(model.syncStatus == .syncError)
+    }
+
     private final class TestClock: Sendable {
         private let uptime = OSAllocatedUnfairLock(initialState: 0.0)
 

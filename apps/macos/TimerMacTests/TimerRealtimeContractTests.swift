@@ -30,7 +30,7 @@ struct TimerRealtimeContractTests {
     @Test
     func timerCommandEnvelopeEncodesTheServerContract() throws {
         let data = try JSONEncoder().encode(
-            RealtimeCommandEnvelope(action: .pause)
+            RealtimeCommandEnvelope(action: .pause, commandId: "test-command")
         )
         let object = try #require(
             JSONSerialization.jsonObject(with: data) as? [String: Any]
@@ -39,5 +39,6 @@ struct TimerRealtimeContractTests {
 
         #expect(object["event"] as? String == "timer.command")
         #expect(commandData["action"] as? String == "pause")
+        #expect(commandData["commandId"] as? String == "test-command")
     }
 }

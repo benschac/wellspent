@@ -5,6 +5,9 @@ struct TimerMenuView: View {
     @Environment(TimerSidebarController.self) private var sidebar
 
     var body: some View {
+        Text("Sync: \(model.syncStatus.label)")
+        Text(model.saveStatus)
+        Divider()
         Button(model.isRunning ? "Pause Timer" : "Start / Resume Timer", action: sidebar.toggleTimer)
         Button("Open Timer Window", action: sidebar.showMainWindow)
         Button("Settings…", action: sidebar.showSettings)

@@ -15,7 +15,11 @@ struct TimerCompactFace: View {
                     .font(.system(size: 17, weight: .medium, design: .rounded))
                     .monospacedDigit()
                 Text(
-                    model.isRunning ? "FOCUS" : model.displayElapsedMilliseconds > 0 ? "PAUSED" : "READY"
+                    model.syncStatus != .connected
+                        ? model.syncStatus.label.uppercased()
+                        : model.pendingCommandCount > 0
+                            ? "SAVING"
+                            : model.isRunning ? "FOCUS" : model.displayElapsedMilliseconds > 0 ? "PAUSED" : "READY"
                 )
                 .contentTransition(.opacity)
                 .animation(.easeInOut(duration: reduceMotion ? 0.12 : 0.2), value: model.isRunning)

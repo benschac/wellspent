@@ -13,13 +13,16 @@ struct TimerWindowView: View {
 
                 Spacer()
 
-                ConnectionStatusView(state: model.connectionState)
+                ConnectionStatusView(state: model.syncStatus)
             }
 
             Spacer()
 
             TimerReadoutView()
             TimerControlsView()
+            Text(model.saveStatus)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
 
             if let errorMessage = model.errorMessage {
                 ErrorBannerView(message: errorMessage)

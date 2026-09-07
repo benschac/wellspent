@@ -42,7 +42,14 @@ struct TimerSidebarView: View {
                     .frame(width: 36, height: 36)
                     .background(.white.opacity(0.08), in: Circle())
                     .buttonStyle(.plain)
-                    .help("Timer settings")
+                    .overlay(alignment: .topTrailing) {
+                        Image(systemName: model.syncStatus.symbolName)
+                            .font(.caption2)
+                            .foregroundStyle(model.syncStatus == .connected ? .green : .orange)
+                            .accessibilityHidden(true)
+                    }
+                    .help("\(model.syncStatus.label) · \(model.saveStatus). Open sync diagnostics.")
+                    .accessibilityLabel("Settings. Sync: \(model.syncStatus.label). \(model.saveStatus)")
                     .position(geometry.settings)
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
@@ -56,6 +63,8 @@ struct TimerSidebarView: View {
         .transaction { $0.animation = nil }
         .preferredColorScheme(.dark)
         .contextMenu {
+            Text("Sync: \(model.syncStatus.label)")
+            Text(model.saveStatus)
             Button("Open Timer Window", action: sidebar.showMainWindow)
             Button("Settings…", action: sidebar.showSettings)
             Button(sidebar.isPositionLocked ? "Unlock Position" : "Lock Position") {

@@ -9,6 +9,8 @@ final class TimerModel {
     private(set) var isRunning = false
     private(set) var connectionState = ConnectionState.disconnected
     private(set) var latestRevision: Int?
+    private(set) var pendingCommandCount = 0
+    private(set) var unconfirmedCommandCount = 0
     private(set) var errorMessage: String?
     private(set) var apiBaseURL: String
     private(set) var accessToken: String
@@ -57,6 +59,27 @@ final class TimerModel {
 
     var minuteProgress: Double {
         projectedElapsedMilliseconds.truncatingRemainder(dividingBy: 60_000) / 60_000
+    }
+
+    var syncStatus: ConnectionState {
+        connectionState == .connected && unconfirmedCommandCount > 0 ? .syncError : connectionState
+    }
+
+    var diagnosticEndpoint: String {
+        TimerProjection.diagnosticEndpoint(from: apiBaseURL)
+    }
+
+    var saveStatus: String {
+        if unconfirmedCommandCount > 0 {
+            return "\(unconfirmedCommandCount) action(s) unconfirmed · not automatically retried"
+        }
+        if pendingCommandCount > 0 {
+            return "\(pendingCommandCount) local action(s) awaiting server confirmation"
+        }
+        if let latestRevision {
+            return "Last server-confirmed snapshot: revision \(latestRevision)"
+        }
+        return "Local timer · no server-confirmed snapshot yet"
     }
 
     // The ring samples this at animation cadence without publishing model updates.
@@ -119,6 +142,9 @@ final class TimerModel {
 
         do {
             try keychainStore.saveToken(trimmedToken)
+            if self.apiBaseURL != trimmedURL || self.accessToken != trimmedToken {
+                latestRevision = nil
+            }
             self.apiBaseURL = trimmedURL
             self.accessToken = trimmedToken
             settingsStore.save(apiBaseURL: trimmedURL)
@@ -218,8 +244,10 @@ final class TimerModel {
         }
     }
 
-    private func handle(event: TimerRealtimeClientEvent) {
+    func handle(event: TimerRealtimeClientEvent) {
         switch event {
+        case .serverChanged:
+            latestRevision = nil
         case .connectionStateChanged(let state):
             connectionState = state
             if state == .connected {
@@ -229,8 +257,9 @@ final class TimerModel {
             apply(state: state)
         case .connectionFailed(let message):
             errorMessage = "Realtime sync is unavailable: \(message)"
-        case .commandQueued:
-            errorMessage = "A timer action is queued until sync reconnects."
+        case .deliveryChanged(let pending, let unconfirmed):
+            pendingCommandCount = pending
+            unconfirmedCommandCount = unconfirmed
         }
     }
 

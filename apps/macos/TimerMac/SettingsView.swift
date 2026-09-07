@@ -37,7 +37,22 @@ struct SettingsView: View {
             }
 
             Section("Connection") {
-                ConnectionStatusView(state: model.connectionState)
+                ConnectionStatusView(state: model.syncStatus)
+                Text(model.saveStatus)
+                    .font(.footnote)
+                LabeledContent("Active socket") {
+                    Text(model.diagnosticEndpoint).textSelection(.enabled)
+                }
+                LabeledContent("Pending actions", value: String(model.pendingCommandCount))
+                LabeledContent("Unconfirmed actions", value: String(model.unconfirmedCommandCount))
+                Text(
+                    "Queued actions are held only while this app is open; changing the server or token clears them. Attempted sends with unknown outcomes are not automatically replayed."
+                )
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                if let errorMessage = model.errorMessage {
+                    Text(errorMessage).font(.footnote).foregroundStyle(.orange)
+                }
                 TextField("API URL", text: $apiBaseURL)
                     .textContentType(.URL)
 
@@ -65,7 +80,7 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .navigationTitle("Timer Settings")
-        .frame(minWidth: 440, minHeight: 560)
+        .frame(minWidth: 440, minHeight: 680)
         .onAppear(perform: loadDrafts)
     }
 

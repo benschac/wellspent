@@ -3,17 +3,20 @@ enum ConnectionState: Equatable, Sendable {
     case connected
     case reconnecting
     case disconnected
+    case syncError
 
     var label: String {
         switch self {
         case .connecting:
             "Connecting"
         case .connected:
-            "Synced"
+            "Connected"
         case .reconnecting:
-            "Reconnecting"
+            "Offline"
         case .disconnected:
             "Offline"
+        case .syncError:
+            "Sync error"
         }
     }
 
@@ -23,7 +26,7 @@ enum ConnectionState: Equatable, Sendable {
             "checkmark.circle.fill"
         case .connecting, .reconnecting:
             "arrow.trianglehead.2.clockwise.rotate.90"
-        case .disconnected:
+        case .disconnected, .syncError:
             "exclamationmark.triangle.fill"
         }
     }
