@@ -4,6 +4,24 @@ import Testing
 @testable import TimerMac
 
 struct SettingsStoreTests {
+    @Test
+    func ordinaryLaunchUsesBundledAPIWithoutOverwritingSavedChoice() throws {
+        let suite = "profile-tests-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let bundle = ["WELLSPENT_API_URL": "https://api.example.test"]
+        defaults.set("http://localhost:3001", forKey: "apiBaseURL")
+        let store = SettingsStore(defaults: defaults, environment: [:], bundledConfiguration: bundle)
+        #expect(store.apiBaseURL == "https://api.example.test")
+        #expect(store.launchAPIBaseURL == "https://api.example.test")
+        store.save(apiBaseURL: "http://localhost:3001")
+        let restarted = SettingsStore(defaults: defaults, environment: [:], bundledConfiguration: bundle)
+        #expect(restarted.apiBaseURL == "https://api.example.test")
+        #expect(
+            SettingsStore(defaults: defaults, environment: [:], bundledConfiguration: [:]).apiBaseURL
+                == "http://localhost:3001")
+    }
+
     @MainActor
     @Test
     func aLaunchProfileCannotBeChangedThroughSettings() throws {
@@ -28,7 +46,9 @@ struct SettingsStoreTests {
         let launch = SettingsStore(defaults: defaults, environment: ["WELLSPENT_API_URL": "https://api.wellspent.day"])
         #expect(launch.apiBaseURL == "https://api.wellspent.day")
         launch.save(apiBaseURL: "https://api.wellspent.day")
-        #expect(SettingsStore(defaults: defaults, environment: [:]).apiBaseURL == "http://localhost:3001")
+        #expect(
+            SettingsStore(defaults: defaults, environment: [:], bundledConfiguration: [:]).apiBaseURL
+                == "http://localhost:3001")
     }
 
     @Test

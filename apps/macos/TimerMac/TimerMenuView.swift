@@ -9,6 +9,9 @@ struct TimerMenuView: View {
         Text("Sync: \(model.syncStatus.label)")
         Text(model.saveStatus)
         Divider()
+        Button("Open Focus", action: sidebar.showFocusWindow)
+            .keyboardShortcut("f", modifiers: [.control, .option, .command])
+        if let error = sidebar.focusShortcutError { Text(error) }
         Button(model.isRunning ? "Pause Timer" : "Start / Resume Timer", action: sidebar.toggleTimer)
         Button("Open Timer Window", action: sidebar.showMainWindow)
         Button("Settings…", action: sidebar.showSettings)

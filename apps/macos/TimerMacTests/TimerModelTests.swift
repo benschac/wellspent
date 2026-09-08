@@ -23,7 +23,7 @@ struct TimerModelTests {
         session.invalidateAndCancel()
         for environment in [[:], ["WELLSPENT_API_URL": apiBaseURL]] {
             let model = TimerModel(
-                settingsStore: SettingsStore(defaults: defaults, environment: environment),
+                settingsStore: SettingsStore(defaults: defaults, environment: environment, bundledConfiguration: [:]),
                 realtimeClient: TimerRealtimeClient(urlSession: session)
             )
             #expect(model.backendProfileLabel == expected)
@@ -65,7 +65,9 @@ struct TimerModelTests {
         let defaults = try #require(UserDefaults(suiteName: UUID().uuidString))
         // Keep tests offline and verify that the old saved duration is ignored.
         defaults.register(defaults: ["apiBaseURL": "file:///timer-test", "durationMinutes": 25])
-        return TimerModel(settingsStore: SettingsStore(defaults: defaults), clock: clock.clock)
+        return TimerModel(
+            settingsStore: SettingsStore(defaults: defaults, environment: [:], bundledConfiguration: [:]),
+            clock: clock.clock)
     }
 
     @Test
