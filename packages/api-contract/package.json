@@ -7,6 +7,9 @@
     ".": "./src/contract.ts"
   },
   "scripts": {
+    "openapi:generate": "bun scripts/export-native-openapi.ts",
+    "openapi:check": "bun scripts/export-native-openapi.ts --check",
+    "test:openapi": "bun test test/native-openapi.test.ts",
     "lint": "biome check .",
     "typecheck": "tsc --noEmit"
   },
