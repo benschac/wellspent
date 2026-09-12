@@ -10,6 +10,13 @@ import { createTanstackQueryUtils } from "@orpc/tanstack-query";
 import { apiContract } from "@repo/api-contract";
 
 export { focusSessionSchema } from "@repo/api-contract";
+export {
+  type CalendarPublication,
+  createGoogleIntegrationsClient,
+  type GoogleIntegration,
+  type GoogleIntegrationStatus,
+  type GoogleIntegrationsClient,
+} from "./google-integrations";
 
 export type ApiClient = JsonifiedClient<
   RouterContractClient<typeof apiContract>

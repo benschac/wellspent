@@ -246,7 +246,49 @@
   align-items: center;
   text-decoration: none;
 }
+.focus-google-connections {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+.focus-google-connection {
+  border-top: 1px solid #263d51;
+  padding-top: 16px;
+}
+.focus-google h3 {
+  font-size: 1rem;
+  margin: 0 0 8px;
+}
+.focus-google-connection small {
+  display: block;
+  margin-top: 12px;
+}
+.focus-share-check {
+  font-size: 0.8rem;
+  color: #b0c1ce;
+  margin: 0 12px 14px;
+}
+.focus-google-publications {
+  list-style: none;
+  padding: 0;
+}
+.focus-google-publications li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 20px;
+  border-top: 1px solid #263d51;
+  padding: 12px 0;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+.focus-google-publications li span:last-child {
+  color: #b0c1ce;
+}
 @media (max-width: 760px) {
+  .focus-google-connections {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .focus-page {
     padding: 30px 16px;
   }

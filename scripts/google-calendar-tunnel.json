@@ -1,0 +1,15 @@
+{
+  "on_http_request": [
+    {
+      "expressions": [
+        "req.url.path != '/api/integrations/google-calendar/webhook' || req.method != 'POST'"
+      ],
+      "actions": [
+        {
+          "type": "deny",
+          "config": { "status_code": 404 }
+        }
+      ]
+    }
+  ]
+}

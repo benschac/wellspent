@@ -1,3 +1,5 @@
+import type { CalendarPublication } from "./google-calendar-publication.js";
+
 export interface GoogleOAuthTokens {
   accessToken: string;
   expiresInSeconds: number;
@@ -48,6 +50,12 @@ export interface ListEventsInput {
 }
 
 export abstract class GoogleCalendarClient {
+  abstract publishEvent(input: {
+    accessToken: string;
+    calendarId: string;
+    event: CalendarPublication["event"];
+  }): Promise<void>;
+
   abstract buildAuthorizationUrl(input: {
     codeChallenge: string;
     state: string;

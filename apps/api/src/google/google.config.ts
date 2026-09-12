@@ -20,18 +20,24 @@ export class GoogleConfig {
   ) {}
 
   assertEnabled(integration: GoogleIntegration): void {
-    if (
-      !this.config.get(
-        integration === "calendar"
-          ? "GOOGLE_CALENDAR_ENABLED"
-          : "GOOGLE_SHEETS_ENABLED",
-        { infer: true },
-      )
-    ) {
+    if (!this.enabled(integration)) {
       throw new ServiceUnavailableException(
         `Google ${integration} integration is disabled`,
       );
     }
+  }
+
+  enabled(integration: GoogleIntegration): boolean {
+    return this.config.get(
+      integration === "calendar"
+        ? "GOOGLE_CALENDAR_ENABLED"
+        : "GOOGLE_SHEETS_ENABLED",
+      { infer: true },
+    );
+  }
+
+  get returnUrl(): string | undefined {
+    return this.config.get("GOOGLE_INTEGRATIONS_RETURN_URL", { infer: true });
   }
 
   get clientId(): string {

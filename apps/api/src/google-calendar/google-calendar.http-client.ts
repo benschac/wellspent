@@ -13,6 +13,7 @@ import {
   type GoogleOAuthTokens,
   type ListEventsInput,
 } from "./google-calendar.types.js";
+import type { CalendarPublication } from "./google-calendar-publication.js";
 
 const tokenResponseSchema = z.object({
   access_token: z.string().min(1),
@@ -66,6 +67,38 @@ const eventPageSchema = z.object({
 export class GoogleCalendarHttpClient extends GoogleCalendarClient {
   constructor(private readonly config: GoogleCalendarConfig) {
     super();
+  }
+
+  async publishEvent(input: {
+    accessToken: string;
+    calendarId: string;
+    event: CalendarPublication["event"];
+  }): Promise<void> {
+    const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(input.calendarId)}/events`;
+    try {
+      await this.jsonRequest(url, input.accessToken, {
+        method: "POST",
+        body: JSON.stringify(input.event),
+      });
+    } catch (error) {
+      if (!(error instanceof GoogleCalendarApiError) || error.status !== 409)
+        throw error;
+      // A lost response can leave the event created. Verify its identity instead
+      // of inserting a second event or overwriting subsequent Google edits.
+      const existing = eventSchema.parse(
+        await this.jsonRequest(`${url}/${input.event.id}`, input.accessToken),
+      );
+      if (
+        existing.status === "cancelled" ||
+        existing.extendedProperties?.private?.wellSpentPublicationId !==
+          input.event.id
+      ) {
+        throw new GoogleCalendarApiError(
+          "Calendar event identity conflict or event deleted",
+          409,
+        );
+      }
+    }
   }
 
   buildAuthorizationUrl(input: {

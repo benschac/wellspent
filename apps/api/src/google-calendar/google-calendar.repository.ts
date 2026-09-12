@@ -1,14 +1,17 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { Database } from "@repo/database";
 import {
+  focusSessions,
   googleCalendarConnections,
+  googleCalendarEventLinks,
   googleCalendarInboundChanges,
   googleCalendarJobs,
   googleCalendarOauthStates,
   googleCalendarSubscriptions,
 } from "@repo/database/schema";
-import { and, eq, gt, lt, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, lt, lte, sql } from "drizzle-orm";
 import { DATABASE } from "../database/database.constants.js";
+import type { CalendarPublication } from "./google-calendar-publication.js";
 
 export type GoogleCalendarConnection =
   typeof googleCalendarConnections.$inferSelect;
@@ -19,6 +22,93 @@ export type GoogleCalendarJob = typeof googleCalendarJobs.$inferSelect;
 @Injectable()
 export class GoogleCalendarRepository {
   constructor(@Inject(DATABASE) private readonly database: Database) {}
+
+  findCompletedPublicationSessions(userId: string, sessionIds: string[]) {
+    return this.database
+      .select()
+      .from(focusSessions)
+      .where(
+        and(
+          eq(focusSessions.userId, userId),
+          inArray(focusSessions.id, sessionIds),
+        ),
+      );
+  }
+
+  async enqueuePublications(
+    connectionId: string,
+    publications: CalendarPublication[],
+  ) {
+    if (!publications.length) return;
+    await this.database
+      .insert(googleCalendarJobs)
+      .values(
+        publications.map((publication) => ({
+          connectionId,
+          jobType: "publish_session",
+          dedupeKey: `google-calendar-publish:${connectionId}:${publication.sessionId}`,
+          payload: publication,
+        })),
+      )
+      .onConflictDoUpdate({
+        target: googleCalendarJobs.dedupeKey,
+        // Retry a failed publication using the original immutable snapshot.
+        // Repeating a pending or completed request must not schedule another event.
+        set: {
+          status: "pending",
+          attempts: 0,
+          availableAt: sql`now()`,
+          lastError: null,
+          updatedAt: sql`now()`,
+        },
+        setWhere: eq(googleCalendarJobs.status, "dead"),
+      });
+  }
+
+  listPublications(userId: string) {
+    return this.database
+      .select({
+        payload: googleCalendarJobs.payload,
+        status: googleCalendarJobs.status,
+        lastError: googleCalendarJobs.lastError,
+      })
+      .from(googleCalendarJobs)
+      .innerJoin(
+        googleCalendarConnections,
+        eq(googleCalendarJobs.connectionId, googleCalendarConnections.id),
+      )
+      .where(
+        and(
+          eq(googleCalendarConnections.userId, userId),
+          eq(googleCalendarJobs.jobType, "publish_session"),
+        ),
+      )
+      .orderBy(desc(googleCalendarJobs.createdAt))
+      .limit(500);
+  }
+
+  async recordPublication(
+    connectionId: string,
+    calendarId: string,
+    publication: CalendarPublication,
+  ) {
+    await this.database
+      .insert(googleCalendarEventLinks)
+      .values({
+        connectionId,
+        calendarId,
+        sessionId: publication.sessionId,
+        googleEventId: publication.event.id,
+        lastSyncedRevision: publication.revision,
+        syncStatus: "synced",
+      })
+      .onConflictDoNothing({
+        target: [
+          googleCalendarEventLinks.connectionId,
+          googleCalendarEventLinks.sessionId,
+        ],
+      });
+  }
 
   async createOauthState(input: {
     encryptedCodeVerifier: string;

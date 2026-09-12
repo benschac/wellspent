@@ -38,10 +38,12 @@ export class GoogleSheetsService {
     return { connected: true as const };
   }
   async status(userId: string) {
-    this.config.assertEnabled("sheets");
+    if (!this.config.enabled("sheets"))
+      return { enabled: false, connected: false, reconnectRequired: false };
     const enabled = await this.google.sheetsEnabled(userId);
     const auth = await this.oauth.status(userId, "sheets");
     return {
+      enabled: true,
       connected: enabled && auth.authorized,
       reconnectRequired: enabled && !auth.authorized,
     };

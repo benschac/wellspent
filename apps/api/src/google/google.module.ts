@@ -5,6 +5,7 @@ import { DatabaseModule } from "../database/database.module.js";
 import { GoogleConfig } from "./google.config.js";
 import { GoogleController } from "./google.controller.js";
 import { GoogleRepository } from "./google.repository.js";
+import { GoogleCallbackService } from "./google-callback.service.js";
 import { GoogleOAuthClient } from "./google-oauth.client.js";
 import { GoogleOAuthService } from "./google-oauth.service.js";
 
@@ -13,10 +14,16 @@ import { GoogleOAuthService } from "./google-oauth.service.js";
   controllers: [GoogleController],
   providers: [
     GoogleConfig,
+    GoogleCallbackService,
     GoogleRepository,
     GoogleOAuthClient,
     GoogleOAuthService,
   ],
-  exports: [GoogleConfig, GoogleRepository, GoogleOAuthService],
+  exports: [
+    GoogleConfig,
+    GoogleCallbackService,
+    GoogleRepository,
+    GoogleOAuthService,
+  ],
 })
 export class GoogleModule {}

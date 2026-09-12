@@ -1,6 +1,6 @@
 "use client";
 
-import { createApiClient } from "@repo/api-client";
+import { createApiClient, createGoogleIntegrationsClient } from "@repo/api-client";
 import {
   createClient,
   type Session,
@@ -109,8 +109,8 @@ function AuthenticatedFocus({
   supabase: SupabaseClient;
   session: Session;
 }) {
-  const [api] = useState(() =>
-    createApiClient(env.NEXT_PUBLIC_API_URL, {
+  const [clients] = useState(() => {
+    const options = {
       getAccessToken: async () => {
         const { data, error } = await supabase.auth.getSession();
         if (error) throw error;
@@ -118,11 +118,16 @@ function AuthenticatedFocus({
           throw new Error("Sign in again to sync this account.");
         return data.session.access_token;
       },
-    }),
-  );
+    };
+    return {
+      api: createApiClient(env.NEXT_PUBLIC_API_URL, options),
+      google: createGoogleIntegrationsClient(env.NEXT_PUBLIC_API_URL, options),
+    };
+  });
   return (
     <FocusWorkspace
-      api={api}
+      api={clients.api}
+      google={clients.google}
       userId={session.user.id}
       email={session.user.email ?? "Your account"}
       onSignOut={async () => {

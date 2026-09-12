@@ -1,6 +1,6 @@
 # Google Sheets backend
 
-The backend exports selected **completed durable focus sessions** into a new Google spreadsheet. It uses Google's official `@googleapis/sheets` client and `google-auth-library`. It does not export the separate shared WebSocket timer, add UI, or expose arbitrary spreadsheet access.
+The backend exports selected **completed durable focus sessions** into a new Google spreadsheet. It uses Google's official `@googleapis/sheets` client and `google-auth-library`. The web `/focus` page now provides connection controls and session selection. It does not export the separate shared WebSocket timer or expose arbitrary spreadsheet access. See [activation and live acceptance](google-integrations.md) for the complete setup.
 
 ## Configuration
 

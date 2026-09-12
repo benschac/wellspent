@@ -97,21 +97,24 @@ export class GoogleCalendarService {
   }
 
   async getStatus(userId: string): Promise<{
+    enabled: boolean;
     calendarId?: string;
     connected: boolean;
     reconnectRequired: boolean;
     watchExpiresAt?: string;
   }> {
-    this.config.assertEnabled();
+    if (!this.config.enabled)
+      return { enabled: false, connected: false, reconnectRequired: false };
     const connection = await this.repository.findConnectionByUserId(userId);
     if (connection === undefined) {
-      return { connected: false, reconnectRequired: false };
+      return { enabled: true, connected: false, reconnectRequired: false };
     }
     const subscription = await this.repository.findSubscriptionByConnectionId(
       connection.id,
     );
     const authorization = await this.oauth.status(userId, "calendar");
     return {
+      enabled: true,
       connected: connection.status === "connected" && authorization.authorized,
       reconnectRequired:
         connection.status === "reconnect_required" || !authorization.authorized,

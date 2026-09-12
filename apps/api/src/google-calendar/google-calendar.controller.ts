@@ -7,12 +7,17 @@ import {
   Inject,
   Post,
   Query,
+  Res,
   UseGuards,
   ValidationPipe,
 } from "@nestjs/common";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import { SupabaseAuthGuard } from "../auth/supabase-auth.guard.js";
+import {
+  type GoogleCallbackResponse,
+  GoogleCallbackService,
+} from "../google/google-callback.service.js";
 import { GoogleCallbackQueryDto } from "../google/google-callback-query.dto.js";
 import { GoogleCalendarService } from "./google-calendar.service.js";
 
@@ -21,6 +26,8 @@ export class GoogleCalendarController {
   constructor(
     @Inject(GoogleCalendarService)
     private readonly service: GoogleCalendarService,
+    @Inject(GoogleCallbackService)
+    private readonly callbackService: GoogleCallbackService,
   ) {}
 
   @Get("connect")
@@ -35,8 +42,13 @@ export class GoogleCalendarController {
   callback(
     @Query(new ValidationPipe({ expectedType: GoogleCallbackQueryDto }))
     query: GoogleCallbackQueryDto,
-  ): Promise<{ calendarId: string; connected: true }> {
-    return this.service.completeAuthorization(query);
+    @Res({ passthrough: true }) response: GoogleCallbackResponse,
+  ) {
+    return this.callbackService.complete(
+      "calendar",
+      () => this.service.completeAuthorization(query),
+      response,
+    );
   }
 
   @Get("status")

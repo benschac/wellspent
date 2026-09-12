@@ -13,6 +13,14 @@ export class GoogleCalendarConfig {
     return this.config.get("GOOGLE_CALENDAR_ENABLED", { infer: true });
   }
 
+  get serverless(): boolean {
+    return this.config.get("VERCEL", { infer: true }) === "1";
+  }
+
+  get cronSecret(): string | undefined {
+    return this.config.get("CRON_SECRET", { infer: true });
+  }
+
   assertEnabled(): void {
     if (!this.enabled) {
       throw new ServiceUnavailableException(

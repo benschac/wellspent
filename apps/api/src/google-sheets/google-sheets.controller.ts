@@ -7,12 +7,17 @@ import {
   Inject,
   Post,
   Query,
+  Res,
   UseGuards,
   ValidationPipe,
 } from "@nestjs/common";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import { SupabaseAuthGuard } from "../auth/supabase-auth.guard.js";
+import {
+  type GoogleCallbackResponse,
+  GoogleCallbackService,
+} from "../google/google-callback.service.js";
 import { GoogleCallbackQueryDto } from "../google/google-callback-query.dto.js";
 import { GoogleSheetsService } from "./google-sheets.service.js";
 
@@ -20,6 +25,8 @@ import { GoogleSheetsService } from "./google-sheets.service.js";
 export class GoogleSheetsController {
   constructor(
     @Inject(GoogleSheetsService) private readonly service: GoogleSheetsService,
+    @Inject(GoogleCallbackService)
+    private readonly callbackService: GoogleCallbackService,
   ) {}
   @Get("connect")
   @UseGuards(SupabaseAuthGuard)
@@ -30,8 +37,13 @@ export class GoogleSheetsController {
   callback(
     @Query(new ValidationPipe({ expectedType: GoogleCallbackQueryDto }))
     input: GoogleCallbackQueryDto,
+    @Res({ passthrough: true }) response: GoogleCallbackResponse,
   ) {
-    return this.service.callback(input);
+    return this.callbackService.complete(
+      "sheets",
+      () => this.service.callback(input),
+      response,
+    );
   }
   @Get("status")
   @UseGuards(SupabaseAuthGuard)

@@ -15,10 +15,24 @@ const server = {
   CORS_ORIGIN: z
     .string()
     .default("http://localhost:3000,http://localhost:8081"),
+  CRON_SECRET: z.string().min(16).optional(),
   DATABASE_URL: z.url(),
   GOOGLE_CALENDAR_ENABLED: z.stringbool().default(false),
   GOOGLE_CALENDAR_TOKEN_ENCRYPTION_KEY: z.string().optional(),
   GOOGLE_CALENDAR_WEBHOOK_URL: z.url().optional(),
+  GOOGLE_INTEGRATIONS_RETURN_URL: z
+    .url({ protocol: /^https?$/ })
+    .refine((value) => {
+      if (!URL.canParse(value)) return false;
+      const url = new URL(value);
+      return (
+        !url.username &&
+        !url.password &&
+        (url.protocol === "https:" ||
+          ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname))
+      );
+    }, "Google return URL must use HTTPS or HTTP loopback without credentials")
+    .optional(),
   GOOGLE_SHEETS_ENABLED: z.stringbool().default(false),
   GOOGLE_SHEETS_OAUTH_REDIRECT_URI: z.url().optional(),
   GOOGLE_OAUTH_CLIENT_ID: z.string().min(1).optional(),
@@ -27,6 +41,7 @@ const server = {
   PORT: z.coerce.number().int().min(1).max(65_535).default(3001),
   SUPABASE_PUBLISHABLE_KEY: z.string().min(1).optional(),
   SUPABASE_URL: z.url().optional(),
+  VERCEL: z.string().optional(),
 };
 
 export interface Environment {
@@ -39,10 +54,12 @@ export interface Environment {
   APPLE_APNS_TEAM_ID?: string | undefined;
   APPLE_LIVE_ACTIVITY_PUSH_ENABLED: boolean;
   CORS_ORIGIN: string;
+  CRON_SECRET?: string | undefined;
   DATABASE_URL: string;
   GOOGLE_CALENDAR_ENABLED: boolean;
   GOOGLE_CALENDAR_TOKEN_ENCRYPTION_KEY?: string | undefined;
   GOOGLE_CALENDAR_WEBHOOK_URL?: string | undefined;
+  GOOGLE_INTEGRATIONS_RETURN_URL?: string | undefined;
   GOOGLE_SHEETS_ENABLED: boolean;
   GOOGLE_SHEETS_OAUTH_REDIRECT_URI?: string | undefined;
   GOOGLE_OAUTH_CLIENT_ID?: string | undefined;
@@ -51,6 +68,7 @@ export interface Environment {
   PORT: number;
   SUPABASE_PUBLISHABLE_KEY?: string | undefined;
   SUPABASE_URL?: string | undefined;
+  VERCEL?: string | undefined;
 }
 
 export function validateEnvironment(

@@ -1,18 +1,22 @@
 "use client";
 
-import type { ApiClient } from "@repo/api-client";
+import type { ApiClient, GoogleIntegrationsClient } from "@repo/api-client";
 import { type FormEvent, useEffect, useState } from "react";
 import { elapsedAt, errorMessage, formatDuration } from "./focus-state";
+import { googleEligibleSessionIds } from "./google-integration-state";
+import { GoogleIntegrations } from "./google-integrations";
 import { SessionDetail } from "./session-detail";
 import { useFocusSessions } from "./use-focus-sessions";
 
 export function FocusWorkspace({
   api,
+  google,
   userId,
   email,
   onSignOut,
 }: {
   api: ApiClient;
+  google: GoogleIntegrationsClient;
   userId: string;
   email: string;
   onSignOut: () => Promise<void>;
@@ -20,9 +24,14 @@ export function FocusWorkspace({
   const focus = useFocusSessions(api, userId);
   const [intention, setIntention] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [shareIds, setShareIds] = useState<Set<string>>(() => new Set());
   const [now, setNow] = useState(() => Date.now());
   const [signingOut, setSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const eligibleIds = googleEligibleSessionIds(focus.sessions, focus.pending);
+  const selectedShareIds = Array.from(shareIds).filter((id) =>
+    eligibleIds.has(id),
+  );
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(interval);
@@ -132,6 +141,11 @@ export function FocusWorkspace({
           </button>
         </form>
       )}
+      <GoogleIntegrations
+        client={google}
+        sessionIds={selectedShareIds}
+        sessions={focus.sessions}
+      />
       <div className="focus-columns">
         <aside className="focus-card focus-history">
           <h2>Your sessions</h2>
@@ -162,6 +176,31 @@ export function FocusWorkspace({
                       {new Date(session.createdAt).toLocaleDateString()}
                     </small>
                   </button>
+                  {session.status === "completed" && (
+                    <label className="focus-check focus-share-check">
+                      <input
+                        type="checkbox"
+                        aria-label={`Select ${session.intention} for Google sharing`}
+                        checked={
+                          eligibleIds.has(session.id) &&
+                          shareIds.has(session.id)
+                        }
+                        disabled={!eligibleIds.has(session.id)}
+                        onChange={(event) => {
+                          const checked = event.target.checked;
+                          setShareIds((current) => {
+                            const next = new Set(current);
+                            if (checked) next.add(session.id);
+                            else next.delete(session.id);
+                            return next;
+                          });
+                        }}
+                      />
+                      {eligibleIds.has(session.id)
+                        ? "Select for sharing"
+                        : "Waiting to sync"}
+                    </label>
+                  )}
                 </li>
               ))}
             </ul>
