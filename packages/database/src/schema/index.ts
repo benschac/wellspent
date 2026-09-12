@@ -115,6 +115,77 @@ export const focusSessions = appSchema
   )
   .enableRLS();
 
+/** Account-owned activity; a timer is optional and never inferred from activity. */
+export const workLogEntries = appSchema
+  .table(
+    "work_log_entries",
+    {
+      rowId: uuid("row_id").primaryKey().defaultRandom(),
+      userId: uuid("user_id")
+        .notNull()
+        .references(() => profiles.id, { onDelete: "cascade" }),
+      id: uuid("id").notNull(),
+      occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+      receivedAt: timestamp("received_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+      source: text("source").$type<"codex" | "cli" | "mcp">().notNull(),
+      sourceSessionId: text("source_session_id").notNull(),
+      kind: text("kind")
+        .$type<"tool_completed" | "turn_completed" | "note">()
+        .notNull(),
+      summary: text("summary").notNull(),
+      project: text("project"),
+      sessionId: uuid("session_id").references(() => focusSessions.id, {
+        onDelete: "set null",
+      }),
+      fingerprint: text("fingerprint").notNull(),
+    },
+    (table) => [
+      uniqueIndex("work_log_entries_user_event_unique").on(
+        table.userId,
+        table.id,
+      ),
+      index("work_log_entries_user_time_idx").on(
+        table.userId,
+        table.occurredAt,
+        table.id,
+      ),
+      check(
+        "work_log_entries_source_check",
+        sql`${table.source} in ('codex', 'cli', 'mcp')`,
+      ),
+      check(
+        "work_log_entries_kind_check",
+        sql`${table.kind} in ('tool_completed', 'turn_completed', 'note')`,
+      ),
+    ],
+  )
+  .enableRLS();
+
+export const workLogTokens = appSchema
+  .table(
+    "work_log_tokens",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      userId: uuid("user_id")
+        .notNull()
+        .references(() => profiles.id, { onDelete: "cascade" }),
+      label: text("label").notNull(),
+      tokenHash: text("token_hash").notNull(),
+      createdAt: timestamp("created_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+      expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+      revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    },
+    (table) => [
+      uniqueIndex("work_log_tokens_hash_unique").on(table.tokenHash),
+      index("work_log_tokens_user_idx").on(table.userId),
+    ],
+  )
+  .enableRLS();
+
 export const focusTransitions = appSchema
   .table(
     "focus_transitions",

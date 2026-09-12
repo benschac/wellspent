@@ -18,6 +18,8 @@ import {
 } from "@repo/session-domain";
 import type { UIMessage, UIMessageChunk } from "ai";
 import { z } from "zod";
+import { workLogContract } from "./work-log.ts";
+export * from "./work-log.ts";
 
 export type {
   AddFocusNoteInput,
@@ -42,6 +44,11 @@ export {
   workEventInputSchema,
   workEventSchema,
 } from "@repo/session-domain";
+export {
+  focusChangedEvent,
+  focusChangedSchema,
+  focusNotificationTopic,
+} from "./focus-notifications.ts";
 
 export const focusContract = {
   list: oc
@@ -235,6 +242,7 @@ export const realtimeTimerCommandAckSchema = z
   .strict();
 
 export const apiContract = {
+  workLog: workLogContract,
   focus: focusContract,
   assistant: {
     chat: oc

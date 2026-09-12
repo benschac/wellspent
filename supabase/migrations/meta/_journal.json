@@ -43,6 +43,20 @@
       "when": 1788734552747,
       "tag": "20260906224232_persist_realtime_timer",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788794065074,
+      "tag": "20260907151425_focus_realtime_authorization",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1788870506175,
+      "tag": "20260908122826_work_log",
+      "breakpoints": true
     }
   ]
 }

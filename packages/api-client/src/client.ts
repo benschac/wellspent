@@ -9,7 +9,12 @@ import type { RouterUtils } from "@orpc/tanstack-query";
 import { createTanstackQueryUtils } from "@orpc/tanstack-query";
 import { apiContract } from "@repo/api-contract";
 
-export { focusSessionSchema } from "@repo/api-contract";
+export {
+  focusChangedEvent,
+  focusChangedSchema,
+  focusNotificationTopic,
+  focusSessionSchema,
+} from "@repo/api-contract";
 export {
   type CalendarPublication,
   createGoogleIntegrationsClient,

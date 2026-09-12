@@ -4,8 +4,10 @@
     "dev": {
       "env": ["AI_GATEWAY_API_KEY", "AI_MODEL", "DATABASE_URL"],
       "passThroughEnv": [
+        "FOCUS_REALTIME_ENABLED",
         "SUPABASE_URL",
         "SUPABASE_PUBLISHABLE_KEY",
+        "SUPABASE_SECRET_KEY",
         "GOOGLE_CALENDAR_*",
         "GOOGLE_SHEETS_*",
         "GOOGLE_OAUTH_*",
@@ -23,12 +25,14 @@
         "CORS_ORIGIN",
         "CRON_SECRET",
         "DATABASE_URL",
+        "FOCUS_REALTIME_ENABLED",
         "GOOGLE_CALENDAR_*",
         "GOOGLE_INTEGRATIONS_*",
         "GOOGLE_SHEETS_*",
         "GOOGLE_OAUTH_*",
         "PORT",
         "SUPABASE_PUBLISHABLE_KEY",
+        "SUPABASE_SECRET_KEY",
         "SUPABASE_URL",
         "VERCEL"
       ]

@@ -12,6 +12,7 @@ import { GoogleSheetsModule } from "./google-sheets/google-sheets.module.js";
 import { HealthModule } from "./health/health.module.js";
 import { ProfileModule } from "./profile/profile.module.js";
 import { RealtimeModule } from "./realtime/realtime.module.js";
+import { WorkLogModule } from "./work-log/work-log.module.js";
 
 const orpcLogger = new Logger("oRPC");
 
@@ -38,6 +39,7 @@ const orpcLogger = new Logger("oRPC");
     ProfileModule,
     RealtimeModule,
     FocusModule,
+    WorkLogModule,
   ],
 })
 export class AppModule {}

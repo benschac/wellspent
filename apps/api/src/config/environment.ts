@@ -17,6 +17,7 @@ const server = {
     .default("http://localhost:3000,http://localhost:8081"),
   CRON_SECRET: z.string().min(16).optional(),
   DATABASE_URL: z.url(),
+  FOCUS_REALTIME_ENABLED: z.stringbool().default(false),
   GOOGLE_CALENDAR_ENABLED: z.stringbool().default(false),
   GOOGLE_CALENDAR_TOKEN_ENCRYPTION_KEY: z.string().optional(),
   GOOGLE_CALENDAR_WEBHOOK_URL: z.url().optional(),
@@ -40,6 +41,7 @@ const server = {
   GOOGLE_OAUTH_REDIRECT_URI: z.url().optional(),
   PORT: z.coerce.number().int().min(1).max(65_535).default(3001),
   SUPABASE_PUBLISHABLE_KEY: z.string().min(1).optional(),
+  SUPABASE_SECRET_KEY: z.string().min(1).optional(),
   SUPABASE_URL: z.url().optional(),
   VERCEL: z.string().optional(),
 };
@@ -56,6 +58,7 @@ export interface Environment {
   CORS_ORIGIN: string;
   CRON_SECRET?: string | undefined;
   DATABASE_URL: string;
+  FOCUS_REALTIME_ENABLED?: boolean | undefined;
   GOOGLE_CALENDAR_ENABLED: boolean;
   GOOGLE_CALENDAR_TOKEN_ENCRYPTION_KEY?: string | undefined;
   GOOGLE_CALENDAR_WEBHOOK_URL?: string | undefined;
@@ -67,6 +70,7 @@ export interface Environment {
   GOOGLE_OAUTH_REDIRECT_URI?: string | undefined;
   PORT: number;
   SUPABASE_PUBLISHABLE_KEY?: string | undefined;
+  SUPABASE_SECRET_KEY?: string | undefined;
   SUPABASE_URL?: string | undefined;
   VERCEL?: string | undefined;
 }
@@ -79,6 +83,15 @@ export function validateEnvironment(
     runtimeEnv: environment,
     emptyStringAsUndefined: true,
   });
+
+  if (
+    validated.FOCUS_REALTIME_ENABLED &&
+    (!validated.SUPABASE_URL || !validated.SUPABASE_SECRET_KEY)
+  ) {
+    throw new Error(
+      "SUPABASE_URL and server-only SUPABASE_SECRET_KEY are required for focus Realtime notifications",
+    );
+  }
 
   if (validated.APPLE_LIVE_ACTIVITY_PUSH_ENABLED) {
     const requiredKeys = [

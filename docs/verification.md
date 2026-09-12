@@ -20,6 +20,8 @@ These checks do not demonstrate browser IndexedDB transactions, React lifecycle 
 
 ## Static checks, builds, and HTTP smoke
 
+For optional private focus notifications, configuration and the rollback-only Realtime authorization test are documented in [focus live notifications](focus-realtime.md). The fast focus suite includes notification publisher/subscriber tests; these are separate from rendered-browser and hosted delivery acceptance.
+
 ### Vercel API compilation
 
 The API's `vercel.json` installs with Bun 1.4.0 and `--frozen-lockfile` because
@@ -58,6 +60,13 @@ node apps/api/test/focus-http.smoke.mjs
 ```
 
 The smoke helper requires the running, migrated Timer Supabase stack; validates the local API/database addresses; builds and starts its own API; creates disposable Auth users; exercises real JWTs, routes, token scope, hook delivery, and API restart; then removes its test users and stops its process. It is intentionally outside the fast suite. It does not install hooks into a live Codex session. See [capture setup](../integrations/codex/README.md) for that separate acceptance boundary.
+
+## Session-independent work log
+
+For the session-independent CLI/MCP work-log checks, including rollback-only
+Postgres and real subprocess HTTP acceptance, see [work-log verification](work-log.md#verification).
+These tests do not require creating a focus session. Installed-harness and
+production acceptance remain separate from the local fixtures.
 
 ## Shared timer restart persistence
 

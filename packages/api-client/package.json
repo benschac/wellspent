@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/client.ts"
+    ".": "./src/client.ts",
+    "./work-log": "./src/work-log.ts"
   },
   "scripts": {
     "lint": "biome check .",
