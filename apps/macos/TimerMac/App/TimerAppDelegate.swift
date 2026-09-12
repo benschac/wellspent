@@ -41,12 +41,17 @@ final class TimerAppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         if terminationTask != nil { return .terminateLater }
         guard isRunning else { return .terminateNow }
-        isRunning = false
-        focusShortcut.unregister()
-        NSWorkspace.shared.notificationCenter.removeObserver(self)
         terminationTask = Task {
-            await composition.shutdown()
-            sender.reply(toApplicationShouldTerminate: true)
+            let canTerminate = await composition.shutdown()
+            if canTerminate {
+                isRunning = false
+                focusShortcut.unregister()
+                NSWorkspace.shared.notificationCenter.removeObserver(self)
+            } else {
+                composition.windows.showRecordingWindow()
+                terminationTask = nil
+            }
+            sender.reply(toApplicationShouldTerminate: canTerminate)
         }
         return .terminateLater
     }

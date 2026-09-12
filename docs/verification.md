@@ -83,6 +83,10 @@ Deploy/apply `20260906224232_persist_realtime_timer.sql` before using the persis
 
 ## Native acceptance
 
+### Synthetic macOS recording
+
+`bun run --cwd apps/macos test` includes local recording domain, SQLite, recovery, failure and hosted-window tests. `bun run --cwd apps/macos test:recording:crash` separately compiles production repository code into a disposable helper, kills only that helper at four transaction/migration checkpoints, then verifies recovery in another process. It uses unique temporary databases, never the user's preview store or a backend. See [implementation evidence and remaining live gates](design/2026-09-12-macos-synthetic-recording-proof.md).
+
 ### Shared timer sync indicators
 
 The homepage web timer, Expo mobile timer, and macOS timer expose Connecting, Connected, Offline, and Sync error. Connected requires a validated persisted snapshot, not merely an open socket. Diagnostics show the active WebSocket endpoint with credentials/query/fragment removed, the last server revision, and pending/unconfirmed action counts.

@@ -11,21 +11,24 @@ final class TimerWindowCoordinator {
     @ObservationIgnored private let sidebar: TimerSidebarController
     @ObservationIgnored private let focusModel: FocusModel
     @ObservationIgnored private let focusAuth: FocusAuthModel
+    @ObservationIgnored private let recording: RecordingModel
     @ObservationIgnored private let prepareFocusAction: @MainActor () async -> Void
     @ObservationIgnored private var focusRefreshTask: Task<Void, Never>?
     @ObservationIgnored private(set) var settingsWindow: NSWindow?
     @ObservationIgnored private(set) var mainWindow: NSWindow?
     @ObservationIgnored private(set) var focusWindow: NSWindow?
+    @ObservationIgnored private(set) var recordingWindow: NSWindow?
 
     init(
         model: TimerModel, sidebar: TimerSidebarController,
-        focusModel: FocusModel, focusAuth: FocusAuthModel,
+        focusModel: FocusModel, focusAuth: FocusAuthModel, recording: RecordingModel,
         prepareFocus: @escaping @MainActor () async -> Void
     ) {
         self.model = model
         self.sidebar = sidebar
         self.focusModel = focusModel
         self.focusAuth = focusAuth
+        self.recording = recording
         self.prepareFocusAction = prepareFocus
     }
 
@@ -98,15 +101,26 @@ final class TimerWindowCoordinator {
 
     func quit() { NSApplication.shared.terminate(nil) }
 
+    func showRecordingWindow() {
+        if recordingWindow == nil {
+            recordingWindow = makeWindow(
+                title: "Recording preview", size: CGSize(width: 900, height: 660),
+                view: RecordingWindowView().environment(recording))
+        }
+        NSApplication.shared.activate()
+        recordingWindow?.makeKeyAndOrderFront(nil)
+    }
+
     func shutdown() {
         focusRefreshTask?.cancel()
-        for window in [settingsWindow, mainWindow, focusWindow] {
+        for window in [settingsWindow, mainWindow, focusWindow, recordingWindow] {
             window?.orderOut(nil)
             window?.contentView = nil
         }
         settingsWindow = nil
         mainWindow = nil
         focusWindow = nil
+        recordingWindow = nil
     }
 
     private func makeWindow(title: String, size: CGSize, view: some View) -> NSWindow {

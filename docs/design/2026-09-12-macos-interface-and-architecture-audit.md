@@ -2,6 +2,8 @@
 
 Date: September 12, 2026. Status: audit and recommendations, with the step 2 ownership extraction now implemented and automatically verified in the working tree. See the completion evidence below. Recording activation is not implemented.
 
+Follow-up: [synthetic local recording](2026-09-12-macos-synthetic-recording-proof.md) now implements the next durability slice under `Features/Recording/` and `Services/Recording/`. Live collection remains disabled; the original findings below describe the audit baseline.
+
 The current SwiftUI/AppKit foundation is appropriate. The next useful architectural investment is explicit ownership of application lifecycle, recording, and durable data. Keep the existing observable models and native presentation, and introduce boundaries as each feature needs them.
 
 ## Evidence and scope

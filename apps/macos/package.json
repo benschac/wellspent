@@ -8,6 +8,7 @@
     "build": "xcodebuild -project TimerMac.xcodeproj -scheme TimerMac -configuration Debug -destination 'platform=macOS' -derivedDataPath .derivedData CODE_SIGNING_ALLOWED=NO build",
     "format": "bash ./scripts/swift-format.sh format",
     "lint": "bash ./scripts/swift-format.sh lint",
+    "test:recording:crash": "node ./scripts/recording-durability.mjs",
     "test": "xcodebuild -project TimerMac.xcodeproj -scheme TimerMac -configuration Debug -destination 'platform=macOS' -derivedDataPath .derivedData CODE_SIGNING_ALLOWED=NO test"
   }
 }
