@@ -1,6 +1,7 @@
 "use client";
 
 import type { ApiClient, GoogleIntegrationsClient } from "@repo/api-client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { type FormEvent, useEffect, useState } from "react";
 import { elapsedAt, errorMessage, formatDuration } from "./focus-state";
 import { googleEligibleSessionIds } from "./google-integration-state";
@@ -9,19 +10,21 @@ import { SessionDetail } from "./session-detail";
 import { useFocusSessions } from "./use-focus-sessions";
 
 export function FocusWorkspace({
+  supabase,
   api,
   google,
   userId,
   email,
   onSignOut,
 }: {
+  supabase: SupabaseClient;
   api: ApiClient;
   google: GoogleIntegrationsClient;
   userId: string;
   email: string;
   onSignOut: () => Promise<void>;
 }) {
-  const focus = useFocusSessions(api, userId);
+  const focus = useFocusSessions(api, userId, supabase);
   const [intention, setIntention] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [shareIds, setShareIds] = useState<Set<string>>(() => new Set());

@@ -1,6 +1,9 @@
 "use client";
 
-import { createApiClient, createGoogleIntegrationsClient } from "@repo/api-client";
+import {
+  createApiClient,
+  createGoogleIntegrationsClient,
+} from "@repo/api-client";
 import {
   createClient,
   type Session,
@@ -8,6 +11,7 @@ import {
 } from "@supabase/supabase-js";
 import { type FormEvent, useEffect, useState } from "react";
 import { env } from "../env";
+import { WorkLogWorkspace } from "../work-log/work-log-workspace";
 import { errorMessage } from "./focus-state";
 import { FocusWorkspace } from "./focus-workspace";
 
@@ -33,7 +37,11 @@ function configuredSupabase() {
   return browserSupabase;
 }
 
-export function FocusClient() {
+export function FocusClient({
+  view = "focus",
+}: {
+  view?: "focus" | "work-log";
+}) {
   const [supabase] = useState(configuredSupabase);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -74,7 +82,7 @@ export function FocusClient() {
   if (!supabase)
     return (
       <section className="focus-card">
-        <h2>Focus sessions are almost ready</h2>
+        <h2>Your account is almost ready</h2>
         <p>
           Account sign-in hasn’t been configured for this installation yet. Ask
           the owner to connect Supabase Auth.
@@ -94,9 +102,10 @@ export function FocusClient() {
           key={session.user.id}
           supabase={supabase}
           session={session}
+          view={view}
         />
       ) : (
-        <AuthForm supabase={supabase} />
+        <AuthForm supabase={supabase} view={view} />
       )}
     </>
   );
@@ -105,9 +114,11 @@ export function FocusClient() {
 function AuthenticatedFocus({
   supabase,
   session,
+  view,
 }: {
   supabase: SupabaseClient;
   session: Session;
+  view: "focus" | "work-log";
 }) {
   const [clients] = useState(() => {
     const options = {
@@ -124,8 +135,21 @@ function AuthenticatedFocus({
       google: createGoogleIntegrationsClient(env.NEXT_PUBLIC_API_URL, options),
     };
   });
+  if (view === "work-log") {
+    return (
+      <WorkLogWorkspace
+        api={clients.api}
+        email={session.user.email ?? "Your account"}
+        onSignOut={async () => {
+          const { error } = await supabase.auth.signOut({ scope: "local" });
+          if (error) throw error;
+        }}
+      />
+    );
+  }
   return (
     <FocusWorkspace
+      supabase={supabase}
       api={clients.api}
       google={clients.google}
       userId={session.user.id}
@@ -138,7 +162,13 @@ function AuthenticatedFocus({
   );
 }
 
-function AuthForm({ supabase }: { supabase: SupabaseClient }) {
+function AuthForm({
+  supabase,
+  view,
+}: {
+  supabase: SupabaseClient;
+  view: "focus" | "work-log";
+}) {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -156,7 +186,7 @@ function AuthForm({ supabase }: { supabase: SupabaseClient }) {
           ? await supabase.auth.signUp({
               email,
               password,
-              options: { emailRedirectTo: `${window.location.origin}/focus` },
+              options: { emailRedirectTo: `${window.location.origin}/${view}` },
             })
           : await supabase.auth.signInWithPassword({ email, password });
       if (result.error) throw result.error;
@@ -174,11 +204,16 @@ function AuthForm({ supabase }: { supabase: SupabaseClient }) {
   return (
     <section className="focus-card focus-auth">
       <h2>
-        {mode === "signin" ? "Your focus, in one place" : "Create your account"}
+        {mode === "signin"
+          ? view === "work-log"
+            ? "Your work, in one place"
+            : "Your focus, in one place"
+          : "Create your account"}
       </h2>
       <p>
-        Save sessions and connect selected CLI activity to see what you worked
-        on.
+        {view === "work-log"
+          ? "Sign in to connect your CLI or agent and keep a history of your work. No timer session required."
+          : "Save sessions and connect selected CLI activity to see what you worked on."}
       </p>
       <form className="focus-form" onSubmit={submit}>
         <label htmlFor="focus-email">Email</label>

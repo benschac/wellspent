@@ -3,6 +3,8 @@ node_modules/
 .cache/
 dist/
 .next/
+.next-local/
+.next-prod-api/
 .expo/
 /apps/mobile/ios/
 /apps/mobile/android/

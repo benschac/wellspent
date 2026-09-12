@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
+import { BackendProfileBanner } from "./backend-profile-banner";
 import { QueryProvider } from "./query-provider";
 
 export const metadata: Metadata = {
@@ -14,6 +15,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body suppressHydrationWarning>
+        <BackendProfileBanner />
         <QueryProvider>{children}</QueryProvider>
       </body>
     </html>

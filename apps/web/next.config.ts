@@ -2,10 +2,12 @@ import "./app/env";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  distDir: process.env.WELLSPENT_NEXT_DIST_DIR || ".next",
   reactCompiler: true,
   transpilePackages: [
     "@repo/api-client",
     "@repo/api-contract",
+    "@repo/lib",
     "@repo/session-domain",
     "@repo/timer",
   ],

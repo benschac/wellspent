@@ -2,7 +2,10 @@
 
 import type { ApiClient } from "@repo/api-client";
 import { useAbortController } from "@repo/lib/hooks/use-abort-controller";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
+import { env } from "../env";
+import { subscribeToFocusChanges } from "./focus-notifications";
 import { createFocusOutbox } from "./focus-outbox";
 import {
   createFocusSessionSync,
@@ -13,6 +16,7 @@ import type { FocusCommand } from "./focus-state";
 export function useFocusSessions(
   api: ApiClient,
   userId: string,
+  supabase: SupabaseClient,
 ) {
   const [state, setState] = useState(initialFocusSessionsState);
   const requests = useAbortController();
@@ -91,6 +95,11 @@ export function useFocusSessions(
       sync.current = null;
     };
   }, [api, userId, requests]);
+
+  useEffect(() => {
+    if (!env.NEXT_PUBLIC_FOCUS_REALTIME_ENABLED) return;
+    return subscribeToFocusChanges(supabase, userId, changed);
+  }, [supabase, userId]);
 
   return {
     ...state,

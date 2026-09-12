@@ -21,6 +21,9 @@ export default function FocusPage() {
           <p className="lede">
             Choose an intention. Keep your time. See what moved forward.
           </p>
+          <Link href="/work-log" className="focus-text-button">
+            View your CLI work log
+          </Link>
         </header>
         <FocusClient />
       </div>
