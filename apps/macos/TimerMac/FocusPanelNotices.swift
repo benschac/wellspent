@@ -3,11 +3,11 @@ import SwiftUI
 struct FocusPanelNotices: View {
     @Environment(FocusAuthModel.self) private var auth
     @Environment(FocusModel.self) private var focus
-    @Environment(TimerSidebarController.self) private var sidebar
+    @Environment(TimerWindowCoordinator.self) private var windows
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            if let error = sidebar.focusShortcutError {
+            if let error = windows.focusShortcutError {
                 Label(error, systemImage: "exclamationmark.triangle")
                     .foregroundStyle(.orange)
             }
@@ -33,7 +33,7 @@ struct FocusPanelNotices: View {
         .padding(.horizontal, 20)
         .padding(
             .top,
-            auth.message != nil || focus.errorMessage != nil || sidebar.focusShortcutError != nil
+            auth.message != nil || focus.errorMessage != nil || windows.focusShortcutError != nil
                 || focus.pendingMutation != nil ? 12 : 0)
     }
 

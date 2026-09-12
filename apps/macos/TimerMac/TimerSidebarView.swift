@@ -37,7 +37,7 @@ struct TimerSidebarView: View {
                     .opacity(geometry.contentOpacity)
                     .allowsHitTesting(false)
 
-                Button("Settings", systemImage: "gearshape", action: sidebar.showSettings)
+                Button("Settings", systemImage: "gearshape", action: sidebar.openSettings)
                     .labelStyle(.iconOnly)
                     .font(.system(size: 15))
                     .frame(width: 36, height: 36)
@@ -75,8 +75,8 @@ struct TimerSidebarView: View {
         .contextMenu {
             Text("Sync: \(model.syncStatus.label)")
             Text(model.saveStatus)
-            Button("Open Timer Window", action: sidebar.showMainWindow)
-            Button("Settings…", action: sidebar.showSettings)
+            Button("Open Timer Window", action: sidebar.openTimerWindow)
+            Button("Settings…", action: sidebar.openSettings)
             Button(sidebar.isPositionLocked ? "Unlock Position" : "Lock Position") {
                 sidebar.isPositionLocked.toggle()
             }
@@ -84,7 +84,7 @@ struct TimerSidebarView: View {
             Button(sidebar.isCollapsed ? "Expand Timer" : "Collapse to Ring", action: sidebar.toggleCollapsed)
             Button("Reset Position", action: sidebar.resetPosition)
             Button("Hide Sidebar", action: sidebar.hide)
-            Button("Quit Timer", action: sidebar.quit)
+            Button("Quit Timer", action: sidebar.quitApplication)
         }
     }
 }

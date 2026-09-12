@@ -7,10 +7,9 @@ import SwiftUI
 @MainActor
 @Observable
 final class TimerSidebarController {
-    var focusShortcutError: String?
-    @ObservationIgnored let focusModel = FocusModel()
-    @ObservationIgnored let focusAuth = FocusAuthModel()
-    @ObservationIgnored private var focusWindow: NSWindow?
+    @ObservationIgnored var openSettings: () -> Void = {}
+    @ObservationIgnored var openTimerWindow: () -> Void = {}
+    @ObservationIgnored var quitApplication: () -> Void = {}
     private(set) var isVisible = false
     private(set) var isDragging = false
     private(set) var isResizing = false
@@ -40,8 +39,6 @@ final class TimerSidebarController {
     @ObservationIgnored private let model: TimerModel
     @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private var railPanel: TimerFloatingPanel?
-    @ObservationIgnored private var settingsWindow: NSWindow?
-    @ObservationIgnored private var mainWindow: NSWindow?
     @ObservationIgnored private var pointerTask: Task<Void, Never>?
     @ObservationIgnored private var mouseMonitors: [Any] = []
     @ObservationIgnored private var lastVisibleFrame: CGRect?
@@ -77,21 +74,6 @@ final class TimerSidebarController {
         } else {
             placement = TimerSidebarPlacement(displayID: defaults.string(forKey: "sidebarDisplay"))
         }
-    }
-
-    func prepareFocus() async {
-        focusModel.authenticatedConnection = { [weak self] in
-            guard let self else { throw CancellationError() }
-            return try await self.focusAuth.connection()
-        }
-        focusModel.authenticationRejected = { [weak self] in self?.focusAuth.requireSignIn() }
-        focusAuth.accountChanged = { [weak self] in
-            guard let self else { return }
-            self.focusModel.configureAccount(
-                apiBaseURL: self.model.apiBaseURL,
-                userID: self.focusAuth.user?.id, available: self.focusAuth.canAccess)
-        }
-        await focusAuth.configure(apiBaseURL: model.apiBaseURL)
     }
 
     func restore() {
@@ -377,72 +359,12 @@ final class TimerSidebarController {
         show()
     }
 
-    func showSettings() {
-        if settingsWindow == nil {
-            settingsWindow = makeWindow(
-                title: "Timer Settings", size: CGSize(width: 860, height: 680),
-                view: SettingsView().environment(model).environment(self).environment(focusModel).environment(focusAuth)
-            )
-            settingsWindow?.toolbarStyle = .unified
-            settingsWindow?.styleMask.insert(.fullSizeContentView)
-            settingsWindow?.titleVisibility = .hidden
-            settingsWindow?.titlebarAppearsTransparent = true
-            settingsWindow?.titlebarSeparatorStyle = .none
-            settingsWindow?.appearance = NSAppearance(named: .darkAqua)
-            settingsWindow?.isOpaque = false
-            settingsWindow?.backgroundColor = .clear
-        }
-        NSApplication.shared.activate()
-        settingsWindow?.makeKeyAndOrderFront(nil)
-    }
-
-    func showMainWindow() {
-        if mainWindow == nil {
-            mainWindow = makeWindow(
-                title: "Timer", size: CGSize(width: 560, height: 480),
-                view: TimerWindowView().environment(model).environment(self)
-            )
-        }
-        NSApplication.shared.activate()
-        mainWindow?.makeKeyAndOrderFront(nil)
-    }
-
-    func showFocusWindow() {
-        if focusWindow == nil {
-            focusWindow = makeWindow(
-                title: "Focus", size: CGSize(width: 680, height: 460),
-                view: FocusWindowView().environment(model).environment(self).environment(focusModel).environment(
-                    focusAuth)
-            )
-            focusWindow?.styleMask.insert(.fullSizeContentView)
-            focusWindow?.titleVisibility = .hidden
-            focusWindow?.titlebarAppearsTransparent = true
-            focusWindow?.isOpaque = false
-            focusWindow?.backgroundColor = .clear
-            focusWindow?.isMovableByWindowBackground = true
-            for button in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
-                focusWindow?.standardWindowButton(button)?.isHidden = true
-            }
-        }
-        NSApplication.shared.activate()
-        focusWindow?.deminiaturize(nil)
-        focusWindow?.makeKeyAndOrderFront(nil)
-        Task {
-            await prepareFocus()
-            await focusAuth.resume()
-            await focusModel.refresh()
-        }
-    }
-
-    func quit() { NSApplication.shared.terminate(nil) }
-
     func shutdown() {
         stopWatchingPointer()
         stopSettling()
-        for window in [railPanel, settingsWindow, mainWindow, focusWindow] {
-            window?.orderOut(nil)
-            window?.contentView = nil
-        }
+        railPanel?.orderOut(nil)
+        railPanel?.contentView = nil
+        railPanel = nil
     }
 
     private func present(_ proposedFrame: CGRect) {
@@ -553,18 +475,5 @@ final class TimerSidebarController {
         let path = TimerSidebarShape(edge: shapeEdge, detachment: detachment).path(
             in: CGRect(origin: .zero, size: bodyFrame.size))
         railPanel.ignoresMouseEvents = !path.contains(point) && !geometry.handleGeometry.hitPath.contains(point)
-    }
-
-    private func makeWindow(title: String, size: CGSize, view: some View) -> NSWindow {
-        let window = NSWindow(
-            contentRect: CGRect(origin: .zero, size: size),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false
-        )
-        window.title = title
-        window.isReleasedWhenClosed = false
-        window.isRestorable = false
-        window.contentView = NSHostingView(rootView: view)
-        window.center()
-        return window
     }
 }

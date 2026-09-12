@@ -187,6 +187,33 @@ struct FocusAuthTests {
     }
 
     @Test
+    func shutdownRejectsLateRefreshWithoutDeletingCredentials() async throws {
+        let store = try expiredStore()
+        let savedCredentials = store.values
+        let transport = AuthTransport(replies: [.heldSuccess])
+        let auth = model(store, transport)
+        let restoring = Task { await auth.configure(apiBaseURL: api, environment: environment) }
+        await transport.waitUntilHeld()
+        auth.shutdown()
+        await transport.release()
+        await restoring.value
+        #expect(store.values == savedCredentials)
+        #expect(auth.user?.id == AuthTransport.userID)
+        await #expect(throws: CancellationError.self) { try await auth.connection() }
+        await auth.resume()
+        await auth.configure(apiBaseURL: api, environment: environment)
+        #expect(await transport.count == 1)
+        #expect(store.values == savedCredentials)
+
+        // Stopping process services is not sign-out: the next process can restore them.
+        let nextTransport = AuthTransport(replies: [.success])
+        let restarted = model(store, nextTransport)
+        await restarted.configure(apiBaseURL: api, environment: environment)
+        #expect(restarted.canAccess)
+        restarted.shutdown()
+    }
+
+    @Test
     func signOutDuringRefreshCannotResurrectAccountOrKeychain() async throws {
         let store = try expiredStore()
         let transport = AuthTransport(replies: [.heldSuccess, .logout])

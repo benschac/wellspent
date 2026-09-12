@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsDetailView: View {
     @Environment(TimerModel.self) private var model
+    @Environment(TimerWindowCoordinator.self) private var windows
     @Environment(TimerSidebarController.self) private var sidebar
     @State private var apiBaseURL = ""
     @State private var stopwatchAccessToken = ""
@@ -15,9 +16,9 @@ struct SettingsDetailView: View {
         Form {
             if selectedCategory == .accounts {
                 Section("Focus sessions") {
-                    Button("Open Focus", systemImage: "scope", action: sidebar.showFocusWindow)
+                    Button("Open Focus", systemImage: "scope", action: windows.showFocusWindow)
                     Text("Global shortcut: ⌃⌥⌘F (Control–Option–Command–F)").font(.footnote)
-                    if let error = sidebar.focusShortcutError { Text(error).foregroundStyle(.orange) }
+                    if let error = windows.focusShortcutError { Text(error).foregroundStyle(.orange) }
                     FocusAccountSettings()
                 }
             }
@@ -26,7 +27,7 @@ struct SettingsDetailView: View {
                     HStack {
                         Button(
                             "Open Timer Window", systemImage: "arrow.up.left.and.arrow.down.right",
-                            action: sidebar.showMainWindow)
+                            action: windows.showMainWindow)
                         Spacer()
                         Button("Reset Timer", action: model.reset)
                             .disabled(!model.isRunning && model.displayElapsedMilliseconds == 0)
@@ -102,7 +103,7 @@ struct SettingsDetailView: View {
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
         .onAppear(perform: loadDrafts)
-        .task { await sidebar.prepareFocus() }
+        .task { await windows.prepareFocus() }
         .confirmationDialog("Change backend and discard local Focus work?", isPresented: $confirmBackendChange) {
             Button("Change Backend", role: .destructive, action: apply)
             Button("Cancel", role: .cancel) {}
@@ -128,6 +129,6 @@ struct SettingsDetailView: View {
     private func apply() {
         // Focus credentials never touch the shared stopwatch connection or its queue.
         model.applySettings(apiBaseURL: apiBaseURL, accessToken: stopwatchAccessToken)
-        Task { await sidebar.prepareFocus() }
+        Task { await windows.prepareFocus() }
     }
 }

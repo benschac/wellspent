@@ -5,6 +5,8 @@ import Observation
 @MainActor
 @Observable
 final class TimerModel {
+    private(set) var isStarted = false
+    @ObservationIgnored private var isShutDown = false
     private(set) var displayElapsedMilliseconds = 0.0
     private(set) var isRunning = false
     private(set) var connectionState = ConnectionState.disconnected
@@ -40,8 +42,6 @@ final class TimerModel {
         baselineSystemUptime = clock.systemUptime()
         apiBaseURL = settingsStore.apiBaseURL
         accessToken = self.keychainStore.readToken()
-
-        startLifecycle()
     }
 
     isolated deinit {
@@ -51,9 +51,9 @@ final class TimerModel {
         wakeTask?.cancel()
         sleepTask?.cancel()
 
-        let realtimeClient = realtimeClient
-        Task {
-            await realtimeClient.shutdown()
+        if isStarted && !isShutDown {
+            let realtimeClient = realtimeClient
+            Task { await realtimeClient.shutdown() }
         }
     }
 
@@ -177,19 +177,16 @@ final class TimerModel {
         errorMessage = nil
     }
 
-    private func startLifecycle() {
-        guard
-            realtimeEventsTask == nil,
-            wakeTask == nil,
-            sleepTask == nil
-        else {
-            return
-        }
+    /// Starts the process-lifetime service once. Shutdown is terminal because the event stream finishes.
+    func start() {
+        guard !isStarted, !isShutDown else { return }
+        isStarted = true
+        updateTicker()
 
         let events = realtimeClient.events
         realtimeEventsTask = Task { @MainActor [weak self] in
             for await event in events {
-                guard let self else {
+                guard !Task.isCancelled, let self else {
                     return
                 }
 
@@ -234,6 +231,29 @@ final class TimerModel {
         }
 
         reconnect()
+    }
+
+    func shutdown() async {
+        guard !isShutDown else { return }
+        isShutDown = true
+        isStarted = false
+        refreshProjectedElapsed()
+        realtimeEventsTask?.cancel()
+        tickerTask?.cancel()
+        wakeTask?.cancel()
+        sleepTask?.cancel()
+        // Drain serialized operations before closing the actor, so an earlier connect
+        // cannot run after shutdown. Queued operations check isStarted before executing.
+        let operation = realtimeOperationTask
+        operation?.cancel()
+        await operation?.value
+        await realtimeClient.shutdown()
+        realtimeEventsTask = nil
+        realtimeOperationTask = nil
+        tickerTask = nil
+        wakeTask = nil
+        sleepTask = nil
+        connectionState = .disconnected
     }
 
     private func reconnect() {
@@ -306,7 +326,7 @@ final class TimerModel {
         tickerTask?.cancel()
         tickerTask = nil
 
-        guard isRunning else {
+        guard isStarted, isRunning else {
             return
         }
 
@@ -332,13 +352,14 @@ final class TimerModel {
     private func scheduleRealtimeOperation(
         _ operation: @escaping @Sendable (TimerRealtimeClient) async -> Void
     ) {
+        guard isStarted else { return }
         let previousOperation = realtimeOperationTask
         let realtimeClient = realtimeClient
 
-        realtimeOperationTask = Task {
+        realtimeOperationTask = Task { [weak self] in
             await previousOperation?.value
 
-            guard !Task.isCancelled else {
+            guard !Task.isCancelled, self?.isStarted == true else {
                 return
             }
 

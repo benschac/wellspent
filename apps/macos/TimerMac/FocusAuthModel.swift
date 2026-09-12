@@ -13,6 +13,7 @@ final class FocusAuthModel {
     @ObservationIgnored private var session: FocusAuthSession?
     @ObservationIgnored private var pendingPersistence: FocusAuthSession?
     @ObservationIgnored private var generation = UUID()
+    @ObservationIgnored private var isShutDown = false
     @ObservationIgnored private var refreshTask: Task<FocusAuthSession, any Error>?
     @ObservationIgnored private var refreshTimer: Task<Void, Never>?
     @ObservationIgnored private var signInTask: Task<Void, Never>?
@@ -39,9 +40,22 @@ final class FocusAuthModel {
         signInTask?.cancel()
     }
 
+    /// Stops process-owned tasks without signing out or clearing durable credentials.
+    func shutdown() {
+        isShutDown = true
+        generation = UUID()
+        refreshTimer?.cancel()
+        refreshTask?.cancel()
+        signInTask?.cancel()
+        refreshTimer = nil
+        refreshTask = nil
+        signInTask = nil
+    }
+
     var canAccess: Bool { session != nil && !needsSignIn && !isRestoring }
 
     func configure(apiBaseURL: String, environment: [String: String] = ProcessInfo.processInfo.environment) async {
+        guard !isShutDown else { return }
         let next = try? FocusAuthConfiguration.resolve(
             apiBaseURL: apiBaseURL, environment: environment, bundled: bundledConfiguration,
             defaults: configurationDefaults)
@@ -79,7 +93,7 @@ final class FocusAuthModel {
     func signIn(email: String, password: String, onCompletion: @escaping @MainActor (Bool) -> Void = { _ in }) -> Task<
         Void, Never
     >? {
-        guard !isSigningIn, !isRestoring else { return nil }
+        guard !isShutDown, !isSigningIn, !isRestoring else { return nil }
         let task = Task {
             await performSignIn(email: email, password: password)
             if !Task.isCancelled { onCompletion(canAccess) }
@@ -97,6 +111,7 @@ final class FocusAuthModel {
     }
 
     func performSignIn(email: String, password: String) async {
+        guard !isShutDown else { return }
         guard !isSigningIn, !isRestoring, let configuration else {
             message = FocusAuthError.configuration.localizedDescription
             return
@@ -169,6 +184,7 @@ final class FocusAuthModel {
     }
 
     private func validSession() async throws -> FocusAuthSession {
+        guard !isShutDown else { throw CancellationError() }
         guard let session, let configuration, !needsSignIn else { throw FocusAuthError.expired }
         if let pendingPersistence {
             do { try install(pendingPersistence, configuration: configuration) } catch {

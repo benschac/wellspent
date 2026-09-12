@@ -7,16 +7,17 @@ struct TimerMacApp: App {
     var body: some Scene {
         MenuBarExtra {
             TimerMenuView()
-                .environment(delegate.model)
-                .environment(delegate.sidebar)
+                .environment(delegate.composition.model)
+                .environment(delegate.composition.sidebar)
+                .environment(delegate.composition.windows)
         } label: {
-            Label(delegate.model.menuBarTitle, systemImage: "timer")
-                .accessibilityLabel(delegate.model.accessibilityTimerLabel)
+            Label(delegate.composition.model.menuBarTitle, systemImage: "timer")
+                .accessibilityLabel(delegate.composition.model.accessibilityTimerLabel)
         }
         .menuBarExtraStyle(.menu)
         .commands {
             CommandGroup(replacing: .appSettings) {
-                Button("Settings…", action: delegate.sidebar.showSettings)
+                Button("Settings…", action: delegate.composition.windows.showSettings)
                     .keyboardShortcut(",", modifiers: .command)
             }
         }

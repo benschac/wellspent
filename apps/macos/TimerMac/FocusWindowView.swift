@@ -2,7 +2,7 @@ import SwiftUI
 
 struct FocusWindowView: View {
     @Environment(FocusAuthModel.self) private var auth
-    @Environment(TimerSidebarController.self) private var sidebar
+    @Environment(TimerWindowCoordinator.self) private var windows
     @Environment(FocusModel.self) private var focus
     @State private var proposedSelection: UUID?
     @State private var confirmSelection = false
@@ -93,7 +93,7 @@ struct FocusWindowView: View {
                     .labelStyle(.iconOnly).help("Refresh sessions (⌘R)")
                     .keyboardShortcut("r").disabled(focus.isBusy || !auth.canAccess)
                 Divider().frame(height: 14)
-                Button("Settings…", systemImage: "gearshape", action: sidebar.showSettings)
+                Button("Settings…", systemImage: "gearshape", action: windows.showSettings)
                     .help("Open Settings")
                 Button("Close Focus", systemImage: "xmark", action: close)
                     .labelStyle(.iconOnly).help("Close Focus (⌘W)")
