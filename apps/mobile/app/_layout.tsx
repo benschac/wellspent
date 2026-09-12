@@ -1,3 +1,4 @@
+import { useOnce } from "@repo/lib/hooks/use-once";
 import {
   focusManager,
   onlineManager,
@@ -8,7 +9,7 @@ import * as Network from "expo-network";
 import { DarkTheme, DefaultTheme, ThemeProvider } from "expo-router";
 import { Drawer } from "expo-router/drawer";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import {
   AppState,
   type AppStateStatus,
@@ -45,7 +46,7 @@ function onAppStateChange(status: AppStateStatus) {
 }
 
 export default function RootLayout() {
-  const [queryClient] = useState(() => new QueryClient());
+  const queryClient = useOnce(() => new QueryClient());
   const colorScheme = useColorScheme();
 
   useEffect(() => {

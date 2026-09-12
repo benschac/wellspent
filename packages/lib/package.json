@@ -1,0 +1,23 @@
+{
+  "name": "@repo/lib",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./hooks/use-once": "./src/hooks/use-once.ts",
+    "./hooks/use-abort-controller": "./src/hooks/use-abort-controller.ts",
+    "./hooks/use-set-timeout": "./src/hooks/use-set-timeout.ts"
+  },
+  "scripts": {
+    "lint": "biome check .",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "workspace:*",
+    "@types/react": "19.2.18",
+    "typescript": "~6.0.3"
+  },
+  "peerDependencies": {
+    "react": ">=19.2.0 <20"
+  }
+}

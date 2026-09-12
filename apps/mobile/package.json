@@ -27,6 +27,7 @@
     "@expo/metro-runtime": "~57.0.14",
     "@expo/ui": "~57.0.14",
     "@repo/api-client": "workspace:*",
+    "@repo/lib": "workspace:*",
     "@repo/liquid-ui": "workspace:*",
     "@repo/timer": "workspace:*",
     "@shopify/react-native-skia": "2.6.2",

@@ -1,6 +1,7 @@
 "use client";
 
 import type { ApiClient } from "@repo/api-client";
+import { useAbortController } from "@repo/lib/hooks/use-abort-controller";
 import {
   type FormEvent,
   useEffect,
@@ -20,10 +21,12 @@ export function SessionDetail({
   api,
   session,
   pending,
+  refreshVersion,
 }: {
   api: ApiClient;
   session: FocusSession;
   pending: boolean;
+  refreshVersion: number;
 }) {
   const [detail, setDetail] = useState<FocusDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +42,9 @@ export function SessionDetail({
     id: string;
     occurredAt: string;
   } | null>(null);
-  const request = useRef<AbortController | null>(null);
+  const writes = useAbortController();
+  const reads = useAbortController();
+  const readVersion = useRef(0);
   const sectionEventIds = new Set(
     detail?.segments.flatMap((segment) =>
       segment.events.map((event) => event.id),
@@ -49,39 +54,47 @@ export function SessionDetail({
     detail?.events.filter((event) => !sectionEventIds.has(event.id)) ?? [];
   const refresh = useEffectEvent(
     async (minimumRevision: number, signal?: AbortSignal) => {
+      const version = ++readVersion.current;
       try {
         const result = await api.focus.get(
           { sessionId: session.id },
           { signal },
         );
-        if (!signal?.aborted && result.session.revision >= minimumRevision) {
+        if (
+          !signal?.aborted &&
+          version === readVersion.current &&
+          result.session.revision >= minimumRevision
+        ) {
           setDetail(result);
           setFetchError(null);
         }
       } catch (cause) {
-        if (!signal?.aborted) setFetchError(errorMessage(cause));
+        if (!signal?.aborted && version === readVersion.current)
+          setFetchError(errorMessage(cause));
       }
     },
   );
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Server hints and recap revisions invalidate detail even when timer revision is unchanged.
   useEffect(() => {
     if (pending) return;
-    const controller = new AbortController();
-    request.current = controller;
+    const signal = reads.restart();
+    // Refreshing after our own notification must not abort an in-flight save.
     // Fetch completion updates state asynchronously; this effect owns its cancellation.
-    void refresh(session.revision, controller.signal);
+    void refresh(session.revision, signal);
     const interval = setInterval(
-      () => void refresh(session.revision, controller.signal),
+      () => void refresh(session.revision, signal),
       10_000,
     );
     return () => {
-      controller.abort();
+      reads.abort();
       clearInterval(interval);
     };
-  }, [pending, session.revision]);
+  }, [pending, session.revision, session.recapRevision, refreshVersion, reads]);
 
   async function saveRecap(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!draft) return;
+    const signal = writes.restart();
     setSaving(true);
     setError(null);
     try {
@@ -91,8 +104,9 @@ export function SessionDetail({
           text: draft.text,
           expectedRevision: draft.revision,
         },
-        { signal: request.current?.signal },
+        { signal },
       );
+      readVersion.current++;
       setDetail(next);
       setDraft(null);
     } catch (cause) {
@@ -105,6 +119,7 @@ export function SessionDetail({
   }
   async function addNote(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const signal = writes.restart();
     setSaving(true);
     setError(null);
     const signature = JSON.stringify([note.trim(), evidence.trim()]);
@@ -123,8 +138,9 @@ export function SessionDetail({
           summary: note.trim(),
           ...(evidence.trim() ? { evidenceUrl: evidence.trim() } : {}),
         },
-        { signal: request.current?.signal },
+        { signal },
       );
+      readVersion.current++;
       setDetail(next);
       setNote("");
       setEvidence("");

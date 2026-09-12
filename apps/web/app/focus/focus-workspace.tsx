@@ -273,6 +273,7 @@ export function FocusWorkspace({
               api={api}
               session={selected}
               pending={!!sessionPending}
+              refreshVersion={focus.refreshVersion}
             />
           </div>
         )}

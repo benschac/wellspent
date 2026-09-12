@@ -82,6 +82,7 @@
         "@expo/metro-runtime": "~57.0.14",
         "@expo/ui": "~57.0.14",
         "@repo/api-client": "workspace:*",
+        "@repo/lib": "workspace:*",
         "@repo/liquid-ui": "workspace:*",
         "@repo/timer": "workspace:*",
         "@shopify/react-native-skia": "2.6.2",
@@ -145,6 +146,7 @@
         "@ai-sdk/react": "4.0.88",
         "@radix-ui/react-icons": "1.3.2",
         "@repo/api-client": "workspace:*",
+        "@repo/lib": "workspace:*",
         "@repo/session-domain": "workspace:*",
         "@repo/timer": "workspace:*",
         "@shopify/react-native-skia": "2.6.2",
@@ -216,6 +218,18 @@
         "@types/pg": "8.23.1",
         "drizzle-kit": "0.31.10",
         "typescript": "~6.0.3",
+      },
+    },
+    "packages/lib": {
+      "name": "@repo/lib",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@repo/typescript-config": "workspace:*",
+        "@types/react": "19.2.18",
+        "typescript": "~6.0.3",
+      },
+      "peerDependencies": {
+        "react": ">=19.2.0 <20",
       },
     },
     "packages/liquid-ui": {
@@ -851,6 +865,8 @@
     "@repo/database": ["@repo/database@workspace:packages/database"],
 
     "@repo/desktop": ["@repo/desktop@workspace:apps/desktop"],
+
+    "@repo/lib": ["@repo/lib@workspace:packages/lib"],
 
     "@repo/liquid-ui": ["@repo/liquid-ui@workspace:packages/liquid-ui"],
 

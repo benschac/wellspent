@@ -1,0 +1,7 @@
+{
+  "extends": "@repo/typescript-config/library.json",
+  "compilerOptions": {
+    "lib": ["DOM", "ES2023"]
+  },
+  "include": ["src/**/*.ts"]
+}
