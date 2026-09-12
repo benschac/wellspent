@@ -26,7 +26,7 @@ The intended journey is: enter an intention, start deliberate work, see what is 
 
 **Finding:** the screen shows connection errors while the main content says “Your next intention starts here” and invites Return. An unavailable session list looks like a successfully loaded empty history. Start is disabled in this screenshot, but the intention is also empty, so that alone does not establish an authentication bug. The problem is the contradictory presentation of load failure and onboarding.
 
-**Owner:** [FocusWindowView.swift](../../apps/macos/TimerMac/FocusWindowView.swift), lines 49–68; [FocusModel.swift](../../apps/macos/TimerMac/FocusModel.swift), lines 69–99; [FocusPanelNotices.swift](../../apps/macos/TimerMac/FocusPanelNotices.swift), lines 14–20.
+**Owner:** [FocusWindowView.swift](../../apps/macos/TimerMac/Features/Focus/FocusWindowView.swift), lines 49–68; [FocusModel.swift](../../apps/macos/TimerMac/Features/Focus/FocusModel.swift), lines 69–99; [FocusPanelNotices.swift](../../apps/macos/TimerMac/Features/Focus/FocusPanelNotices.swift), lines 14–20.
 
 **Recommended change:** represent initial loading, successfully empty, loaded, and failed-with/without-cached-content explicitly. Give failed loading a primary Retry action and retain cached history when available. Authentication status, history loading, and mutation delivery should be separate states. Do not infer “no sessions” from an initially empty array after a failed request.
 
@@ -40,7 +40,7 @@ The intended journey is: enter an intention, start deliberate work, see what is 
 
 **Finding:** Focus lives under Accounts, while Timer and Floating Sidebar refer to the other timer system. The Timer category repeats its heading and devotes a large window to two actions. This makes the product's conceptual organization harder to learn as it expands.
 
-**Owners:** [SettingsDetailView.swift](../../apps/macos/TimerMac/SettingsDetailView.swift), [SettingsView.swift](../../apps/macos/TimerMac/SettingsView.swift), and [TimerSidebarController.swift](../../apps/macos/TimerMac/TimerSidebarController.swift), lines 380–395.
+**Owners:** [SettingsDetailView.swift](../../apps/macos/TimerMac/Features/Settings/SettingsDetailView.swift), [SettingsView.swift](../../apps/macos/TimerMac/Features/Settings/SettingsView.swift), and [TimerSidebarController.swift](../../apps/macos/TimerMac/Features/FloatingTimer/TimerSidebarController.swift), lines 380–395.
 
 **Recommended change:** give the session/review workspace a direct app-level entry. Keep account management in Accounts, appearance/placement in Settings, and routine work actions in the work surface. Later recording controls should have their own understandable permission/status entry. Decide whether the forced dark Settings appearance is intentional: source forces dark at both the SwiftUI and NSWindow layers while Focus follows appearance. This is a consistency decision, not a requirement to remove the existing visual style.
 
@@ -50,7 +50,7 @@ The intended journey is: enter an intention, start deliberate work, see what is 
 
 Opening the Timer window from Settings worked. Its accessibility tree exposed Resume, Reset, offline state, and pending actions. It also called the readout “Focus elapsed.” Source confirms that this readout consumes `TimerModel`, not `FocusModel`.
 
-**Owners:** [TimerReadoutView.swift](../../apps/macos/TimerMac/TimerReadoutView.swift), lines 5–14; [TimerMenuView.swift](../../apps/macos/TimerMac/TimerMenuView.swift); [TimerWindowView.swift](../../apps/macos/TimerMac/TimerWindowView.swift).
+**Owners:** [TimerReadoutView.swift](../../apps/macos/TimerMac/Features/Stopwatch/TimerReadoutView.swift), lines 5–14; [TimerMenuView.swift](../../apps/macos/TimerMac/App/TimerMenuView.swift); [TimerWindowView.swift](../../apps/macos/TimerMac/Features/Stopwatch/TimerWindowView.swift).
 
 **Recommended change:** use distinct names while both systems coexist: “Shared stopwatch” and “Focus sessions,” or another equally explicit pair. A recording indicator must identify the recording session; the stopwatch running state cannot imply collection permission. Later, a deliberate product migration may make the floating widget control a Focus session, but that changes behavior and requires its own acceptance.
 
@@ -58,9 +58,9 @@ Opening the Timer window from Settings worked. Its accessibility tree exposed Re
 
 ### Session detail and the future timeline: source review only
 
-The unavailable API prevented inspecting a populated session detail in the running app. [FocusDetailView.swift](../../apps/macos/TimerMac/FocusDetailView.swift) contains notes, recap editing, generated recap text, activity source/time, and evidence links. It preserves a useful distinction between edited and generated recap content. This is a sound starting point.
+The unavailable API prevented inspecting a populated session detail in the running app. [FocusDetailView.swift](../../apps/macos/TimerMac/Features/Focus/FocusDetailView.swift) contains notes, recap editing, generated recap text, activity source/time, and evidence links. It preserves a useful distinction between edited and generated recap content. This is a sound starting point.
 
-The planned evidence timeline needs more than the current event list: observed app activity, agent reports, user notes, inference, permission gaps, and delivery state need distinct representations. [FocusWorkEvent.swift](../../apps/macos/TimerMac/FocusWorkEvent.swift) currently exposes source, kind, summary, occurrence time, and an optional evidence URL. Do not claim the present screen already meets the workflow-capture acceptance.
+The planned evidence timeline needs more than the current event list: observed app activity, agent reports, user notes, inference, permission gaps, and delivery state need distinct representations. [FocusWorkEvent.swift](../../apps/macos/TimerMac/Features/Focus/FocusWorkEvent.swift) currently exposes source, kind, summary, occurrence time, and an optional evidence URL. Do not claim the present screen already meets the workflow-capture acceptance.
 
 Keep the quick intention launcher compact. Add a roomier review destination when timeline navigation requires it, with the same selected session and repository underneath. Do not turn Settings or the floating widget into the main history browser.
 
@@ -136,10 +136,15 @@ Use feature-oriented folders in the existing Xcode target. Move files incrementa
 | `Features/Stopwatch/` | Shared stopwatch controls and projection | Retains its current protocol and distinct identity |
 | `Features/FloatingTimer/` | Panel, drag, shape, placement, motion | Presentation only; cannot authorize recording |
 | `Features/Focus/` | Current cloud Focus list/detail, drafts, UI state | Calls its service/repository; does not collect OS activity |
+| `Features/Settings/` | Settings categories, account settings, appearance and placement preferences | Configures existing capabilities; does not own their lifecycle |
 | `Features/Recording/` — new when implemented | Explicit recording state, start/pause/stop policy, coverage | Owns collection authorization and restart behavior |
 | `Features/Timeline/` — new when implemented | Durable evidence queries, source labels, gaps, review | Reads committed data; does not trigger uploads by rendering |
 | `Services/` | Auth, HTTP/realtime adapters, OS collectors, persistence | Inject narrow capabilities; serialize mutations and keep blocking storage work off the UI executor |
 | `Shared/` | Small genuinely shared value types and UI primitives | Avoid a generic utilities folder or a second app-wide store |
+
+Folder organization implemented September 12, 2026: the 77 existing Swift source files now live under `App/`, the four implemented feature folders, and `Services/Auth/`, `Services/Focus/`, and `Services/Realtime/`. Source contents are unchanged. The existing filesystem-synchronized Xcode target and recursive lint script continue to own these files; entitlements remain at their existing path. Tests remain in `TimerMacTests/`. `Recording/`, `Timeline/`, and `Shared/` are deferred until they have concrete owners to contain.
+
+Verification: SHA-256 checks confirmed identical contents for all 77 moved Swift files. Native compilation/tests (`bun run --cwd apps/macos test`) and lint passed; test result: `apps/macos/.derivedData/Logs/Test/Test-TimerMac-2026.09.12_17-32-40--0400.xcresult`. The initial sandboxed test attempt could not access Xcode/Swift caches; the rerun with cache access succeeded. Manual app interaction was not repeated for these file moves.
 
 In Swift terms, a **view** describes what appears; an **observable feature model** supplies screen state and user actions; a **repository** owns durable records; a **service/actor** owns an external operation or isolated mutable resource; a **coordinator** owns a sequence or lifecycle crossing screens. `@Observable` makes data observable—it does not persist it. Actor isolation also does not by itself promise that blocking work runs on a background thread.
 
@@ -207,7 +212,7 @@ For capture research instead, use Task 1's existing handoff in the workflow-capt
 
 The first coding task is implemented on baseline `c8f764d` plus the scoped working-tree changes below. This completes the composition/window extraction; manual app lifecycle and physical interaction acceptance remain open. Step 1's recording decisions and all capture/storage work remain separate.
 
-- **App composition:** new `apps/macos/TimerMac/TimerAppComposition.swift` constructs or receives one shared stopwatch model, Focus model, and Focus auth model, wires the existing account/authentication callbacks once, and owns service startup and shutdown. Its lazily created sidebar receives window/quit actions; it no longer constructs Focus or authentication.
+- **App composition:** new `apps/macos/TimerMac/App/TimerAppComposition.swift` constructs or receives one shared stopwatch model, Focus model, and Focus auth model, wires the existing account/authentication callbacks once, and owns service startup and shutdown. Its lazily created sidebar receives window/quit actions; it no longer constructs Focus or authentication.
 - **Window ownership:** new `TimerWindowCoordinator.swift` owns Settings, Timer, and Focus windows, retaining each window and hosting view across close/reopen. Existing dimensions, styling, environment model identities, and Focus refresh behavior are retained. Menu, Settings, Focus, and Timer views route destination actions through this coordinator. The floating widget receives callbacks without owning those destinations.
 - **Lifecycle:** `TimerAppDelegate.swift` starts composition after launch, routes workspace/activation/reopen events and the existing global shortcut, and awaits cleanup through `applicationShouldTerminate`. `TimerModel.swift` now constructs without connection, ticker, or workspace tasks; explicit `start()` is idempotent and `shutdown()` is terminal because its transport stream finishes. Shutdown cancels consumers and drains serialized operations before closing the transport. `FocusAuthModel.swift` stops auth tasks and rejects late refresh completion without removing saved credentials. Ordinary Quit still has no unsaved-work confirmation; this change does not add crash recovery or durable queues.
 - **Preserved widget behavior:** `TimerSidebarController.swift` retains its floating panel, geometry, drag, collapse, pointer monitoring, placement, and haptic behavior. Only composition, auxiliary windows, and app actions moved. `TimerSidebarView.swift` routes its existing buttons through injected callbacks. No dependencies changed.
