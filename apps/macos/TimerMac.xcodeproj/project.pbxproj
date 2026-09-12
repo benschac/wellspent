@@ -7,8 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-        B00000000000000000000001 /* LiquidUI in Frameworks */ = {isa = PBXBuildFile; productRef = B00000000000000000000003 /* LiquidUI */; };
-        B00000000000000000000002 /* LiquidUI in Frameworks */ = {isa = PBXBuildFile; productRef = B00000000000000000000004 /* LiquidUI */; };
+		B00000000000000000000001 /* LiquidUI in Frameworks */ = {isa = PBXBuildFile; productRef = B00000000000000000000003 /* LiquidUI */; };
+		B00000000000000000000002 /* LiquidUI in Frameworks */ = {isa = PBXBuildFile; productRef = B00000000000000000000004 /* LiquidUI */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -44,7 +44,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-                B00000000000000000000001 /* LiquidUI in Frameworks */,
+				B00000000000000000000001 /* LiquidUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -52,7 +52,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-                B00000000000000000000002 /* LiquidUI in Frameworks */,
+				B00000000000000000000002 /* LiquidUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -87,6 +87,7 @@
 				A00000000000000000000010 /* Sources */,
 				A00000000000000000000011 /* Frameworks */,
 				A00000000000000000000012 /* Resources */,
+				C00000000000000000000001 /* Focus public configuration */,
 			);
 			buildRules = (
 			);
@@ -97,7 +98,7 @@
 			);
 			name = TimerMac;
 			packageProductDependencies = (
-                B00000000000000000000003 /* LiquidUI */,
+				B00000000000000000000003 /* LiquidUI */,
 			);
 			productName = TimerMac;
 			productReference = A00000000000000000000005 /* TimerMac.app */;
@@ -121,7 +122,7 @@
 			);
 			name = TimerMacTests;
 			packageProductDependencies = (
-                B00000000000000000000004 /* LiquidUI */,
+				B00000000000000000000004 /* LiquidUI */,
 			);
 			productName = TimerMacTests;
 			productReference = A00000000000000000000006 /* TimerMacTests.xctest */;
@@ -155,10 +156,10 @@
 			);
 			mainGroup = A00000000000000000000001;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				B00000000000000000000005 /* XCLocalSwiftPackageReference "../../packages/liquid-ui" */,
+			);
 			preferredProjectObjectVersion = 77;
-            packageReferences = (
-                B00000000000000000000005 /* XCLocalSwiftPackageReference "../../packages/liquid-ui" */,
-            );
 			productRefGroup = A00000000000000000000002 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -186,6 +187,25 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		C00000000000000000000001 /* Focus public configuration */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Focus public configuration";
+			outputPaths = (
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/FocusAuthConfiguration.json",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "export PATH=\"/opt/homebrew/bin:/usr/local/bin:$PATH\"\nnode \"$SRCROOT/../../scripts/macos-auth-configuration.mjs\" \"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/FocusAuthConfiguration.json\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		A00000000000000000000010 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -210,24 +230,6 @@
 			targetProxy = A00000000000000000000016 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
-
-/* Begin XCLocalSwiftPackageReference section */
-        B00000000000000000000005 /* XCLocalSwiftPackageReference "../../packages/liquid-ui" */ = {
-            isa = XCLocalSwiftPackageReference;
-            relativePath = "../../packages/liquid-ui";
-        };
-/* End XCLocalSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-        B00000000000000000000003 /* LiquidUI */ = {
-            isa = XCSwiftPackageProductDependency;
-            productName = LiquidUI;
-        };
-        B00000000000000000000004 /* LiquidUI */ = {
-            isa = XCSwiftPackageProductDependency;
-            productName = LiquidUI;
-        };
-/* End XCSwiftPackageProductDependency section */
 
 /* Begin XCBuildConfiguration section */
 		A00000000000000000000021 /* Debug */ = {
@@ -388,6 +390,24 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		B00000000000000000000005 /* XCLocalSwiftPackageReference "../../packages/liquid-ui" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "../../packages/liquid-ui";
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		B00000000000000000000003 /* LiquidUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = LiquidUI;
+		};
+		B00000000000000000000004 /* LiquidUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = LiquidUI;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A00000000000000000000000 /* Project object */;
 }

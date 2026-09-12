@@ -57,6 +57,39 @@ struct TimerDragViewTests {
         #expect(began == 0)
     }
 
+    @Test func handleCursorFollowsItsHitPathAndClosesDuringDrag() throws {
+        let previousCursor = NSCursor.current
+        defer { previousCursor.set() }
+        let window = NSWindow(
+            contentRect: CGRect(x: 0, y: 0, width: 80, height: 80),
+            styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer { window.close() }
+        let view = TimerDragView(frame: CGRect(x: 0, y: 0, width: 80, height: 80))
+        window.contentView = view
+        view.interactionPath = CGPath(rect: CGRect(x: 0, y: 0, width: 30, height: 30), transform: nil)
+        view.updateTrackingAreas()
+        #expect(
+            view.trackingAreas.contains { $0.options.contains(.activeAlways) && $0.options.contains(.cursorUpdate) })
+        let inside = CGPoint(x: 10, y: 70)
+        view.mouseEntered(with: try event(.mouseMoved, at: inside, window: window))
+        #expect(NSCursor.current == .openHand)
+        view.mouseMoved(with: try event(.mouseMoved, at: CGPoint(x: 60, y: 20), window: window))
+        #expect(NSCursor.current == .arrow)
+        view.cursorUpdate(with: try event(.mouseMoved, at: inside, window: window))
+        #expect(NSCursor.current == .openHand)
+        view.mouseDown(with: try event(.leftMouseDown, at: inside, window: window))
+        let dragged = CGPoint(x: 20, y: 70)
+        view.mouseDragged(with: try event(.leftMouseDragged, at: dragged, window: window))
+        #expect(NSCursor.current == .closedHand)
+        view.cursorUpdate(with: try event(.mouseMoved, at: dragged, window: window))
+        #expect(NSCursor.current == .closedHand)
+        view.mouseUp(with: try event(.leftMouseUp, at: dragged, window: window))
+        #expect(NSCursor.current == .openHand)
+        view.mouseExited(with: try event(.mouseMoved, at: CGPoint(x: 100, y: 20), window: window))
+        #expect(NSCursor.current == .arrow)
+    }
+
     private func event(_ type: NSEvent.EventType, at point: CGPoint, window: NSWindow? = nil) throws -> NSEvent {
         try #require(
             NSEvent.mouseEvent(

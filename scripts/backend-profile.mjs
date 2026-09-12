@@ -16,10 +16,12 @@ const controlledKeys = [
   "NEXT_PUBLIC_APP_ENV",
   "EXPO_PUBLIC_APP_ENV",
   "WELLSPENT_API_URL",
+  "WELLSPENT_SUPABASE_URL",
+  "WELLSPENT_SUPABASE_PUBLISHABLE_KEY",
   "WELLSPENT_NEXT_DIST_DIR",
 ];
 
-function origin(value) {
+export function origin(value) {
   const url = new URL(value);
   if (
     !["http:", "https:"].includes(url.protocol) ||
@@ -34,6 +36,17 @@ function origin(value) {
     );
   }
   return url.origin;
+}
+
+export function isPublicSupabaseKey(key) {
+  if (/^sb_publishable_[A-Za-z0-9_-]+$/.test(key)) return true;
+  const parts = key.split(".");
+  if (parts.length !== 3 || parts.some((part) => !part)) return false;
+  try {
+    return JSON.parse(Buffer.from(parts[1], "base64url").toString()).role === "anon";
+  } catch {
+    return false;
+  }
 }
 
 function isLocal(value) {
@@ -94,7 +107,7 @@ export function resolveProfile(
     // Backend choice must not turn a development bundle into a release bundle.
     NODE_ENV: "development",
   });
-  if (app === "web") {
+  if (app === "web" || app === "macos") {
     const authUrl = selected.NEXT_PUBLIC_SUPABASE_URL || "";
     const authKey = selected.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "";
     if (profile === "prod-api" && (!authUrl || !authKey)) {
@@ -112,8 +125,14 @@ export function resolveProfile(
     }
     if (authKey.startsWith("sb_secret_"))
       throw new Error("Use a Supabase publishable key, never a secret key");
+    if (app === "macos" && (!authUrl || !isPublicSupabaseKey(authKey)))
+      throw new Error("macOS Focus requires NEXT_PUBLIC_SUPABASE_URL and a valid NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY in the matching web profile; only publishable/anon keys are allowed");
     env.NEXT_PUBLIC_SUPABASE_URL = authUrl;
     env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = authKey;
+    if (app === "macos") {
+      env.WELLSPENT_SUPABASE_URL = authUrl;
+      env.WELLSPENT_SUPABASE_PUBLISHABLE_KEY = authKey;
+    }
   }
   return {
     env,
@@ -123,7 +142,7 @@ export function resolveProfile(
   };
 }
 
-function readEnvironment(appDir, names) {
+export function readEnvironment(appDir, names) {
   return Object.assign(
     {},
     ...names.map((name) => {
@@ -161,13 +180,14 @@ async function main() {
   if (!["mobile", "web", "macos"].includes(app))
     throw new Error("Choose mobile, web, or macos");
   const appDir = resolve(root, "apps", app);
-  const local = readEnvironment(appDir, [
+  const authDir = app === "macos" ? resolve(root, "apps/web") : appDir;
+  const local = readEnvironment(authDir, [
     ".env",
     ".env.development",
     ".env.local",
     ".env.development.local",
   ]);
-  const production = readEnvironment(appDir, [".env.prod-api.local"]);
+  const production = readEnvironment(authDir, [".env.prod-api.local"]);
   const config = resolveProfile(app, profile, local, production, process.env);
   const dryRun = args.includes("--dry-run");
   const extra = args.filter((arg) => arg !== "--dry-run" && arg !== "--");
@@ -191,6 +211,7 @@ async function main() {
   if (dryRun) return;
   const options = { cwd: appDir, env: config.env };
   if (app === "macos") {
+    options.env.WELLSPENT_BACKEND_PROFILE = profile;
     if (process.platform !== "darwin")
       throw new Error("macOS launch requires macOS and Xcode");
     // Never silently reuse an already-running app with the previous profile.

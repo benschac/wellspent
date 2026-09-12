@@ -17,14 +17,17 @@ public struct TimerSidebarGeometry {
     }
 
     public static let contentInset: CGFloat = 16
-    public static let shoulder: CGFloat = 28
+    // Two 40-point curves meet across the 80-point body without a flat shelf.
+    public static let shoulder: CGFloat = 40
     private var shoulderInset: CGFloat { Self.shoulder * horizontal * (1 - detachment) }
 
-    public var size: CGSize { CGSize(width: mix(80, 244) + shoulderInset * 2, height: mix(261, 80)) }
-    public var ring: CGPoint { point(40, 68, 40 + 164 * floatingFlip, 40) }
-    public var label: CGPoint { point(40, 128, 117 + 10 * floatingFlip, 40) }
-    public var settings: CGPoint { point(40, 199, 210 - 176 * floatingFlip, 40) }
-    public var divider: CGPoint { point(40, 164.5, 170.5 - 97 * floatingFlip, 40) }
+    public var size: CGSize {
+        CGSize(width: mix(80, 244) + shoulderInset * 2, height: mix(205 + Self.shoulder * 2, 80))
+    }
+    public var ring: CGPoint { point(40, Self.shoulder + 40, 40 + 164 * floatingFlip, 40) }
+    public var label: CGPoint { point(40, Self.shoulder + 100, 117 + 10 * floatingFlip, 40) }
+    public var settings: CGPoint { point(40, Self.shoulder + 171, 210 - 176 * floatingFlip, 40) }
+    public var divider: CGPoint { point(40, Self.shoulder + 136.5, 170.5 - 97 * floatingFlip, 40) }
     public var face: CGRect {
         CGRect(
             x: min(ring.x, label.x) - 32, y: min(ring.y, label.y) - 28,

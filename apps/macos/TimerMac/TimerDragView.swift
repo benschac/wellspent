@@ -1,6 +1,7 @@
 import AppKit
 
 final class TimerDragView: NSView {
+    var interactionPath: CGPath?
     var isLocked = false
     var onPress: (() -> Void)?
     var onClick: (() -> Void)?
@@ -10,6 +11,7 @@ final class TimerDragView: NSView {
     private var gesture = TimerDragGesture()
     private var mouseDownPoint: CGPoint?
     private var isWindowDragging = false
+    private var cursorTrackingArea: NSTrackingArea?
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -27,7 +29,8 @@ final class TimerDragView: NSView {
     // This native view owns the gesture from mouse-down through mouse-up.
     // Its SwiftUI label is visual content, not a competing Button recognizer.
     override func hitTest(_ point: NSPoint) -> NSView? {
-        bounds.contains(convert(point, from: superview)) ? self : nil
+        let local = convert(point, from: superview)
+        return containsInteractionPoint(local) ? self : nil
     }
 
     override var acceptsFirstResponder: Bool { true }
@@ -48,7 +51,46 @@ final class TimerDragView: NSView {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
     override func resetCursorRects() {
-        addCursorRect(bounds, cursor: isLocked ? .arrow : .openHand)
+        // The curved handle uses tracking below, so its transparent corners
+        // don't advertise a grab cursor outside the actual hit area.
+        if interactionPath == nil {
+            addCursorRect(bounds, cursor: isLocked ? .arrow : .openHand)
+        }
+    }
+
+    override func updateTrackingAreas() {
+        if let cursorTrackingArea { removeTrackingArea(cursorTrackingArea) }
+        super.updateTrackingAreas()
+        let area = NSTrackingArea(
+            rect: .zero,
+            options: [.activeAlways, .inVisibleRect, .cursorUpdate, .mouseEnteredAndExited, .mouseMoved],
+            owner: self, userInfo: nil)
+        addTrackingArea(area)
+        cursorTrackingArea = area
+    }
+
+    override func cursorUpdate(with event: NSEvent) { updateCursor(with: event) }
+    override func mouseEntered(with event: NSEvent) { updateCursor(with: event) }
+    override func mouseMoved(with event: NSEvent) { updateCursor(with: event) }
+    override func mouseExited(with event: NSEvent) {
+        if !isWindowDragging { NSCursor.arrow.set() }
+    }
+
+    private func updateCursor(with event: NSEvent) {
+        if isWindowDragging {
+            NSCursor.closedHand.set()
+        } else {
+            let local = convert(event.locationInWindow, from: nil)
+            let cursor: NSCursor = !isLocked && containsInteractionPoint(local) ? .openHand : .arrow
+            cursor.set()
+        }
+    }
+
+    private func containsInteractionPoint(_ local: CGPoint) -> Bool {
+        guard bounds.contains(local) else { return false }
+        // SwiftUI supplies the disclosure path in top-down coordinates.
+        let point = CGPoint(x: local.x, y: isFlipped ? local.y : bounds.height - local.y)
+        return interactionPath?.contains(point) ?? true
     }
 
     private func screenPoint(for event: NSEvent) -> CGPoint {
@@ -85,6 +127,7 @@ final class TimerDragView: NSView {
             if gesture.end() { onClick?() }
             mouseDownPoint = nil
         }
+        updateCursor(with: event)
     }
 
     private func finishDragging() {

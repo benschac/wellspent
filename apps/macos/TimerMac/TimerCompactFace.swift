@@ -4,7 +4,7 @@ import SwiftUI
 struct TimerCompactFace: View {
     @Environment(TimerModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    let geometry: TimerSidebarGeometry
+    let geometry: TimerWidgetGeometry
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -29,6 +29,7 @@ struct TimerCompactFace: View {
             }
             .fixedSize()
             .position(geometry.label)
+            .opacity(geometry.contentOpacity)
         }
     }
 }

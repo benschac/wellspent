@@ -12,7 +12,7 @@ struct TimerSidebarView: View {
             TimerSidebarSurface(
                 bodyFrame: CGRect(origin: sidebar.bodyOrigin, size: geometry.size),
                 anchor: sidebar.bridgeAnchor, edge: sidebar.shapeEdge,
-                detachment: sidebar.detachment)
+                detachment: sidebar.detachment, attachmentLength: sidebar.attachmentLength)
             ZStack(alignment: .topLeading) {
                 TimerDragSurface(
                     model: model,
@@ -34,6 +34,7 @@ struct TimerSidebarView: View {
                     .fill(.white.opacity(0.16))
                     .frame(width: geometry.mix(24, 1), height: geometry.mix(1, 24))
                     .position(geometry.divider)
+                    .opacity(geometry.contentOpacity)
                     .allowsHitTesting(false)
 
                 Button("Settings", systemImage: "gearshape", action: sidebar.showSettings)
@@ -51,10 +52,19 @@ struct TimerSidebarView: View {
                     .help("\(model.syncStatus.label) · \(model.saveStatus). Open sync diagnostics.")
                     .accessibilityLabel("Settings. Sync: \(model.syncStatus.label). \(model.saveStatus)")
                     .position(geometry.settings)
+                    .opacity(geometry.contentOpacity)
+                    .allowsHitTesting(sidebar.collapse == 0)
+                    .accessibilityHidden(sidebar.collapse > 0)
+
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
             .contentShape(shape)
             .offset(x: sidebar.bodyOrigin.x, y: sidebar.bodyOrigin.y)
+
+            TimerCollapseHandle()
+                .position(
+                    x: sidebar.bodyOrigin.x + geometry.handle.x,
+                    y: sidebar.bodyOrigin.y + geometry.handle.y)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .foregroundStyle(.white)
@@ -71,6 +81,7 @@ struct TimerSidebarView: View {
                 sidebar.isPositionLocked.toggle()
             }
             Divider()
+            Button(sidebar.isCollapsed ? "Expand Timer" : "Collapse to Ring", action: sidebar.toggleCollapsed)
             Button("Reset Position", action: sidebar.resetPosition)
             Button("Hide Sidebar", action: sidebar.hide)
             Button("Quit Timer", action: sidebar.quit)

@@ -7,7 +7,7 @@ test("all three apps default to local URLs, independent of inherited production 
     const config = resolveProfile(
       app,
       "local",
-      {},
+      app === "macos" ? { NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54421", NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_local" } : {},
       {},
       { API_URL: "https://api.wellspent.day", NODE_ENV: "production" },
     );
@@ -71,8 +71,8 @@ test("local web cannot pair a local API with hosted auth", () => {
     /same local\/production/,
   );
 });
-test("macOS and Expo production profiles share the production backend without requiring web auth", () => {
-  for (const app of ["macos", "mobile"]) {
+test("Expo production profile does not require Focus auth", () => {
+  for (const app of ["mobile"]) {
     const config = resolveProfile(app, "prod-api");
     assert.equal(config.env.WELLSPENT_API_URL, "https://api.wellspent.day");
     assert.equal(config.env.EXPO_PUBLIC_API_URL, config.env.WELLSPENT_API_URL);
@@ -127,4 +127,22 @@ test("production auth rejects plain HTTP", () => {
       ),
     /must use HTTPS/,
   );
+});
+
+
+test("macOS uses the matching Supabase profile and strips inherited credentials", () => {
+  const inherited = { WELLSPENT_SUPABASE_URL: "https://wrong.supabase.co", WELLSPENT_SUPABASE_PUBLISHABLE_KEY: "sb_secret_wrong" };
+  const local = resolveProfile("macos", "local", {
+    NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54421",
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_local",
+  }, {}, inherited);
+  assert.equal(local.env.WELLSPENT_SUPABASE_URL, "http://127.0.0.1:54421");
+  assert.equal(local.env.WELLSPENT_SUPABASE_PUBLISHABLE_KEY, "sb_publishable_local");
+  assert.throws(() => resolveProfile("macos", "prod-api", {}, {}, inherited), /Local auth is never used/);
+  const prod = resolveProfile("macos", "prod-api", {}, {
+    NEXT_PUBLIC_SUPABASE_URL: "https://matching.supabase.co",
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_public",
+  }, inherited);
+  assert.equal(prod.env.WELLSPENT_SUPABASE_URL, "https://matching.supabase.co");
+  assert.equal(prod.env.WELLSPENT_SUPABASE_PUBLISHABLE_KEY, "sb_publishable_public");
 });

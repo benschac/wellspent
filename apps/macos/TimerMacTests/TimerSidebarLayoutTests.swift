@@ -9,7 +9,9 @@ final class TimerSidebarLayoutTests: XCTestCase {
     func testDefaultPlacementHugsUsableRightEdge() {
         let frame = TimerSidebarLayout.frame(for: TimerSidebarPlacement(), in: screen)
         XCTAssertEqual(frame.maxX, screen.maxX)
-        XCTAssertEqual(frame.midY, screen.midY)
+        let geometry = TimerWidgetGeometry(horizontal: 0, detachment: 0, handleEdge: .right)
+        let canvasBottom = min(frame.minY, frame.maxY - geometry.handleFrame.maxY)
+        XCTAssertEqual((canvasBottom + frame.maxY) / 2, screen.midY, accuracy: 0.001)
     }
 
     func testDropOutsideMagneticZoneStaysAtDroppedCenter() {
@@ -70,7 +72,13 @@ final class TimerSidebarLayoutTests: XCTestCase {
         ] {
             let frame = TimerSidebarLayout.frame(for: restored, in: screen)
             XCTAssertTrue(screen.contains(frame))
-            XCTAssertEqual((frame.minX - screen.minX) / (screen.width - frame.width), 0.8, accuracy: 0.001)
+            let grip = TimerWidgetGeometry(horizontal: 1).handleFrame
+            let canvas = frame.union(
+                CGRect(
+                    x: frame.minX + grip.minX, y: frame.maxY - grip.maxY,
+                    width: grip.width, height: grip.height))
+            XCTAssertTrue(screen.contains(canvas))
+            XCTAssertEqual((canvas.minX - screen.minX) / (screen.width - canvas.width), 0.8, accuracy: 0.001)
         }
     }
 

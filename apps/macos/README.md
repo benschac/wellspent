@@ -15,10 +15,42 @@ authoritative timer state. The existing Tauri desktop app remains available in
 3. Open Settings from the sidebar gear or menu-bar menu to change the API
    URL. The default is `http://localhost:3001`.
 
-An optional bearer token can be saved in Settings. It is stored in the macOS
-Keychain and attached to the WebSocket upgrade request. The current shared timer
-gateway does not reject unauthenticated clients, so adding a token is
-forward-compatible rather than an authorization boundary today.
+Focus authentication is separate from the shared stopwatch. Existing optional
+stopwatch credentials remain in their original Keychain store; Focus account
+changes never reconnect or clear the stopwatch.
+
+## Focus sessions
+
+Press **Control–Option–Command–F (⌃⌥⌘F)** while Timer is running, or choose
+**Open Focus** in the menu bar or Settings. This opens a separate native window
+for the authenticated `/api/focus/sessions` API:
+
+- Browse the latest 100 sessions; start, pause, resume, and finish sessions.
+- Add notes, edit recaps, and read generated recaps and captured activity.
+- Choose **Sign in** and enter your existing Focus email and password. Settings shows your account
+  and **Sign out**. Sessions persist in Keychain and refresh automatically.
+  See [provider setup and acceptance](../../docs/macos-focus-auth.md).
+- Refresh to see updates from other devices. Reopening Focus also refreshes it.
+  Local ticking uses a monotonic clock between server snapshots.
+
+Focus changes appear after the server confirms them. An uncertain save stays
+available as **Retry Save**, using the exact original request and command ID.
+Recap drafts retain their original revision so a remote edit cannot be silently
+overwritten. Pending requests and drafts are memory-only: quitting or changing
+accounts or the API URL clears them after a warning. There is no durable offline queue or push sync in
+this native interface yet. Capture-token creation and revocation remain in the
+web interface; captured activity is readable here.
+
+The global shortcut uses the system hotkey API, with no extra dependency or
+Accessibility permission. If registration fails, Settings and the Focus window
+show the error and the menu remains available. Custom shortcuts in other apps
+can still conflict. The floating sidebar continues to control the separate shared
+stopwatch; it does not control these focus sessions.
+
+Validation: `bun run --cwd apps/macos test` builds the app and runs the native
+suite, including Focus HTTP contract, exact-request retry, account-switch, and
+recap-revision tests. Live authenticated API use and physical keyboard activation
+are separate acceptance checks.
 
 ## Floating controls
 
@@ -49,8 +81,7 @@ forward-compatible rather than an authorization boundary today.
   reconnects. Reset Position provides a recovery action in Settings.
 - The panel joins all Spaces and supports full-screen app Spaces. It follows the
   display's usable frame as the Dock or display layout changes. Transparent
-  corners pass mouse clicks through; no global keyboard shortcut or new system
-  permission is required.
+  corners pass mouse clicks through; no new system permission is required.
 
 The floating presentation is implemented in `TimerSidebarController` and the
 `TimerSidebar*` views. `TimerDragView` owns native mouse events in screen coordinates;

@@ -47,5 +47,12 @@ final class SettingsSidebarLockTests: XCTestCase {
         host.view.layoutSubtreeIfNeeded()
         XCTAssertFalse(item.isCollapsed)
         XCTAssertEqual(item.viewController.view.frame.width, 220, accuracy: 1)
+
+        for position: CGFloat in [0, 400] {
+            split.setPosition(position, ofDividerAt: 0)
+            host.view.layoutSubtreeIfNeeded()
+            XCTAssertFalse(item.isCollapsed)
+            XCTAssertEqual(item.viewController.view.frame.width, 220, accuracy: 1)
+        }
     }
 }

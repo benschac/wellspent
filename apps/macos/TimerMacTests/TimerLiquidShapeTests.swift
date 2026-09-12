@@ -124,7 +124,7 @@ final class TimerLiquidShapeTests: XCTestCase {
 
     func testWallContactBeginsAtTheOriginalAttachmentSize() {
         for edge in TimerSidebarEdge.allCases {
-            let original = TimerSidebarLayout.size(for: edge)
+            let original = TimerSidebarGeometry.size(for: edge)
             let halfLength = (edge.isHorizontal ? original.width : original.height) / 2
             XCTAssertEqual(TimerLiquidShape.wallRadius(edge: edge, gap: 0), halfLength)
             XCTAssertGreaterThan(TimerLiquidShape.wallRadius(edge: edge, gap: 1), halfLength * 0.99)

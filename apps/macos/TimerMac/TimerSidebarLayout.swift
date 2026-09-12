@@ -4,12 +4,19 @@ import LiquidUI
 enum TimerSidebarLayout {
     static let snapDistance: CGFloat = 78
 
-    static func size(for edge: TimerSidebarEdge?) -> CGSize {
-        TimerSidebarGeometry.size(for: edge)
+    static func size(for edge: TimerSidebarEdge?, collapse: CGFloat = 0) -> CGSize {
+        TimerWidgetGeometry(
+            horizontal: edge?.isHorizontal == false ? 0 : 1,
+            detachment: edge == nil ? 1 : 0, collapse: collapse
+        ).size
     }
 
-    static func frame(for placement: TimerSidebarPlacement, in visibleFrame: CGRect) -> CGRect {
-        let desiredSize = size(for: placement.edge)
+    static func frame(for placement: TimerSidebarPlacement, in visibleFrame: CGRect, collapse: CGFloat = 0) -> CGRect {
+        let geometry = TimerWidgetGeometry(
+            horizontal: placement.edge?.isHorizontal == false ? 0 : 1,
+            detachment: placement.edge == nil ? 1 : 0, collapse: collapse, handleEdge: placement.edge)
+        let visibleFrame = geometry.availableBodyArea(in: visibleFrame)
+        let desiredSize = geometry.size
         let size = CGSize(
             width: min(desiredSize.width, visibleFrame.width),
             height: min(desiredSize.height, visibleFrame.height)
@@ -31,7 +38,8 @@ enum TimerSidebarLayout {
         in visibleFrame: CGRect,
         displayID: String?,
         magneticEdges: Bool,
-        preferredEdge: TimerSidebarEdge?
+        preferredEdge: TimerSidebarEdge?,
+        collapse: CGFloat = 0
     ) -> TimerSidebarPlacement {
         let distances: [(TimerSidebarEdge, CGFloat)] = [
             (.left, max(0, releasedFrame.minX - visibleFrame.minX)),
@@ -45,7 +53,11 @@ enum TimerSidebarLayout {
             return first.1 < second.1
         }
         let edge = magneticEdges && (nearest?.1 ?? .infinity) <= snapDistance ? nearest?.0 : nil
-        let size = size(for: edge)
+        let geometry = TimerWidgetGeometry(
+            horizontal: edge?.isHorizontal == false ? 0 : 1,
+            detachment: edge == nil ? 1 : 0, collapse: collapse, handleEdge: edge)
+        let size = geometry.size
+        let visibleFrame = geometry.availableBodyArea(in: visibleFrame)
         let availableX = max(0, visibleFrame.width - size.width)
         let availableY = max(0, visibleFrame.height - size.height)
         // Preserve the dropped center while adapting to a new orientation.

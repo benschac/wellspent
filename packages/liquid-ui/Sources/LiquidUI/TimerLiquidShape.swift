@@ -7,12 +7,17 @@ public struct TimerLiquidShape: Shape {
     public var anchor: CGPoint?
     public var edge: TimerSidebarEdge
     public var detachment: CGFloat
+    public var attachmentLength: CGFloat?
 
-    public init(bodyFrame: CGRect, anchor: CGPoint?, edge: TimerSidebarEdge, detachment: CGFloat) {
+    public init(
+        bodyFrame: CGRect, anchor: CGPoint?, edge: TimerSidebarEdge, detachment: CGFloat,
+        attachmentLength: CGFloat? = nil
+    ) {
         self.bodyFrame = bodyFrame
         self.anchor = anchor
         self.edge = edge
         self.detachment = detachment
+        self.attachmentLength = attachmentLength
     }
 
     public func path(in rect: CGRect) -> Path {
@@ -55,9 +60,11 @@ public struct TimerLiquidShape: Shape {
     public static let separationDistance: CGFloat = 28
     public static let retractionDistance: CGFloat = 18
 
-    public static func wallRadius(edge: TimerSidebarEdge, gap: CGFloat) -> CGFloat {
+    public static func wallRadius(
+        edge: TimerSidebarEdge, gap: CGFloat, attachmentLength: CGFloat? = nil
+    ) -> CGFloat {
         let size = TimerSidebarGeometry.size(for: edge)
-        let originalRadius = (edge.isHorizontal ? size.width : size.height) / 2
+        let originalRadius = (attachmentLength ?? (edge.isHorizontal ? size.width : size.height)) / 2
         let tension = smoothstep(gap / separationDistance)
         let recoil = recoil(at: gap)
         return (originalRadius * (1 - tension) + 26 * tension) * (1 - recoil)
@@ -69,8 +76,9 @@ public struct TimerLiquidShape: Shape {
         let body = TimerSidebarShape(edge: .right, detachment: detachment)
         let center = length / 2
         let cornerProgress = min(1, detachment * 4)
+        let attachedRadius = min(TimerSidebarGeometry.shoulder, depth / 2, length / 4)
         let corner =
-            min(28, depth / 2, length / 4) * (1 - cornerProgress)
+            attachedRadius * (1 - cornerProgress)
             + min(26, depth / 2, length / 2) * cornerProgress
         let availableRoot = center - corner * cornerProgress
         let pull = min(1, gap / Self.separationDistance)
@@ -80,7 +88,7 @@ public struct TimerLiquidShape: Shape {
         let bodyRoot =
             availableRoot * (1 - tension) + compactRoot * tension
             + (availableRoot - compactRoot) * recoil
-        let wallRoot = Self.wallRadius(edge: edge, gap: gap)
+        let wallRoot = Self.wallRadius(edge: edge, gap: gap, attachmentLength: attachmentLength)
         // Quadratic thinning is shallow for the first few points. It avoids
         // making a deep U-shaped slot in a gap only two or three points wide.
         let middle = depth + gap / 2
@@ -89,7 +97,7 @@ public struct TimerLiquidShape: Shape {
             bodyRoot - abs(waistCenter - center), wallRoot - abs(waistCenter - wallCenter))
         let neck = max(0, neckRoom) * (1 - pull * pull)
         let wall = depth + gap
-        let shoulder = min(28, depth / 2, length / 4) * (1 - cornerProgress)
+        let shoulder = attachedRadius * (1 - cornerProgress)
         let restingInset = shoulder + corner * cornerProgress
         let breadth = sin(pull * .pi / 2) * (1 - recoil)
         let inset = restingInset + (min(depth / 2, 56) - restingInset) * breadth

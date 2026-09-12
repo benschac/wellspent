@@ -40,9 +40,10 @@ public struct TimerSidebarShape: Shape {
         in rect: CGRect, close: Bool = true, wallCorners: Bool = true, wallInset: CGFloat? = nil
     ) -> Path {
         let progress = roundness
-        let shoulder: CGFloat = min(28, rect.width / 2, rect.height / 4) * (1 - progress)
+        let attachedRadius = min(TimerSidebarGeometry.shoulder, rect.width / 2, rect.height / 4)
+        let shoulder = attachedRadius * (1 - progress)
         let corner: CGFloat =
-            min(28, rect.width / 2, rect.height / 4) * (1 - progress)
+            attachedRadius * (1 - progress)
             + min(26, rect.width / 2, rect.height / 2) * progress
         let endRadius = corner * progress
         var path = Path()

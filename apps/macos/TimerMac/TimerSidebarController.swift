@@ -13,6 +13,9 @@ final class TimerSidebarController {
     @ObservationIgnored private var focusWindow: NSWindow?
     private(set) var isVisible = false
     private(set) var isDragging = false
+    private(set) var isResizing = false
+    private(set) var isCollapsed: Bool
+    private(set) var collapse: CGFloat
     private(set) var placement: TimerSidebarPlacement
     var isPositionLocked: Bool {
         didSet { defaults.set(isPositionLocked, forKey: "sidebarPositionLocked") }
@@ -27,8 +30,11 @@ final class TimerSidebarController {
     private(set) var floatingFlip: CGFloat = 1
     private(set) var bodyOrigin = CGPoint.zero
     private(set) var bridgeAnchor: CGPoint?
-    var geometry: TimerSidebarGeometry {
-        TimerSidebarGeometry(horizontal: horizontal, floatingFlip: floatingFlip, detachment: detachment)
+    private(set) var attachmentLength: CGFloat?
+    var geometry: TimerWidgetGeometry {
+        TimerWidgetGeometry(
+            horizontal: horizontal, floatingFlip: floatingFlip, detachment: detachment, collapse: collapse,
+            handleEdge: placement.edge)
     }
 
     @ObservationIgnored private let model: TimerModel
@@ -51,11 +57,17 @@ final class TimerSidebarController {
     @ObservationIgnored private var bodyFrame = CGRect.zero
     @ObservationIgnored private var attachmentPoint: CGPoint?
     @ObservationIgnored private var dragAttachmentPoint: CGPoint?
+    @ObservationIgnored private var resizeStartY: CGFloat = 0
+    @ObservationIgnored private var resizeStartCollapse: CGFloat = 0
+    @ObservationIgnored private var resizeRing = CGPoint.zero
     @ObservationIgnored private var detachmentHaptic = TimerDetachmentHaptic()
 
     init(model: TimerModel, defaults: UserDefaults = .standard) {
         self.model = model
         self.defaults = defaults
+        let savedCollapsed = defaults.bool(forKey: "sidebarCollapsed")
+        isCollapsed = savedCollapsed
+        collapse = savedCollapsed ? 1 : 0
         isPositionLocked = defaults.bool(forKey: "sidebarPositionLocked")
         magneticEdges = defaults.object(forKey: "sidebarMagneticEdges") as? Bool ?? true
         if let data = defaults.data(forKey: "sidebarPlacement"),
@@ -92,7 +104,7 @@ final class TimerSidebarController {
 
     func show() {
         if railPanel == nil {
-            let rail = TimerFloatingPanel(size: TimerSidebarLayout.size(for: placement.edge))
+            let rail = TimerFloatingPanel(size: TimerSidebarLayout.size(for: placement.edge, collapse: collapse))
             rail.host(TimerSidebarView().environment(model).environment(self))
             rail.setAccessibilityLabel("Floating timer")
             railPanel = rail
@@ -123,8 +135,68 @@ final class TimerSidebarController {
         // A click can interrupt a spring without becoming a drag. Resume its
         // destination after mouse-up instead of leaving a half-morphed widget.
         if let screen = selectedScreen() {
-            settle(to: TimerSidebarLayout.frame(for: placement, in: screen.visibleFrame))
+            settle(to: TimerSidebarLayout.frame(for: placement, in: screen.visibleFrame, collapse: isCollapsed ? 1 : 0))
         }
+    }
+
+    func toggleCollapsed() {
+        finishResize(collapsed: !isCollapsed)
+    }
+
+    func beginResizing(at point: CGPoint) {
+        stopSettling()
+        isResizing = true
+        resizeStartY = point.y
+        resizeStartCollapse = collapse
+        resizeRing = CGPoint(x: bodyFrame.minX + geometry.ring.x, y: bodyFrame.maxY - geometry.ring.y)
+        railPanel?.ignoresMouseEvents = false
+        railPanel?.hasShadow = false
+    }
+
+    func updateResize(to point: CGPoint) {
+        guard isResizing else { return }
+        collapse = min(1, max(0, resizeStartCollapse + (point.y - resizeStartY) / TimerWidgetGeometry.collapseTravel))
+        present(resizeFrame(for: geometry, holding: resizeRing))
+    }
+
+    func endResizing() {
+        guard isResizing else { return }
+        isResizing = false
+        finishResize(collapsed: collapse >= 0.5)
+    }
+
+    private func finishResize(collapsed: Bool) {
+        guard !isDragging, let screen = selectedScreen() else { return }
+        stopSettling()
+        let ring = CGPoint(x: bodyFrame.minX + geometry.ring.x, y: bodyFrame.maxY - geometry.ring.y)
+        isCollapsed = collapsed
+        defaults.set(collapsed, forKey: "sidebarCollapsed")
+        let targetGeometry = TimerWidgetGeometry(
+            horizontal: placement.edge?.isHorizontal == false ? 0 : 1,
+            floatingFlip: (placement.edge ?? placement.floatingOriginEdge ?? .right) == .right ? 1 : 0,
+            detachment: placement.edge == nil ? 1 : 0, collapse: collapsed ? 1 : 0, handleEdge: placement.edge)
+        let target = resizeFrame(for: targetGeometry, holding: ring)
+        let visible = targetGeometry.availableBodyArea(in: screen.visibleFrame)
+        placement.x = min(1, max(0, (target.minX - visible.minX) / max(1, visible.width - target.width)))
+        placement.y = min(1, max(0, (target.minY - visible.minY) / max(1, visible.height - target.height)))
+        savePlacement()
+        settle(to: target)
+    }
+
+    private func resizeFrame(for geometry: TimerWidgetGeometry, holding ring: CGPoint) -> CGRect {
+        var frame = geometry.frame(holding: ring)
+        guard let screen = selectedScreen() else { return frame }
+        let visible = geometry.availableBodyArea(in: screen.visibleFrame)
+        frame.origin.x = min(visible.maxX - frame.width, max(visible.minX, frame.minX))
+        frame.origin.y = min(visible.maxY - frame.height, max(visible.minY, frame.minY))
+        switch placement.edge {
+        case .left: frame.origin.x = visible.minX
+        case .right: frame.origin.x = visible.maxX - frame.width
+        case .top: frame.origin.y = visible.maxY - frame.height
+        case .bottom: frame.origin.y = visible.minY
+        case nil: break
+        }
+        return frame
     }
 
     func beginDragging(at point: CGPoint) {
@@ -137,6 +209,7 @@ final class TimerSidebarController {
         dragEdge = placement.edge
         let local = CGPoint(x: point.x - bodyFrame.minX, y: bodyFrame.maxY - point.y)
         if detachment == 0, let edge = placement.edge {
+            attachmentLength = edge.isHorizontal ? bodyFrame.width : bodyFrame.height
             switch edge {
             case .right: attachmentPoint = CGPoint(x: bodyFrame.maxX, y: bodyFrame.midY)
             case .left: attachmentPoint = CGPoint(x: bodyFrame.minX, y: bodyFrame.midY)
@@ -199,17 +272,17 @@ final class TimerSidebarController {
             return
         }
         let originEdge = shapeEdge
-        let floatingFrame = TimerSidebarGeometry(horizontal: 1, floatingFlip: floatingFlip)
+        let floatingFrame = TimerWidgetGeometry(horizontal: 1, floatingFlip: floatingFlip, collapse: collapse)
             .frame(holding: latestPointer, offset: dragOffset, byRing: dragByRing)
         placement = TimerSidebarLayout.placement(
             afterDropping: floatingFrame, in: screen.visibleFrame,
             displayID: screenIdentifier(screen), magneticEdges: magneticEdges,
-            preferredEdge: placement.edge
+            preferredEdge: placement.edge, collapse: collapse
         )
         placement.floatingOriginEdge = placement.edge ?? originEdge
         savePlacement()
         lastVisibleFrame = screen.visibleFrame
-        settle(to: TimerSidebarLayout.frame(for: placement, in: screen.visibleFrame))
+        settle(to: TimerSidebarLayout.frame(for: placement, in: screen.visibleFrame, collapse: isCollapsed ? 1 : 0))
         if placement.edge != nil {
             NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .now)
         }
@@ -222,12 +295,15 @@ final class TimerSidebarController {
         let startHorizontal = horizontal
         let startDetachment = detachment
         let startFlip = floatingFlip
+        let startCollapse = collapse
+        let targetCollapse: CGFloat = isCollapsed ? 1 : 0
         let targetHorizontal: CGFloat = placement.edge?.isHorizontal == false ? 0 : 1
         let targetDetachment: CGFloat = placement.edge == nil ? 1 : 0
         let edge = placement.edge ?? placement.floatingOriginEdge ?? .right
         let targetFlip: CGFloat = edge == .right ? 1 : 0
         if edge != shapeEdge { attachmentPoint = nil }
         if let attachedEdge = placement.edge {
+            attachmentLength = attachedEdge.isHorizontal ? target.width : target.height
             // Establish the wall contact for reattachment too, including a
             // widget restored in the middle of the display after relaunch.
             switch attachedEdge {
@@ -249,6 +325,7 @@ final class TimerSidebarController {
             self.horizontal = mix(startHorizontal, targetHorizontal)
             self.detachment = mix(startDetachment, targetDetachment)
             self.floatingFlip = mix(startFlip, targetFlip)
+            self.collapse = mix(startCollapse, targetCollapse)
             self.present(
                 CGRect(
                     x: mix(start.minX, target.minX), y: mix(start.minY, target.minY),
@@ -268,15 +345,16 @@ final class TimerSidebarController {
     }
 
     func reposition() {
-        guard isVisible, !isDragging, let screen = selectedScreen() else { return }
+        guard isVisible, !isDragging, !isResizing, let screen = selectedScreen() else { return }
         stopSettling()
         lastVisibleFrame = screen.visibleFrame
         horizontal = placement.edge?.isHorizontal == false ? 0 : 1
         detachment = placement.edge == nil ? 1 : 0
         shapeEdge = placement.edge ?? placement.floatingOriginEdge ?? .right
         floatingFlip = shapeEdge == .right ? 1 : 0
+        collapse = isCollapsed ? 1 : 0
         attachmentPoint = nil
-        present(TimerSidebarLayout.frame(for: placement, in: screen.visibleFrame))
+        present(TimerSidebarLayout.frame(for: placement, in: screen.visibleFrame, collapse: isCollapsed ? 1 : 0))
         railPanel?.hasShadow = placement.edge == nil
     }
 
@@ -371,13 +449,17 @@ final class TimerSidebarController {
         guard let panel = railPanel else { return }
         let frame = CGRect(origin: proposedFrame.origin, size: geometry.size)
         bodyFrame = frame
-        var canvas = frame
+        let handle = geometry.handleFrame
+        let handleScreenFrame = CGRect(
+            x: frame.minX + handle.minX, y: frame.maxY - handle.maxY,
+            width: handle.width, height: handle.height)
+        var canvas = frame.union(handleScreenFrame)
         let drawsBridge = detachment > 0 && detachment < 1 && attachmentPoint != nil
         if drawsBridge, let attachmentPoint {
             // Keep the wall contact at the original attachment footprint during
             // a perpendicular pull. Only movement along the wall slides it.
             let gap = attachmentGap(from: frame) ?? 0
-            let radius = TimerLiquidShape.wallRadius(edge: shapeEdge, gap: gap)
+            let radius = TimerLiquidShape.wallRadius(edge: shapeEdge, gap: gap, attachmentLength: attachmentLength)
             if radius > 0 {
                 let anchorFrame = CGRect(
                     x: attachmentPoint.x - (shapeEdge.isHorizontal ? radius : 0),
@@ -465,12 +547,12 @@ final class TimerSidebarController {
     }
 
     private func updatePointer() {
-        guard isVisible, !isDragging, let railPanel else { return }
+        guard isVisible, !isDragging, !isResizing, let railPanel else { return }
         let mouse = NSEvent.mouseLocation
         let point = CGPoint(x: mouse.x - bodyFrame.minX, y: bodyFrame.maxY - mouse.y)
         let path = TimerSidebarShape(edge: shapeEdge, detachment: detachment).path(
             in: CGRect(origin: .zero, size: bodyFrame.size))
-        railPanel.ignoresMouseEvents = !path.contains(point)
+        railPanel.ignoresMouseEvents = !path.contains(point) && !geometry.handleGeometry.hitPath.contains(point)
     }
 
     private func makeWindow(title: String, size: CGSize, view: some View) -> NSWindow {

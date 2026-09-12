@@ -8,9 +8,13 @@ struct TimerSidebarSurface: View {
     let anchor: CGPoint?
     let edge: TimerSidebarEdge
     let detachment: CGFloat
+    let attachmentLength: CGFloat?
 
     var body: some View {
-        TimerLiquidSurface(bodyFrame: bodyFrame, anchor: anchor, edge: edge, detachment: detachment) {
+        TimerLiquidSurface(
+            bodyFrame: bodyFrame, anchor: anchor, edge: edge, detachment: detachment,
+            attachmentLength: attachmentLength
+        ) {
             size, path, reduceTransparency in
             TimerFrostedBackdrop(size: size, path: path, reduceTransparency: reduceTransparency)
         }
