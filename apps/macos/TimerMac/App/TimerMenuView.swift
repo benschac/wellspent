@@ -12,7 +12,7 @@ struct TimerMenuView: View {
         Divider()
         Button("Open Focus", action: windows.showFocusWindow)
             .keyboardShortcut("f", modifiers: [.control, .option, .command])
-        Button("Recording preview…", action: windows.showRecordingWindow)
+        Button("Local recordings…", action: windows.showRecordingWindow)
         if let error = windows.focusShortcutError { Text(error) }
         Button(model.isRunning ? "Pause Timer" : "Start / Resume Timer", action: sidebar.toggleTimer)
         Button("Open Timer Window", action: windows.showMainWindow)

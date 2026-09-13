@@ -1,4 +1,6 @@
 import Foundation
+import GRDB
+import SQLiteData
 
 @testable import TimerMac
 
@@ -31,7 +33,21 @@ struct RecordingStoreFixture {
 
     // Each connection remains local to this synchronous call and closes before actor operations.
     func sql(_ statement: String) throws -> [[String]] {
-        try RecordingSQLiteConnection(url: url).rows(statement)
+        let database = try DatabaseQueue(path: url.path)
+        defer { try? database.close() }
+        return try database.writeWithoutTransaction { db in
+            try Row.fetchAll(db, sql: statement).map { row in
+                try row.map { _, value in
+                    switch value.storage {
+                    case .string(let text): return text
+                    case .int64(let number): return String(number)
+                    case .double(let number): return String(number)
+                    case .null: return ""
+                    case .blob: throw RecordingError.invalidStore
+                    }
+                }
+            }
+        }
     }
 }
 

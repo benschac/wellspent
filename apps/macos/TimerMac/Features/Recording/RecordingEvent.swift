@@ -23,6 +23,32 @@ struct RecordingEvent: Codable, Equatable, Sendable, Identifiable {
         let sessionID: UUID
     }
 
+    /// The deliberately small live-capture choice made at recording start.
+    /// Window titles, document paths, screen contents, input, and network data are never fields here.
+    enum CaptureConfiguration: String, Codable, Sendable {
+        case foregroundApplicationOnly
+    }
+
+    /// A foreground application identity at the time macOS reported an activation transition.
+    struct ApplicationIdentity: Codable, Equatable, Sendable {
+        let bundleIdentifier: String?
+        let localizedName: String?
+        let processIdentifier: Int32
+
+        var disclosure: String {
+            let name = localizedName ?? "Unnamed application"
+            if let bundleIdentifier { return "\(name) (\(bundleIdentifier))" }
+            return "\(name) (bundle identifier unavailable)"
+        }
+
+        func validate() throws {
+            guard processIdentifier >= 0,
+                bundleIdentifier?.utf8.count ?? 0 <= 300,
+                localizedName?.utf8.count ?? 0 <= 300
+            else { throw RecordingError.invalidEvent }
+        }
+    }
+
     let id: UUID
     let schemaVersion: Int
     let localScopeID: String
@@ -34,11 +60,15 @@ struct RecordingEvent: Codable, Equatable, Sendable, Identifiable {
     let timeBasis: TimeBasis
     let text: String
     let focusLink: FocusLink?
+    let captureConfiguration: CaptureConfiguration?
+    let applicationIdentity: ApplicationIdentity?
 
     init(
         id: UUID = UUID(), localScopeID: String, recordingID: UUID, intervalID: UUID?, kind: Kind,
         stamp: Stamp, occurredAt: Date? = nil, timeBasis: TimeBasis = .receiver,
-        text: String = "", focusLink: FocusLink? = nil, schemaVersion: Int = 1
+        text: String = "", focusLink: FocusLink? = nil,
+        captureConfiguration: CaptureConfiguration? = nil,
+        applicationIdentity: ApplicationIdentity? = nil, schemaVersion: Int = 1
     ) {
         self.id = id
         self.schemaVersion = schemaVersion
@@ -51,11 +81,14 @@ struct RecordingEvent: Codable, Equatable, Sendable, Identifiable {
         self.timeBasis = timeBasis
         self.text = text
         self.focusLink = focusLink
+        self.captureConfiguration = captureConfiguration
+        self.applicationIdentity = applicationIdentity
     }
 
     var sourceLabel: String {
         switch kind {
-        case .application: "Synthetic application observation"
+        case .application:
+            applicationIdentity == nil ? "Synthetic application observation" : "Foreground application"
         case .agentCompletion: "Synthetic agent report"
         case .note: "User note"
         default: "Recording boundary"
@@ -69,7 +102,10 @@ struct RecordingEvent: Codable, Equatable, Sendable, Identifiable {
             occurredAt?.timeIntervalSince1970.isFinite != false,
             (timeBasis == .sourceReported) == (occurredAt != nil),
             kind.isObservation || (timeBasis == .receiver && occurredAt == nil),
-            kind == .start || focusLink == nil
+            kind == .start || focusLink == nil,
+            kind == .start || captureConfiguration == nil,
+            kind == .application || applicationIdentity == nil
         else { throw RecordingError.invalidEvent }
+        try applicationIdentity?.validate()
     }
 }

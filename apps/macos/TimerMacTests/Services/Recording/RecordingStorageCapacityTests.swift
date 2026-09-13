@@ -1,5 +1,6 @@
 import Foundation
 import SQLite3
+import SQLiteData
 import Testing
 
 @testable import TimerMac
@@ -38,12 +39,9 @@ struct RecordingStorageCapacityTests {
         await seed.close()
         let limited = SQLiteRecordingRepository(
             url: fixture.url,
-            openConnection: { url in
-                let db = try RecordingSQLiteConnection(url: url)
-                let pageCount = try db.scalar("PRAGMA page_count")
-                guard let limit = Int(pageCount) else { throw RecordingError.invalidStore }
-                try db.execute("PRAGMA max_page_count = \(limit)")
-                return db
+            prepareDatabase: { db in
+                let limit = try #require(try Int.fetchOne(db, sql: "PRAGMA page_count"))
+                try db.execute(sql: "PRAGMA max_page_count = \(limit)")
             })
         await #expect(throws: RecordingError.storage(SQLITE_FULL)) {
             try await limited.commit(fixture.event(.note, at: 1, text: String(repeating: "x", count: 16_384)))
@@ -61,11 +59,14 @@ struct RecordingStorageCapacityTests {
         defer { fixture.remove() }
         let repository = SQLiteRecordingRepository(url: fixture.url)
         let original = try await repository.commit(fixture.event(.start))
-        let blocker = try RecordingSQLiteConnection(url: fixture.url)
-        try blocker.execute("BEGIN IMMEDIATE")
+        var configuration = Configuration()
+        configuration.allowsUnsafeTransactions = true
+        let blocker = try DatabaseQueue(path: fixture.url.path, configuration: configuration)
+        defer { try? blocker.close() }
+        try await blocker.writeWithoutTransaction { try $0.execute(sql: "BEGIN IMMEDIATE") }
         let pending = fixture.event(.pause, at: 1)
         await #expect(throws: RecordingError.storage(SQLITE_BUSY)) { try await repository.commit(pending) }
-        try blocker.execute("ROLLBACK")
+        try await blocker.writeWithoutTransaction { try $0.execute(sql: "ROLLBACK") }
         #expect(try await repository.load() == [original])
         #expect(try await repository.commit(pending).events == original.events + [pending])
         await repository.close()

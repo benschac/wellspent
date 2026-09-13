@@ -221,4 +221,109 @@ struct RecordingModelTests {
         #expect(try await verificationRepository.load() == [finished])
         await verificationRepository.close()
     }
+
+    private func activeModelWithFinishedHistory() async throws -> (RecordingModel, RecordingSnapshot) {
+        let model = await loadedModel()
+        model.startRecording()
+        await model.waitForIdle()
+        model.finish()
+        await model.waitForIdle()
+        let finished = try #require(model.recordings.first)
+        model.startForegroundApplicationRecording()
+        await model.waitForIdle()
+        return (model, finished)
+    }
+
+    @Test(.timeLimit(.minutes(1)), arguments: [false, true])
+    func deletionDrainsAuthorizedObservationsBeforeLaterBoundaries(sleepDuringDelete: Bool) async throws {
+        let (model, finished) = try await activeModelWithFinishedHistory()
+        await repository.holdNextDeletion()
+        model.delete(finished)
+        await repository.waitUntilDeletionHeld()
+        model.recordForegroundApplication(nil)
+        model.recordForegroundApplication(nil)
+        if sleepDuringDelete { model.suspendForLifecycle(reason: "Sleep during deletion") }
+        await repository.releaseDeletion()
+        await model.waitForIdle()
+        let expected: [RecordingEvent.Kind] =
+            sleepDuringDelete
+            ? [.start, .application, .application, .suspend] : [.start, .application, .application]
+        #expect(model.current?.events.map(\.kind) == expected)
+        #expect(model.pendingEvent == nil)
+        #expect(model.errorMessage == nil)
+        #expect(!model.recordings.contains { $0.id == finished.id })
+        #expect(model.canCaptureForegroundApplications == !sleepDuringDelete)
+        model.pause()
+        await model.waitForIdle()
+        #expect(model.current?.events.map(\.kind) == expected + [.pause])
+        #expect(model.pendingEvent == nil)
+        #expect(model.errorMessage == nil)
+    }
+
+    @Test(.timeLimit(.minutes(1)), arguments: [false, true])
+    func failedDeletionInterruptsCoverageAndSuccessfulDeletionCannotResumeIt(queueObservation: Bool) async throws {
+        let (model, finished) = try await activeModelWithFinishedHistory()
+        let originalInterval = try #require(model.current?.activeIntervalID)
+        await repository.holdNextDeletion(failing: true)
+        model.delete(finished)
+        await repository.waitUntilDeletionHeld()
+        if queueObservation { model.recordForegroundApplication(nil) }
+        await repository.releaseDeletion()
+        await model.waitForIdle()
+        #expect(
+            model.current?.events.map(\.kind)
+                == (queueObservation ? [.start, .application, .interrupt] : [.start, .interrupt]))
+        #expect(model.current?.status == .interrupted)
+        #expect(model.current?.intervals.last?.committedDuration == nil)
+        #expect(model.pendingEvent == nil)
+        #expect(model.errorMessage != nil)
+        #expect(model.canCaptureForegroundApplications == false)
+        #expect(model.acceptingEvents == false)
+        #expect(model.recordings.contains { $0.id == finished.id })
+        model.delete(finished)
+        await model.waitForIdle()
+        #expect(model.errorMessage == nil)
+        #expect(model.current?.status == .interrupted)
+        #expect(model.canCaptureForegroundApplications == false)
+        model.resume()
+        await model.waitForIdle()
+        #expect(model.canCaptureForegroundApplications)
+        #expect(model.current?.activeIntervalID != originalInterval)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func failedDeletionKeepsUncommittedQueueForExactRetry() async throws {
+        let (model, finished) = try await activeModelWithFinishedHistory()
+        await repository.holdNextDeletion(failing: true)
+        model.delete(finished)
+        await repository.waitUntilDeletionHeld()
+        model.recordForegroundApplication(nil)
+        model.suspendForLifecycle(reason: "Sleep during deletion")
+        await repository.failNext()
+        await repository.releaseDeletion()
+        await model.waitForIdle()
+        let pending = try #require(model.pendingEvent)
+        #expect(pending.kind == .application)
+        #expect(model.acceptingEvents == false)
+        model.retry()
+        await model.waitForIdle()
+        #expect(model.current?.events.map(\.kind) == [.start, .application, .suspend])
+        #expect(model.current?.status == .suspended)
+        #expect(model.pendingEvent == nil)
+        #expect(model.canCaptureForegroundApplications == false)
+        #expect(await repository.attempts.filter { $0.id == pending.id } == [pending, pending])
+    }
+
+    @Test func deletingAStoppedLocalRecordingRemovesItsCommittedEvents() async throws {
+        let model = await loadedModel()
+        model.startRecording()
+        await model.waitForIdle()
+        model.finish()
+        await model.waitForIdle()
+        let saved = try #require(model.selected)
+        model.delete(saved)
+        await model.waitForIdle()
+        #expect(model.recordings.isEmpty)
+        #expect(try await repository.load().isEmpty)
+    }
 }

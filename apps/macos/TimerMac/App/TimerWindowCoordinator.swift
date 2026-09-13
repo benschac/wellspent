@@ -104,7 +104,7 @@ final class TimerWindowCoordinator {
     func showRecordingWindow() {
         if recordingWindow == nil {
             recordingWindow = makeWindow(
-                title: "Recording preview", size: CGSize(width: 900, height: 660),
+                title: "Local recordings", size: CGSize(width: 900, height: 660),
                 view: RecordingWindowView().environment(recording))
         }
         NSApplication.shared.activate()

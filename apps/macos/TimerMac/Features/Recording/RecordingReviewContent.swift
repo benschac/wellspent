@@ -7,6 +7,10 @@ struct RecordingReviewContent: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(recording.intention).font(.headline)
+            if recording.capturesForegroundApplications {
+                Text("Foreground app identities only · local until deleted · no upload")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             Text("Committed events · UTC · Shown in save order").font(.caption).foregroundStyle(.secondary)
             ForEach(recording.intervals) { interval in
                 HStack {

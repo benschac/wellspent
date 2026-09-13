@@ -22,6 +22,9 @@ struct RecordingControlsView: View {
                     Button("Finish", systemImage: "stop", action: model.finish)
                 } else {
                     Button("Start sample recording", systemImage: "record.circle", action: model.startRecording)
+                    Button(
+                        "Start foreground app recording", systemImage: "apps.macwindow",
+                        action: model.startForegroundApplicationRecording)
                 }
             }
             .disabled(!model.canAct)
@@ -31,8 +34,10 @@ struct RecordingControlsView: View {
                 Button("Add sample note", action: model.addNoteSample)
             }
             .disabled(!model.canAct || !model.acceptingEvents)
-            Text("App activity: off · Agent intake: off · No permissions requested")
-                .font(.caption).foregroundStyle(.secondary)
+            Text(
+                "Foreground-app recording stores app name, bundle ID, and PID only. It never reads windows, documents, input, or screen contents. Agent intake is off."
+            )
+            .font(.caption).foregroundStyle(.secondary)
         }
     }
 }

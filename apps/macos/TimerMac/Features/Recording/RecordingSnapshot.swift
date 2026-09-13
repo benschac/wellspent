@@ -21,11 +21,13 @@ struct RecordingSnapshot: Equatable, Sendable, Identifiable {
     let localScopeID: String
     let intention: String
     let focusLink: RecordingEvent.FocusLink?
+    let captureConfiguration: RecordingEvent.CaptureConfiguration?
     private(set) var status: Status = .recording
     private(set) var events: [RecordingEvent] = []
     private(set) var intervals: [Interval] = []
 
     var activeIntervalID: UUID? { status == .recording ? intervals.last?.id : nil }
+    var capturesForegroundApplications: Bool { captureConfiguration == .foregroundApplicationOnly }
 
     static func rebuild(_ events: [RecordingEvent]) throws -> Self {
         guard let first = events.first, first.kind == .start, let intervalID = first.intervalID else {
@@ -33,7 +35,8 @@ struct RecordingSnapshot: Equatable, Sendable, Identifiable {
         }
         try first.validate()
         var result = Self(
-            id: first.recordingID, localScopeID: first.localScopeID, intention: first.text, focusLink: first.focusLink)
+            id: first.recordingID, localScopeID: first.localScopeID, intention: first.text, focusLink: first.focusLink,
+            captureConfiguration: first.captureConfiguration)
         result.intervals = [Interval(id: intervalID, start: first.stamp)]
         result.events = [first]
         for event in events.dropFirst() { try result.append(event) }

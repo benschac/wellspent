@@ -7,6 +7,7 @@ final class TimerAppComposition {
     let focusModel: FocusModel
     let focusAuth: FocusAuthModel
     let recording: RecordingModel
+    private lazy var foregroundApplicationMonitor = ForegroundApplicationMonitor(recording: recording)
     private let defaults: UserDefaults
     private var isStarted = false
     private var isShutDown = false
@@ -51,6 +52,8 @@ final class TimerAppComposition {
         guard !isStarted, !isShutDown else { return }
         isStarted = true
         model.start()
+        recording.captureStateDidChange = { [weak self] in self?.foregroundApplicationMonitor.synchronize() }
+        foregroundApplicationMonitor.synchronize()
         sidebar.restore()
         preparationTask = Task { [weak self] in await self?.prepareFocus() }
     }
@@ -75,6 +78,7 @@ final class TimerAppComposition {
     func shutdown() async -> Bool {
         guard !isShutDown else { return true }
         guard await recording.shutdown() else { return false }
+        foregroundApplicationMonitor.stopObserving()
         isShutDown = true
         preparationTask?.cancel()
         resumeTask?.cancel()

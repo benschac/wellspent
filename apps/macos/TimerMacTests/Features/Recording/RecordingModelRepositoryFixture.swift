@@ -11,6 +11,26 @@ actor RecordingModelRepositoryFixture: RecordingRepository {
     private var heldCommit: CheckedContinuation<Void, Never>?
     private var holdWaiter: CheckedContinuation<Void, Never>?
 
+    private var shouldHoldDeletion = false
+    private var deletionShouldFail = false
+    private var heldDeletion: CheckedContinuation<Void, Never>?
+    private var deletionWaiter: CheckedContinuation<Void, Never>?
+
+    func holdNextDeletion(failing: Bool = false) {
+        shouldHoldDeletion = true
+        deletionShouldFail = failing
+    }
+
+    func waitUntilDeletionHeld() async {
+        if heldDeletion != nil { return }
+        await withCheckedContinuation { deletionWaiter = $0 }
+    }
+
+    func releaseDeletion() {
+        heldDeletion?.resume()
+        heldDeletion = nil
+    }
+
     init(snapshots: [RecordingSnapshot] = []) { self.snapshots = snapshots }
 
     func load() async throws -> [RecordingSnapshot] { snapshots }
@@ -52,6 +72,29 @@ actor RecordingModelRepositoryFixture: RecordingRepository {
         let snapshot = try RecordingSnapshot.rebuild([event])
         snapshots.append(snapshot)
         return snapshot
+    }
+
+    func delete(_ recordingID: UUID, localScopeID: String) async throws {
+        if shouldHoldDeletion {
+            shouldHoldDeletion = false
+            await withCheckedContinuation { continuation in
+                heldDeletion = continuation
+                deletionWaiter?.resume()
+                deletionWaiter = nil
+            }
+        }
+        if deletionShouldFail {
+            deletionShouldFail = false
+            throw RecordingError.storage(13)
+        }
+        guard
+            let index = snapshots.firstIndex(where: {
+                $0.id == recordingID && $0.localScopeID == localScopeID
+            })
+        else {
+            throw RecordingError.invalidStore
+        }
+        snapshots.remove(at: index)
     }
 
     func close() async { closeCount += 1 }

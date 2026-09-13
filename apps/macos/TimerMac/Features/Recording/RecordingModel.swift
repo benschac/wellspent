@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-/// Owns synthetic intake authorization. Views only request actions and render committed history.
+/// Owns local intake authorization. Views only request actions and render committed history.
 @MainActor
 @Observable
 final class RecordingModel {
@@ -16,10 +16,12 @@ final class RecordingModel {
 
     @ObservationIgnored private let repository: any RecordingRepository
     @ObservationIgnored private let stamp: @MainActor () -> RecordingEvent.Stamp
+    @ObservationIgnored private var queuedEvents: [RecordingEvent] = []
     @ObservationIgnored private var operation: Task<Void, Never>?
     @ObservationIgnored private var isShuttingDown = false
     @ObservationIgnored private var isClosed = false
     @ObservationIgnored private var needsRecovery = true
+    @ObservationIgnored var captureStateDidChange: (@MainActor () -> Void)?
 
     init(
         repository: any RecordingRepository = SQLiteRecordingRepository(), localScopeID: String = "synthetic-default",
@@ -34,6 +36,10 @@ final class RecordingModel {
     var current: RecordingSnapshot? { recordings.first(where: { $0.status != .finished }) }
     var selected: RecordingSnapshot? { recordings.first(where: { $0.id == selectedID }) ?? current ?? recordings.first }
     var canAct: Bool { isLoaded && !isBusy && pendingEvent == nil && !isClosed && !isShuttingDown && !needsRecovery }
+    var canCaptureForegroundApplications: Bool {
+        isLoaded && !isClosed && !isShuttingDown && !needsRecovery && errorMessage == nil
+            && acceptingEvents && current?.capturesForegroundApplications == true
+    }
     var saveStatus: String {
         if pendingEvent != nil, errorMessage != nil { return "Stopped — action not confirmed saved" }
         if isBusy { return "Saving or loading local history…" }
@@ -55,6 +61,14 @@ final class RecordingModel {
                 text: "Synthetic workflow sample"))
     }
 
+    func startForegroundApplicationRecording() {
+        guard canAct, current == nil else { return }
+        submit(
+            RecordingEvent(
+                localScopeID: localScopeID, recordingID: UUID(), intervalID: UUID(), kind: .start, stamp: stamp(),
+                text: "Foreground application recording", captureConfiguration: .foregroundApplicationOnly))
+    }
+
     func pause() { transition(.pause, text: "Manual pause — explicit Resume required") }
     func resume() { transition(.resume, text: "Explicit resume — new interval") }
     func finish() { transition(.finish, text: "Recording finished") }
@@ -65,6 +79,68 @@ final class RecordingModel {
         addSample(.agentCompletion, text: "Sample agent reported a tool completion; outcome unverified")
     }
     func addNoteSample() { addSample(.note, text: "Sample manual note: review the next step") }
+
+    /// The monitor calls this only after a user started a foreground-only recording.
+    func recordForegroundApplication(_ identity: RecordingEvent.ApplicationIdentity?) {
+        guard canCaptureForegroundApplications, let current, let intervalID = current.activeIntervalID else { return }
+        let text: String
+        if let identity {
+            text = "Foreground application: \(identity.disclosure)"
+        } else {
+            text = "Foreground application identity unavailable; no window or document data was collected"
+        }
+        submit(
+            RecordingEvent(
+                localScopeID: localScopeID, recordingID: current.id, intervalID: intervalID, kind: .application,
+                stamp: stamp(), text: text, applicationIdentity: identity))
+    }
+
+    /// A verified sleep/session loss ends coverage immediately. Return always needs the user's Resume action.
+    func suspendForLifecycle(reason: String) {
+        guard acceptingEvents, !isClosed, !isShuttingDown, let current,
+            let intervalID = current.activeIntervalID
+        else { return }
+        acceptingEvents = false
+        submit(
+            RecordingEvent(
+                localScopeID: localScopeID, recordingID: current.id, intervalID: intervalID,
+                kind: .suspend, stamp: stamp(), text: "\(reason) — coverage gap; explicit Resume required"))
+        captureStateDidChange?()
+    }
+
+    func delete(_ recording: RecordingSnapshot) {
+        guard canAct, recording.localScopeID == localScopeID, recording.status != .recording else { return }
+        run {
+            var deletionError: String?
+            do {
+                try await self.repository.delete(recording.id, localScopeID: self.localScopeID)
+                self.recordings.removeAll { $0.id == recording.id }
+                if self.selectedID == recording.id { self.selectedID = self.recordings.first?.id }
+                self.errorMessage = nil
+            } catch {
+                deletionError = error.localizedDescription
+                self.errorMessage = deletionError
+                self.acceptingEvents = false
+                self.captureStateDidChange?()
+            }
+            // Capture may enqueue observations and lifecycle boundaries during the deletion await.
+            // Drain them before allowing a later user action to overtake their receipt order.
+            if !self.queuedEvents.isEmpty {
+                self.pendingEvent = self.queuedEvents.removeFirst()
+                await self.commitPending()
+            } else if deletionError != nil, let current = self.current, current.status == .recording {
+                // With no queued event, commitPending has nothing to trigger its failure-gap policy.
+                self.pendingEvent = RecordingEvent(
+                    localScopeID: current.localScopeID, recordingID: current.id, intervalID: current.activeIntervalID,
+                    kind: .interrupt, stamp: self.stamp(),
+                    text: "Storage failure — coverage unknown; explicit Resume required")
+                await self.commitPending()
+            }
+            // Successful coverage repair must not hide the failed deletion. A pending write error
+            // takes priority so Retry continues to refer to that exact unsaved event.
+            if self.pendingEvent == nil, let deletionError { self.errorMessage = deletionError }
+        }
+    }
 
     func retry() {
         guard !isBusy, !isClosed, !isShuttingDown else { return }
@@ -134,6 +210,10 @@ final class RecordingModel {
     }
 
     private func submit(_ event: RecordingEvent) {
+        if isBusy {
+            queuedEvents.append(event)
+            return
+        }
         pendingEvent = event
         run { await self.commitPending() }
     }
@@ -143,6 +223,7 @@ final class RecordingModel {
         operation = Task {
             await action()
             self.isBusy = false
+            self.captureStateDidChange?()
         }
     }
 
@@ -170,35 +251,41 @@ final class RecordingModel {
     }
 
     private func commitPending() async {
-        guard let event = pendingEvent else { return }
         let wasStoppedByFailure = errorMessage != nil
-        do {
-            let saved = try await repository.commit(event)
-            if saved.localScopeID == localScopeID {
-                if let index = recordings.firstIndex(where: { $0.id == saved.id }) {
-                    recordings[index] = saved
-                } else {
-                    recordings.insert(saved, at: 0)
+        while let event = pendingEvent {
+            do {
+                let saved = try await repository.commit(event)
+                if saved.localScopeID == localScopeID {
+                    if let index = recordings.firstIndex(where: { $0.id == saved.id }) {
+                        recordings[index] = saved
+                    } else {
+                        recordings.insert(saved, at: 0)
+                    }
+                    selectedID = saved.id
                 }
-                selectedID = saved.id
+                pendingEvent = nil
+                errorMessage = nil
+                if !queuedEvents.isEmpty {
+                    // Keep receipt order and timestamps, including a boundary that revoked intake
+                    // while this commit was suspended. Never reauthorize between queued saves.
+                    pendingEvent = queuedEvents.removeFirst()
+                } else if needsRecovery {
+                    await restore()
+                    return
+                } else if wasStoppedByFailure && saved.status == .recording {
+                    // Drain already-authorized events before closing the storage-failure gap.
+                    pendingEvent = RecordingEvent(
+                        localScopeID: saved.localScopeID, recordingID: saved.id, intervalID: saved.activeIntervalID,
+                        kind: .interrupt, stamp: stamp(),
+                        text: "Storage failure — coverage unknown; explicit Resume required")
+                } else {
+                    acceptingEvents = saved.status == .recording && !isShuttingDown
+                }
+            } catch {
+                acceptingEvents = false
+                errorMessage = error.localizedDescription
+                return
             }
-            pendingEvent = nil
-            errorMessage = nil
-            if needsRecovery {
-                await restore()
-            } else if wasStoppedByFailure && saved.status == .recording {
-                // A save retry never silently restarts intake after a storage failure.
-                pendingEvent = RecordingEvent(
-                    localScopeID: saved.localScopeID, recordingID: saved.id, intervalID: saved.activeIntervalID,
-                    kind: .interrupt, stamp: stamp(),
-                    text: "Storage failure — coverage unknown; explicit Resume required")
-                await commitPending()
-            } else {
-                acceptingEvents = saved.status == .recording && !isShuttingDown
-            }
-        } catch {
-            acceptingEvents = false
-            errorMessage = error.localizedDescription
         }
     }
 }
