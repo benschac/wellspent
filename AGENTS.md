@@ -41,7 +41,7 @@ guide doesn't cover, search through the source code in `node_modules/effect/src`
 
 ## Current milestone and verification
 
-The next outcome is durable repository recovery, beginning with shared session rules and an IndexedDB migration that preserves queued browser commands. Then connect physical Android to the same durable sessions. See [architecture checkpoint and task acceptance](docs/design/2026-08-29-focus-timer-product-and-sync-architecture.md#26-recommended-next-implementation-sequence); broader design sections describe target behavior unless the checkpoint marks it implemented.
+For the current Wellspent priority and next task, read [the current plan](docs/WELLSPENT_PLAN.md). C3b local Codex intake is complete for the selected live Debug workflow; C4's combined timeline is next. Signed distribution and formal C2 Mac acceptance remain separate. The [architecture checkpoint and task acceptance](docs/design/2026-08-29-focus-timer-product-and-sync-architecture.md#26-recommended-next-implementation-sequence) retains the browser recovery/Android track; it is not the default capture queue. Broader design sections describe target behavior unless current evidence marks it implemented.
 
 - `bun run test:fast`: focus domain/browser and capture tests; no app builds or database.
 - `bun run test:focus` / `bun run test:capture`: narrower checks.

@@ -8,7 +8,7 @@ Run commands from the repository root after `bun install --frozen-lockfile`. Pac
 | --- | --- |
 | `bun run test:fast` | Runs both focus behavior and standalone capture suites, without app builds or database access. |
 | `bun run test:focus` | Shared session-domain contracts/lifecycle, API transition/evidence rules, and browser projection, outbox, and bearer-token behavior. |
-| `bun run test:capture` | Synthetic hook capture, privacy defaults, durable spool/replay, acknowledgements, and rejection handling. |
+| `bun run test:capture` | Synthetic hook capture, privacy defaults, durable spool/replay, acknowledgements, rejection handling, and local Codex helper loopback/restart tests (requires local socket access). |
 | `bun run --cwd apps/web test` | All web Bun tests; included in the full workspace test command. |
 | `bun run test:focus:db:local` | Actual repository transactions, ownership, revisions, deduplication, and token/evidence boundaries on local Postgres. |
 
@@ -85,7 +85,9 @@ Deploy/apply `20260906224232_persist_realtime_timer.sql` before using the persis
 
 ### Synthetic macOS recording
 
-`bun run --cwd apps/macos test` includes local recording domain, SQLite, recovery, failure and hosted-window tests. `bun run --cwd apps/macos test:recording:crash` separately compiles production repository code into a disposable helper, kills only that helper at four transaction/migration checkpoints, then verifies recovery in another process. It uses unique temporary databases, never the user's preview store or a backend. See [implementation evidence and remaining live gates](design/2026-09-12-macos-synthetic-recording-proof.md).
+Native persistence uses SQLiteData/GRDB; see [dependency pins, ownership and macro setup](design/2026-09-13-macos-sqlitedata.md). The crash runner requires SwiftPM package resolution and uses the app’s checked-in dependency lockfile.
+
+`bun run --cwd apps/macos test` includes local recording domain, SQLite, recovery, failure and hosted-window tests. `bun run --cwd apps/macos test:recording:crash` separately compiles production repository code into a disposable helper, kills only that helper at four transaction/migration checkpoints, then verifies recovery in another process. It uses unique temporary databases, never the user's preview store or a backend. See [implementation evidence and remaining live gates](design/2026-09-12-macos-synthetic-recording-proof.md). `bun run --cwd apps/macos test:codex:crash` adds production local Codex HTTP/SQLite intake with native/helper process termination at commit and ACK boundaries. These synthetic checks do not install hooks or establish ordinary-session acceptance; see [C3b evidence and live procedure](design/2026-09-13-c3b-local-codex-intake.md).
 
 ### Shared timer sync indicators
 

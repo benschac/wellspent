@@ -1,0 +1,16 @@
+{
+  "synthetic": true,
+  "key": "KioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKio=",
+  "binding": {
+    "bindingID": "11111111-1111-4111-a111-111111111111",
+    "senderID": "synthetic_sender",
+    "localScopeID": "local",
+    "recordingID": "22222222-2222-4222-a222-222222222222",
+    "intervalID": "33333333-3333-4333-a333-333333333333",
+    "threadID": "thread_fixture"
+  },
+  "packet": {
+    "body": "eyJ2ZXJzaW9uIjoxLCJldmVudElEIjoiMzFhZWIzNjUtNmU2Ni04OGNkLWEwMmQtOWVjN2EzOTgwMzI0Iiwic2VuZGVySUQiOiJzeW50aGV0aWNfc2VuZGVyIiwiYmluZGluZ0lEIjoiMTExMTExMTEtMTExMS00MTExLWExMTEtMTExMTExMTExMTExIiwibG9jYWxTY29wZUlEIjoibG9jYWwiLCJyZWNvcmRpbmdJRCI6IjIyMjIyMjIyLTIyMjItNDIyMi1hMjIyLTIyMjIyMjIyMjIyMiIsImludGVydmFsSUQiOiIzMzMzMzMzMy0zMzMzLTQzMzMtYTMzMy0zMzMzMzMzMzMzMzMiLCJ0aHJlYWRJRCI6InRocmVhZF9maXh0dXJlIiwidHVybklEIjoidHVybl9maXh0dXJlIiwiaW52b2NhdGlvbklEIjoidG9vbF9maXh0dXJlIiwia2luZCI6IlBvc3RUb29sVXNlIiwiaG9va1JlY2VpdmVkQXQiOiIyMDI3LTAxLTE1VDA4OjAwOjA1LjAwMFoiLCJvY2N1cnJlZEF0IjpudWxsLCJ0aW1lQmFzaXMiOiJob29rUmVjZWl2ZWQiLCJ0b29sTmFtZSI6IkJhc2giLCJyZXBvcnRlZFJlc3VsdCI6InN1Y2Nlc3MifQ==",
+    "mac": "mAH0hVYNIilNu38cPc4nl+LgQSR5+WdCQ0yt1+AqezI="
+  }
+}

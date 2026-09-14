@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "bun test timer-capture.test.mjs",
-    "test:capture": "bun test timer-capture.test.mjs"
+    "test": "bun test timer-capture.test.mjs && node --test local-helper.test.mjs",
+    "test:capture": "bun test timer-capture.test.mjs && node --test local-helper.test.mjs"
   }
 }

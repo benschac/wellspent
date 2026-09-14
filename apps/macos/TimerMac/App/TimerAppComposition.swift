@@ -54,6 +54,8 @@ final class TimerAppComposition {
         model.start()
         recording.captureStateDidChange = { [weak self] in self?.foregroundApplicationMonitor.synchronize() }
         foregroundApplicationMonitor.synchronize()
+        recording.load()
+        recording.codex.start()
         sidebar.restore()
         preparationTask = Task { [weak self] in await self?.prepareFocus() }
     }

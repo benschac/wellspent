@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/Users/benjaminschachter/.local/bin/node' '/Users/benjaminschachter/timer/integrations/codex/local-helper.mjs' capture",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/Users/benjaminschachter/.local/bin/node' '/Users/benjaminschachter/timer/integrations/codex/local-helper.mjs' capture",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

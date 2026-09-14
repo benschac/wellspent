@@ -35,7 +35,7 @@ struct RecordingControlsView: View {
             }
             .disabled(!model.canAct || !model.acceptingEvents)
             Text(
-                "Foreground-app recording stores app name, bundle ID, and PID only. It never reads windows, documents, input, or screen contents. Agent intake is off."
+                "Foreground-app recording stores app name, bundle ID, and PID only. It never reads windows, documents, input, or screen contents. Local Codex intake requires an explicit pairing."
             )
             .font(.caption).foregroundStyle(.secondary)
         }

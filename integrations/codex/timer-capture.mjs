@@ -200,7 +200,7 @@ function isCaptureCall(input) {
     input.tool_input?.code;
   return (
     typeof command === "string" &&
-    /timer-capture\.mjs|\/api\/focus\/sessions\/[^\s]+\/work-events/.test(
+    /timer-capture\.mjs|local-helper\.mjs|\/api\/focus\/sessions\/[^\s]+\/work-events/.test(
       command,
     )
   );

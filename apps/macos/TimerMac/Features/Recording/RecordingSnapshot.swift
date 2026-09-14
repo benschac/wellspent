@@ -103,7 +103,16 @@ struct RecordingSnapshot: Equatable, Sendable, Identifiable {
         guard let interval = intervals.first(where: { $0.id == event.intervalID }) else {
             throw RecordingError.staleInterval
         }
-        if event.kind == .agentCompletion, event.timeBasis == .sourceReported, let occurredAt = event.occurredAt {
+        if event.kind == .agentCompletion, event.timeBasis == .hookReceived,
+            let hookReceivedAt = event.agentMetadata?.hookReceivedAt
+        {
+            guard !interval.interrupted, let end = interval.end,
+                end.wall >= interval.start.wall,
+                hookReceivedAt >= interval.start.wall, hookReceivedAt < end.wall,
+                hookReceivedAt <= event.stamp.wall
+            else { throw RecordingError.staleInterval }
+        } else if event.kind == .agentCompletion, event.timeBasis == .sourceReported, let occurredAt = event.occurredAt
+        {
             // Only explicit, trustworthy association to a known closed interval permits late reports.
             guard !interval.interrupted, let end = interval.end,
                 occurredAt >= interval.start.wall, occurredAt <= end.wall

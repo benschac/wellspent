@@ -122,6 +122,8 @@ struct TimerAppCompositionTests {
             storage: FocusAuthStorage(
                 read: { _ in nil }, write: { _, _ in Issue.record("Unexpected credential write") }),
             configurationDefaults: defaults, bundledConfiguration: [:])
-        return TimerAppComposition(model: model, focusAuth: auth, defaults: defaults)
+        return TimerAppComposition(
+            model: model, focusAuth: auth, defaults: defaults,
+            recording: RecordingModel(repository: RecordingModelRepositoryFixture()))
     }
 }

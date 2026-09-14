@@ -106,6 +106,12 @@ change the realtime protocol or timer projection.
 
 ## Monorepo commands
 
+The build and test scripts use the checked-in `Package.resolved` versions and
+enable their Swift macros for that invocation with `-skipMacroValidation`.
+This supports unattended builds without changing global Xcode trust settings.
+When building directly in Xcode, enable `PerceptionMacros`,
+`StructuredQueriesMacros`, and `StructuredQueriesSQLiteMacros` when prompted.
+
 ```sh
 bunx turbo run build --filter=@repo/macos
 bunx turbo run lint --filter=@repo/macos

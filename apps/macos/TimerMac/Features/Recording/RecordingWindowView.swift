@@ -10,9 +10,10 @@ struct RecordingWindowView: View {
 
         VStack(alignment: .leading, spacing: 16) {
             Text("Local recordings").font(.title2.bold())
-            Text("Try a synthetic sample or explicitly record foreground app transitions. Agent capture is off.")
+            Text("Record foreground app transitions and explicitly paired local Codex activity.")
                 .foregroundStyle(.secondary)
             RecordingControlsView()
+            LocalCodexPairingView()
             Divider()
             HStack(alignment: .top, spacing: 16) {
                 List(selection: $model.selectedID) {

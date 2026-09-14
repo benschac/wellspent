@@ -9,7 +9,7 @@ struct RecordingEvent: Codable, Equatable, Sendable, Identifiable {
         var isObservation: Bool { self == .application || self == .agentCompletion || self == .note }
     }
 
-    enum TimeBasis: String, Codable, Sendable { case receiver, sourceReported }
+    enum TimeBasis: String, Codable, Sendable { case receiver, sourceReported, hookReceived }
 
     struct Stamp: Codable, Equatable, Sendable {
         let wall: Date
@@ -62,13 +62,15 @@ struct RecordingEvent: Codable, Equatable, Sendable, Identifiable {
     let focusLink: FocusLink?
     let captureConfiguration: CaptureConfiguration?
     let applicationIdentity: ApplicationIdentity?
+    let agentMetadata: CodexAgentMetadata?
 
     init(
         id: UUID = UUID(), localScopeID: String, recordingID: UUID, intervalID: UUID?, kind: Kind,
         stamp: Stamp, occurredAt: Date? = nil, timeBasis: TimeBasis = .receiver,
         text: String = "", focusLink: FocusLink? = nil,
         captureConfiguration: CaptureConfiguration? = nil,
-        applicationIdentity: ApplicationIdentity? = nil, schemaVersion: Int = 1
+        applicationIdentity: ApplicationIdentity? = nil, agentMetadata: CodexAgentMetadata? = nil,
+        schemaVersion: Int = 1
     ) {
         self.id = id
         self.schemaVersion = schemaVersion
@@ -83,13 +85,15 @@ struct RecordingEvent: Codable, Equatable, Sendable, Identifiable {
         self.focusLink = focusLink
         self.captureConfiguration = captureConfiguration
         self.applicationIdentity = applicationIdentity
+        self.agentMetadata = agentMetadata
     }
 
     var sourceLabel: String {
         switch kind {
         case .application:
             applicationIdentity == nil ? "Synthetic application observation" : "Foreground application"
-        case .agentCompletion: "Synthetic agent report"
+        case .agentCompletion:
+            agentMetadata == nil ? "Synthetic agent report" : "Local Codex report · outcome unverified"
         case .note: "User note"
         default: "Recording boundary"
         }
@@ -104,8 +108,11 @@ struct RecordingEvent: Codable, Equatable, Sendable, Identifiable {
             kind.isObservation || (timeBasis == .receiver && occurredAt == nil),
             kind == .start || focusLink == nil,
             kind == .start || captureConfiguration == nil,
-            kind == .application || applicationIdentity == nil
+            kind == .application || applicationIdentity == nil,
+            (timeBasis == .hookReceived) == (agentMetadata != nil),
+            agentMetadata == nil || kind == .agentCompletion
         else { throw RecordingError.invalidEvent }
         try applicationIdentity?.validate()
+        try agentMetadata?.validate(event: self)
     }
 }

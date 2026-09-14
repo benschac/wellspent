@@ -22,6 +22,7 @@ final class RecordingModel {
     @ObservationIgnored private var isClosed = false
     @ObservationIgnored private var needsRecovery = true
     @ObservationIgnored var captureStateDidChange: (@MainActor () -> Void)?
+    @ObservationIgnored lazy var codex = LocalCodexIntakeModel(recording: self)
 
     init(
         repository: any RecordingRepository = SQLiteRecordingRepository(), localScopeID: String = "synthetic-default",
@@ -154,6 +155,63 @@ final class RecordingModel {
 
     func waitForIdle() async { await operation?.value }
 
+    func localCodexGrants() async throws -> [CodexIntakeContract.Grant] {
+        guard canAct else { throw RecordingError.invalidTransition }
+        return try await repository.codexGrants()
+    }
+
+    func pairLocalCodex(senderID: String, threadID: String, endpoint: String) async throws
+        -> CodexIntakeContract.PairingBundle
+    {
+        guard let current, let intervalID = current.activeIntervalID else {
+            throw RecordingError.invalidTransition
+        }
+        return try await codexAction {
+            try await self.repository.issueCodexGrant(
+                senderID: senderID, threadID: threadID, recordingID: current.id,
+                localScopeID: current.localScopeID, intervalID: intervalID,
+                issuedAt: self.stamp().wall, endpoint: endpoint)
+        }
+    }
+
+    func revokeLocalCodex(bindingID: UUID) async throws {
+        try await codexAction { try await self.repository.revokeCodexGrant(bindingID: bindingID) }
+    }
+
+    func receiveLocalCodex(
+        _ packet: CodexIntakeContract.Packet, bindingID: UUID,
+        acknowledge: (@MainActor (CodexIntakeContract.Packet) async throws -> Void)? = nil
+    ) async throws
+        -> CodexIntakeContract.Packet
+    {
+        try await codexAction {
+            let ack = try await self.repository.receiveCodexPacket(packet, bindingID: bindingID, stamp: self.stamp())
+            self.recordings = try await self.repository.load().filter { $0.localScopeID == self.localScopeID }
+            try Task.checkCancellation()
+            // Keep user revocation/deletion behind the same operation until ACK delivery ends.
+            // A failed/lost ACK leaves the original committed event available for an exact retry.
+            try await acknowledge?(ack)
+            return ack
+        }
+    }
+
+    /// Reuse the recording operation gate so shutdown waits for intake and UI snapshots cannot
+    /// overwrite each other across awaits. The repository independently enforces grant atomicity.
+    private func codexAction<Value>(_ action: @escaping @MainActor () async throws -> Value) async throws -> Value {
+        guard canAct else { throw RecordingError.invalidTransition }
+        var result: Result<Value, Error>?
+        run {
+            do { result = .success(try await action()) } catch { result = .failure(error) }
+            if !self.queuedEvents.isEmpty {
+                self.pendingEvent = self.queuedEvents.removeFirst()
+                await self.commitPending()
+            }
+        }
+        await waitForIdle()
+        guard let result else { throw RecordingError.invalidTransition }
+        return try result.get()
+    }
+
     /// Scope changes never retarget a queued action. Finish the old scope before switching.
     func switchScope(to scope: String) async -> Bool {
         guard canAct, current == nil, !scope.isEmpty, scope.utf8.count <= 200 else { return false }
@@ -171,6 +229,7 @@ final class RecordingModel {
         guard !isClosed else { return true }
         isShuttingDown = true
         acceptingEvents = false
+        await codex.stop()
         await operation?.value
         guard pendingEvent == nil else {
             isShuttingDown = false

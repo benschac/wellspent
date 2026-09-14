@@ -112,6 +112,16 @@ describe("metadata capture", () => {
       ),
     ).toBeNull();
   });
+  test("excludes local-only helper commands from existing cloud capture", () => {
+    for (const command of [
+      "node integrations/codex/local-helper.mjs capture",
+      "node /opt/local-helper.mjs --root /tmp/test setup",
+    ]) {
+      expect(
+        eventFromHook({ ...hook, tool_input: { command } }, config),
+      ).toBeNull();
+    }
+  });
   test("normalizes unexpected thread identifiers without leaking absolute paths", () => {
     expect(
       eventFromHook({ ...hook, session_id: "/Users/alice/session" }, config)

@@ -1,16 +1,18 @@
 # Wellspent workflow capture: execution plan
 
+**Current queue and handoff:** [Wellspent current plan](../WELLSPENT_PLAN.md). This document owns detailed milestone scope, acceptance and dated evidence. The current plan supersedes historical next-step instructions below.
+
 Date: September 12, 2026. Status: Task 1 complete and reverified at `0b33e7b`, preserving the three recorded product decisions. Task 2 has completed the synthetic-storage and live foreground-application implementation slices; selected real-use and signed-build acceptance remain open. The [signal matrix and Task 2 handoff](2026-09-12-wellspent-capture-signal-matrix.md) distinguish earlier signed-probe evidence from current source, documentation, host probe and synthetic checks. This pass activated no ordinary live Codex hook capture. Encryption, multi-device sync and external integrations remain deferred.
 
 Workspace: `/Users/benjaminschachter/timer`.
 
-Task 2 implementation follow-up: the [synthetic-storage slice is complete](2026-09-12-macos-synthetic-recording-proof.md), including automated failure/crash checks and user-run restart acceptance corroborated by read-only SQLite queries. This supersedes the Task 1 pass's pending-acceptance description above. Next is the live Mac application-activity slice; its lifecycle and real-data gates remain open.
+September 13 checkpoint: [synthetic storage](2026-09-12-macos-synthetic-recording-proof.md), foreground application capture, SQLiteData persistence and [C3b local Codex intake](2026-09-13-c3b-local-codex-intake.md) are implemented. C3b's selected live Debug capture/restart acceptance is complete; C4's combined timeline is the next engineering task. C2 formal acceptance and signed distribution remain separate. The existing event review is a partial Task 4 foundation.
 
 ## Outcome
 
 Start a recording session, work normally on the Mac with an agent and several applications, stop, and inspect an accurate account of what happened and where to resume. The immediate value is obtaining useful workflow evidence that is otherwise difficult to retrieve.
 
-This is the active plan for that outcome. It takes priority over the crypto-first and integration-first sequences in the [research roadmap](2026-09-12-wellspent-research-roadmap.md). The [architecture](2026-09-12-wellspent-local-first-architecture.md) and [security design](2026-09-12-wellspent-security-design.md) retain the longer-term privacy and independent-device direction. They do not require encrypted sync before this capture milestone.
+This is the detailed execution specification for that outcome; the [current plan](../WELLSPENT_PLAN.md) owns task selection and status. Capture takes priority over the crypto-first and integration-first sequences in the [research roadmap](2026-09-12-wellspent-research-roadmap.md). The [architecture](2026-09-12-wellspent-local-first-architecture.md) and [security design](2026-09-12-wellspent-security-design.md) retain the longer-term privacy and independent-device direction. They do not require encrypted sync before this capture milestone.
 
 ## Agreed scope and boundaries
 
@@ -29,7 +31,7 @@ The following paths were inspected during the planning conversation. Recheck the
 
 | Owner | Responsibility / current boundary |
 | --- | --- |
-| `apps/macos/TimerMac` | Native app, recording/permission UI and future collectors/local timeline. Current entitlements declare App Sandbox and outgoing network access; granular activity collectors have not been established. |
+| `apps/macos/TimerMac` | Native recording controls, SQLiteData/GRDB storage, foreground application monitor, paired local Codex intake and basic event review. C3b's selected live Debug workflow passed; signed distribution and formal C2 acceptance remain open. |
 | `apps/macos/TimerMac/Features/Focus/FocusModel.swift` | Authenticated focus UI, API calls and in-memory pending state. Do not mistake this for durable local observation storage. |
 | `integrations/codex/timer-capture.mjs` | Existing agent-event capture and spool. Metadata is the default; richer assistant content has a separate opt-in. |
 | `integrations/work-log` | Existing CLI/MCP log/list/flush/status, local delivery spool and tests. A local MCP process is not automatically a local personal database. |
@@ -51,7 +53,7 @@ These are recommendations for the **development sessions**, not a decision about
 | 4. Inspectable timeline UI | GPT-5.6 Terra | Medium | Build a bounded UI against established state/data contracts. Use high if lifecycle or identity bugs emerge. |
 | 5. Evidence-based recap and real-use acceptance | GPT-6 Astra | High | Evaluate grounding, contradictory/missing evidence and whether the product reconstructs real work usefully. Terra/high can implement a settled recap contract. |
 
-The [macOS audit model/readiness table](2026-09-12-macos-interface-and-architecture-audit.md#6-models-readiness-and-first-coding-task) covers the supporting architecture and interface tasks. Its app/window ownership extraction uses **Terra/high** and can start now without settling recording semantics. Complete that bounded preparation before adding recorder services in Task 2; it preserves the existing UI and timer behavior. The audit's step numbers map to this plan explicitly and do not replace Tasks 1–5.
+The [macOS audit model/readiness table](2026-09-12-macos-interface-and-architecture-audit.md#6-models-readiness-and-first-coding-task) covers supporting architecture and interface tasks. Its app/window ownership extraction is complete; do not repeat it. The audit's step numbers map to this plan explicitly and do not replace Tasks 1–5.
 
 Use GPT-5.6 Luna/low only for optional mechanical follow-ups such as formatting an already verified evidence table. Do not use it to decide permission scope, classify uncertain evidence as fact, or design persistence. There is no need to switch models for every small edit; keep one owner for a task and switch at a task boundary. Avoid max/xhigh by default; increase effort only for a concrete unresolved problem.
 
@@ -87,7 +89,7 @@ Task 1 ends after that bounded discovery pass. It does not automatically expand 
 
 ## Task 2 — Record a durable Mac session
 
-Task 1's session ownership, interruption policy and minimal signal scope are confirmed. Begin with the [synthetic durability handoff](2026-09-12-wellspent-capture-signal-matrix.md#6-concrete-task-2-implementation-handoff); live collectors remain gated on the documented acceptance checks. Default: Terra/high.
+Task 1's session ownership, interruption policy and minimal signal scope are confirmed. Synthetic durability and foreground collection are implemented. Close C2's remaining signed/live acceptance using the evidence below; the original [synthetic durability handoff](2026-09-12-wellspent-capture-signal-matrix.md#6-concrete-task-2-implementation-handoff) is historical. Default: Terra/high.
 
 Implement start/pause/resume/stop and permission status in the native app. Add the smallest appropriate durable local store; use SQLite if supported by the selected ownership decision without introducing unnecessary packages. Commit session transitions and observations consistently. Treat capture-session identity separately from backend delivery identity.
 
@@ -132,8 +134,8 @@ For each task record status, actual model/effort if known, files changed, comman
 | Plan and handoff | Complete | App/window preparation committed as `6e1b3f5`; discovery executed and recorded below. |
 | 1. Signal matrix | Complete; reverified at `0b33e7b` | [Matrix, sanitized probes and Task 2 handoff](2026-09-12-wellspent-capture-signal-matrix.md). Recorded choices preserved; current native/agent evidence and remaining gates distinguished. |
 | 2. Recording/durability | Synthetic-storage and live foreground-application implementation complete; selected real-use acceptance pending | [Synthetic durability proof](2026-09-12-macos-synthetic-recording-proof.md) plus the September 12 implementation evidence below. Retention/deletion/disclosure and lifecycle policy are implemented; run the documented signed-build real-use scenario before claiming OS behavior. |
-| 3. Agent correlation | Pending | Needs session/correlation contract. |
-| 4. Timeline | Pending | Needs durable observations and agent events. |
+| 3. Agent correlation | C3a and C3b complete for the selected live Debug workflow | [Production intake and live evidence](2026-09-13-c3b-local-codex-intake.md): real tool and Stop events survived pending helper restart, committed once, received ACKs and appeared in Timer. Signed distribution remains separate. |
+| 4. Timeline | Partial foundation | Basic committed-event review exists; combined timeline, real notes/corrections and UI acceptance remain C4. |
 | 5. Recap/real-use evaluation | Pending | Needs an inspectable timeline. |
 
 ## Task 2 live application-activity implementation evidence — September 12, 2026
@@ -153,6 +155,14 @@ Environment: macOS 26.3 (25D125), arm64, Apple Swift 6.3.3, target minimum macOS
 | `bun run --cwd apps/macos lint` and `git diff --check` | Pass. Strict Swift formatting and patch whitespace passed. |
 
 Remaining gates are deliberate: perform the native-acceptance scenario on a signed intended build with a selected non-sensitive application sequence, explicit pause/finish suppression, actual sleep and session-unavailable transitions, and review/delete of the resulting local record. Recheck permission denial/revocation and sandbox/distribution behavior there; this collector itself requests no TCC permission. The local debug artifact was launched during setup but no foreground recording was started, because the available UI automation could not access the app's menu-bar extra. Therefore no real application identity, app-switch, sleep/lock, deletion-dialog, or signed-build claim is made here. Task 3's trusted ordinary-Codex intake remains separate and unimplemented.
+
+## C2 user acceptance follow-up — September 13, 2026
+
+After receiving the manual foreground-recording checklist, the user replied “done.” Record this as user-reported checklist completion with no failures reported, not independent observation or explicit per-check pass results.
+
+The supplied checklist covered real application switches, pause/resume suppression, actual sleep/wake, lock/unlock, ordinary Quit/reopen with explicit resume, finish suppression, delete cancellation/confirmation and an additional offline recording check. The reply did not enumerate which checks passed or identify the tested binary, signing/sandbox state, macOS version, or event evidence. Those details remain unknown; no running binary or private recording was inspected in this follow-up. In particular, completion does not establish signed-distribution acceptance.
+
+C2's implementation remains complete and its manual exercise is reported complete; formal acceptance awaits the missing result/build details. Do not automatically repeat the checklist. C3a is the next engineering task and can proceed while these details remain open. This update changes planning evidence only; no application code, runtime configuration, hooks or stored recordings changed. Documentation whitespace was checked; no runtime tests were rerun.
 
 ## Task 1 original execution evidence — September 12, 2026
 
@@ -179,7 +189,7 @@ The requested Task 1 pass found the matrix, product decisions and original probe
 
 ## Original new-session handoff (historical)
 
-This prompt initiated the completed discovery pass. The next action is the matrix's Task 2 synthetic-durability handoff; all three product choices are confirmed; do not rerun discovery merely because the original prompt below says to start Task 1.
+This prompt initiated the completed discovery pass. Use the [current handoff](../WELLSPENT_PLAN.md#next-session-prompt); discovery and synthetic durability are complete. Do not execute the historical prompt below as the next task.
 
 Suggested title: **Wellspent capture — signal discovery**. Select **GPT-6 Astra / High** for Task 1.
 
@@ -190,3 +200,24 @@ Read AGENTS.md and docs/design/2026-09-12-wellspent-workflow-capture-plan.md com
 ```
 
 The current desktop computer-use tool explicitly refused control of the ChatGPT/Codex app, so this planning session could not submit the new chat. Official [new-chat links](https://learn.chatgpt.com/docs/reference/commands#deep-links) can prefill the prompt and workspace but do not send it automatically. The handoff is ready; do not interpret this as a started execution session.
+
+
+## C3a synthetic local intake evidence — September 13, 2026
+
+**C3a complete; C3b is the next engineering task and next user hands-on test.** The [settled contract, executable proof and exact C3b handoff](2026-09-13-c3a-local-codex-intake.md) select a capability-authenticated outbound loopback pull from the sandboxed Mac app to a separate local Node outbox. Native storage remains the only recording writer. No production hook/receiver was activated and C2 was not repeated.
+
+- Source baseline: `d0d27ec58bfc474673448c1d94d5e2f942802fdc` plus pre-existing dirty work. Inspected the capture/work-log adapter, native event/snapshot/repository, signal matrix and current official hook reference. New code is confined to two native test-target files and seven C3a probe/fixture files; application source, cloud queues/IDs, dependencies and entitlements are preserved.
+- **Pass:** Node synthetic contract/outbox suite, 6 tests; existing capture/work-log suite, 29 tests and 173 assertions. First packet survives a producer subprocess exit, replay preserves bytes, and only an authenticated matching ACK resolves the pending packet.
+- **Pass:** focused native `CodexIntakeContractTests`, 9 test functions / 29 parameterized cases, using the real SQLiteRecordingRepository. Covers sender/association rejection, strict metadata, separate times, stable identity, duplicate/concurrent/conflicting delivery, delayed closed-interval intake, interruption exclusion, commit failure/lost ACK, offline and reopen recovery. Final result: `apps/macos/.derivedData/Logs/Test/Test-TimerMac-2026.09.13_13-18-20--0400.xcresult`.
+- **Pass:** separate ad-hoc signed App Sandbox loopback probe with Timer's unchanged sandbox/network-client entitlements. Confirmed sandbox container and authenticated outbound pull; disposable service stopped and bundle removed. This does not establish production pairing, signed Timer distribution or real hook delivery.
+- **Pass:** targeted Biome, strict Swift formatting and patch whitespace. Initial tool-sandbox cache/bind failures were rerun with normal host execution; no OS grant or entitlement was changed. Environment: macOS 26.3 (25D125), arm64, Swift 6.3.3, Node 22.23.1, Bun 1.4.0.
+- Proof limits: grant persistence is a reloaded synthetic fixture, native crash boundaries use injected exceptions plus close/reopen, and envelope bytes occupy synthetic event text only in tests. C3b must implement durable issuance/revocation, strict production HTTP/poll lifecycle, typed metadata, bounded queue/quarantine, process-kill tests and one explicitly authorized selected ordinary session. C2's user-reported completion and missing formal evidence remain unchanged.
+
+
+## C3b production implementation and synthetic verification — September 13, 2026
+
+Production local Codex wiring now implements durable explicit pairing/revocation, a separate bounded private outbox, authenticated native loopback pull/ACK, typed immutable metadata and visible pending/rejection reasons. The native full suite passed (205 tests / 291 device executions), final focused checks passed, capture compatibility/helper tests passed and nine real process-kill phases passed. See [C3b evidence and selected ordinary-session procedure](2026-09-13-c3b-local-codex-intake.md) for exact commands, files, intermediate failures and proof boundaries. The inert hook template is prepared but not activated. C3b selected ordinary-session and signed/live acceptance remain next; C2's missing formal evidence is unchanged.
+
+## C3b live acceptance complete — September 13, 2026
+
+The subsequently authorized hooks delivered real PostToolUse and Stop events for the paired thread. Both remained pending while the helper stopped and Timer closed the interval, then recovered after the helper restarted. Read-only SQLite checks confirmed one saved row per event with unchanged original bodies and times; helper ACK receipts and both visible Timer reports were verified. The [dated live evidence](2026-09-13-c3b-local-codex-intake.md#pending-event-helper-restart-and-accepted-stop--september-13-2026) closes C3b's selected Debug workflow. C4 is next; signed distribution, full pairing UI acceptance and C2's formal evidence remain separate. Deliberately lost ACKs/duplicate injection retain synthetic-only evidence.

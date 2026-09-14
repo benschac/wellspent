@@ -32,6 +32,19 @@ struct RecordingReviewContent: View {
                         event.stamp.wall, format: Date.FormatStyle(date: .numeric, time: .standard, timeZone: .gmt)
                     )
                     .font(.caption).foregroundStyle(.secondary)
+                    if let agent = event.agentMetadata {
+                        Text("Hook received: \(agent.metadata.hookReceivedAt) · occurrence unknown")
+                            .font(.caption)
+                        Text(
+                            "Native receipt shown above · Reported result: \(agent.metadata.reportedResult) · completion unverified"
+                        )
+                        .font(.caption)
+                        Text(
+                            "Thread \(agent.metadata.threadID) · \(agent.metadata.kind) · \(agent.metadata.toolName ?? "Turn stop")"
+                        )
+                        .font(.caption)
+                        Text("Event \(event.id.uuidString)").font(.caption2).foregroundStyle(.secondary)
+                    }
                     if let occurredAt = event.occurredAt {
                         Text(
                             "Source-reported occurrence: \(occurredAt.formatted(Date.FormatStyle(date: .numeric, time: .standard, timeZone: .gmt))) UTC"

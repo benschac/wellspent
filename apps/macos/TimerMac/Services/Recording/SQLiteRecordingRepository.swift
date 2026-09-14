@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import GRDB
 import SQLiteData
@@ -29,49 +30,54 @@ actor SQLiteRecordingRepository: RecordingRepository {
     }
 
     func commit(_ event: RecordingEvent) async throws -> RecordingSnapshot {
+        let checkpoint = checkpoint
+        let snapshot = try await access { db in try Self.commit(event, in: db, checkpoint: checkpoint) }
+        // A failure here simulates a lost commit acknowledgement; retry uses the identical event.
+        try checkpoint(.committed)
+        return snapshot
+    }
+
+    private static func commit(
+        _ event: RecordingEvent, in db: Database,
+        checkpoint: @Sendable (Checkpoint) throws -> Void
+    ) throws -> RecordingSnapshot {
         try event.validate()
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
         let payload = String(decoding: try encoder.encode(event), as: UTF8.self)
-        let checkpoint = checkpoint
-        let snapshot = try await access { db in
-            if let original = try RecordingEventRecord.where({ $0.id.eq(event.id.uuidString) }).fetchOne(db) {
-                guard original.payload == payload else { throw RecordingError.conflictingIdentity }
-                guard let saved = try Self.snapshot(db, id: event.recordingID.uuidString) else {
-                    throw RecordingError.invalidStore
-                }
-                return saved
+        if let original = try RecordingEventRecord.where({ $0.id.eq(event.id.uuidString) }).fetchOne(db) {
+            guard original.payload == payload else { throw RecordingError.conflictingIdentity }
+            guard let saved = try Self.snapshot(db, id: event.recordingID.uuidString) else {
+                throw RecordingError.invalidStore
             }
-            var snapshot: RecordingSnapshot
-            try checkpoint(.beforeWrite)
-            if event.kind == .start {
-                // Starting is infrequent; validate all history to enforce the single unfinished recording rule.
-                let all = try Self.snapshots(db)
-                guard !all.contains(where: { $0.status != .finished }) else { throw RecordingError.anotherRecording }
-                guard !all.contains(where: { $0.id == event.recordingID }) else {
-                    throw RecordingError.conflictingIdentity
-                }
-                snapshot = try RecordingSnapshot.rebuild([event])
-                try RecordingRecord.insert {
-                    RecordingRecord(id: event.recordingID.uuidString, scope: event.localScopeID)
-                }.execute(db)
-            } else {
-                guard let saved = try Self.snapshot(db, id: event.recordingID.uuidString) else {
-                    throw RecordingError.staleInterval
-                }
-                snapshot = saved
-                try snapshot.append(event)
-            }
-            try RecordingEventRecord.insert {
-                RecordingEventRecord(
-                    id: event.id.uuidString, recordingID: event.recordingID.uuidString,
-                    sequence: snapshot.events.count, payload: payload)
-            }.execute(db)
-            try checkpoint(.eventWritten)
-            return snapshot
+            return saved
         }
-        // A failure here simulates a lost commit acknowledgement; retry uses the identical event.
-        try checkpoint(.committed)
+        var snapshot: RecordingSnapshot
+        try checkpoint(.beforeWrite)
+        if event.kind == .start {
+            // Starting is infrequent; validate all history to enforce the single unfinished recording rule.
+            let all = try Self.snapshots(db)
+            guard !all.contains(where: { $0.status != .finished }) else { throw RecordingError.anotherRecording }
+            guard !all.contains(where: { $0.id == event.recordingID }) else {
+                throw RecordingError.conflictingIdentity
+            }
+            snapshot = try RecordingSnapshot.rebuild([event])
+            try RecordingRecord.insert {
+                RecordingRecord(id: event.recordingID.uuidString, scope: event.localScopeID)
+            }.execute(db)
+        } else {
+            guard let saved = try Self.snapshot(db, id: event.recordingID.uuidString) else {
+                throw RecordingError.staleInterval
+            }
+            snapshot = saved
+            try snapshot.append(event)
+        }
+        try RecordingEventRecord.insert {
+            RecordingEventRecord(
+                id: event.id.uuidString, recordingID: event.recordingID.uuidString,
+                sequence: snapshot.events.count, payload: payload)
+        }.execute(db)
+        try checkpoint(.eventWritten)
         return snapshot
     }
 
@@ -94,9 +100,141 @@ actor SQLiteRecordingRepository: RecordingRepository {
             guard let record = try RecordingRecord.where({ $0.id.eq(recordingID.uuidString) }).fetchOne(db),
                 record.scope == localScopeID
             else { throw RecordingError.invalidStore }
+            try db.execute(
+                sql: "UPDATE codex_grants SET revoked = 1 WHERE recording_id = ?", arguments: [recordingID.uuidString])
             try RecordingEventRecord.where { $0.recordingID.eq(recordingID.uuidString) }.delete().execute(db)
             try RecordingRecord.where { $0.id.eq(recordingID.uuidString) }.delete().execute(db)
         }
+    }
+
+    func issueCodexGrant(
+        senderID: String, threadID: String, recordingID: UUID, localScopeID: String,
+        intervalID: UUID, issuedAt: Date, endpoint: String
+    ) async throws -> CodexIntakeContract.PairingBundle {
+        guard CodexIntakeContract.validID(senderID), CodexIntakeContract.validID(threadID),
+            CodexIntakeContract.validEndpoint(endpoint), issuedAt.timeIntervalSince1970.isFinite
+        else { throw CodexIntakeContract.Failure.invalidAssociation }
+        // The helper sees millisecond timestamps. Round upward when necessary so the durable
+        // grant and displayed bundle agree without authorizing a fraction of a prior millisecond.
+        let canonical = try CodexIntakeContract.date(CodexIntakeContract.timestamp(issuedAt))
+        let durableIssuedAt =
+            canonical < issuedAt
+            ? try CodexIntakeContract.date(CodexIntakeContract.timestamp(issuedAt.addingTimeInterval(0.001)))
+            : canonical
+        let key = SymmetricKey(size: .bits256).withUnsafeBytes { Data($0) }
+        let grant = CodexIntakeContract.Grant(
+            binding: .init(
+                bindingID: UUID(), senderID: senderID, localScopeID: localScopeID,
+                recordingID: recordingID, intervalID: intervalID, threadID: threadID),
+            key: key, issuedAt: durableIssuedAt, acceptUntil: durableIssuedAt.addingTimeInterval(7 * 24 * 60 * 60),
+            endpoint: endpoint)
+        let payload = try JSONEncoder().encode(grant)
+        try await access { db in
+            guard let snapshot = try Self.snapshot(db, id: recordingID.uuidString),
+                snapshot.localScopeID == localScopeID, snapshot.activeIntervalID == intervalID,
+                let interval = snapshot.intervals.last, issuedAt >= interval.start.wall,
+                try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM codex_grants WHERE revoked = 0") ?? 0 < 256
+            else { throw CodexIntakeContract.Failure.invalidAssociation }
+            try db.execute(
+                sql: "INSERT INTO codex_grants (id, recording_id, payload, revoked) VALUES (?, ?, ?, 0)",
+                arguments: [grant.binding.bindingID.uuidString, recordingID.uuidString, payload])
+        }
+        return CodexIntakeContract.PairingBundle(grant: grant)
+    }
+
+    func codexGrants() async throws -> [CodexIntakeContract.Grant] {
+        try await access { db in
+            try Row.fetchAll(db, sql: "SELECT id, recording_id, payload, revoked FROM codex_grants")
+                .map { try Self.codexGrant($0) }
+        }
+    }
+
+    func revokeCodexGrant(bindingID: UUID) async throws {
+        try await access { db in
+            guard try Self.codexGrant(db, id: bindingID) != nil else {
+                throw CodexIntakeContract.Failure.untrustedSender
+            }
+            try db.execute(sql: "UPDATE codex_grants SET revoked = 1 WHERE id = ?", arguments: [bindingID.uuidString])
+        }
+    }
+
+    /// Authentication, association, identity checks, event commit and revocation use one SQLite
+    /// transaction. No actor suspension can let revocation race a successful new intake commit.
+    func receiveCodexPacket(
+        _ packet: CodexIntakeContract.Packet, bindingID: UUID, stamp: RecordingEvent.Stamp
+    ) async throws -> CodexIntakeContract.Packet {
+        let checkpoint = checkpoint
+        let committed: (RecordingEvent, CodexIntakeContract.Grant) = try await access { db in
+            guard let grant = try Self.codexGrant(db, id: bindingID) else {
+                throw CodexIntakeContract.Failure.untrustedSender
+            }
+            let metadata = try CodexIntakeContract.decode(packet, grant: grant)
+            let hookTime = try CodexIntakeContract.date(metadata.hookReceivedAt)
+            if let row = try RecordingEventRecord.where({ $0.id.eq(metadata.eventID.uuidString) }).fetchOne(db) {
+                let original = try JSONDecoder().decode(RecordingEvent.self, from: Data(row.payload.utf8))
+                guard original.agentMetadata?.exactBody == packet.body else {
+                    throw CodexIntakeContract.Failure.identityConflict
+                }
+                _ = try Self.commit(original, in: db, checkpoint: checkpoint)
+                return (original, grant)
+            }
+            guard stamp.wall <= grant.acceptUntil else { throw CodexIntakeContract.Failure.expiredBinding }
+            guard let snapshot = try Self.snapshot(db, id: metadata.recordingID.uuidString),
+                snapshot.localScopeID == metadata.localScopeID,
+                let interval = snapshot.intervals.first(where: { $0.id == metadata.intervalID }),
+                grant.issuedAt >= interval.start.wall, hookTime >= grant.issuedAt,
+                hookTime >= interval.start.wall, hookTime <= stamp.wall
+            else { throw CodexIntakeContract.Failure.invalidAssociation }
+            guard !interval.interrupted else { throw CodexIntakeContract.Failure.interruptedInterval }
+            guard let end = interval.end else { throw CodexIntakeContract.Failure.awaitingIntervalEnd }
+            guard end.wall >= interval.start.wall, grant.issuedAt < end.wall, hookTime < end.wall else {
+                throw CodexIntakeContract.Failure.outsideInterval
+            }
+            let event = RecordingEvent(
+                id: metadata.eventID, localScopeID: metadata.localScopeID, recordingID: metadata.recordingID,
+                intervalID: metadata.intervalID, kind: .agentCompletion, stamp: stamp, timeBasis: .hookReceived,
+                agentMetadata: CodexAgentMetadata(
+                    metadata: metadata, exactBody: packet.body,
+                    bodyDigest: CodexIntakeContract.digest(packet.body)))
+            _ = try Self.commit(event, in: db, checkpoint: checkpoint)
+            return (event, grant)
+        }
+        // Commit has returned successfully. Failure here models a lost acknowledgement after commit.
+        try checkpoint(.committed)
+        let receipt = CodexIntakeContract.Receipt(
+            eventID: committed.0.id,
+            bodyDigest: CodexIntakeContract.digest(packet.body),
+            nativeReceivedAt: CodexIntakeContract.timestamp(committed.0.stamp.wall))
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        return CodexIntakeContract.sign(try encoder.encode(receipt), key: committed.1.key, domain: "ack")
+    }
+
+    private static func codexGrant(_ db: Database, id: UUID) throws -> CodexIntakeContract.Grant? {
+        guard
+            let row = try Row.fetchOne(
+                db,
+                sql: "SELECT id, recording_id, payload, revoked FROM codex_grants WHERE id = ?",
+                arguments: [id.uuidString])
+        else { return nil }
+        return try codexGrant(row)
+    }
+
+    private static func codexGrant(_ row: Row) throws -> CodexIntakeContract.Grant {
+        let payload: Data = row["payload"]
+        let id: String = row["id"]
+        let recordingID: String = row["recording_id"]
+        let revoked: Int = row["revoked"]
+        var grant = try JSONDecoder().decode(CodexIntakeContract.Grant.self, from: payload)
+        guard grant.binding.bindingID.uuidString == id, grant.binding.recordingID.uuidString == recordingID,
+            grant.key.count == 32, grant.revoked == false, revoked == 0 || revoked == 1,
+            !grant.binding.localScopeID.isEmpty, grant.binding.localScopeID.utf8.count <= 200,
+            CodexIntakeContract.validEndpoint(grant.endpoint),
+            CodexIntakeContract.validID(grant.binding.senderID), CodexIntakeContract.validID(grant.binding.threadID),
+            grant.acceptUntil.timeIntervalSince(grant.issuedAt) == 7 * 24 * 60 * 60
+        else { throw RecordingError.invalidStore }
+        grant.revoked = revoked == 1
+        return grant
     }
 
     private func access<T: Sendable>(_ body: @escaping @Sendable (Database) throws -> T) async throws -> T {
@@ -219,6 +357,18 @@ actor SQLiteRecordingRepository: RecordingRepository {
             }
             _ = try snapshots(db)
         }
+        migrator.registerMigration("codex-local-grants-v1") { db in
+            try db.create(table: "codex_grants", options: .strict) { table in
+                table.column("id", .text).primaryKey().notNull()
+                // Retain revocation after recording deletion. This intentionally has no cascading FK.
+                table.column("recording_id", .text).notNull()
+                table.column("payload", .blob).notNull()
+                table.column("revoked", .integer).notNull().defaults(to: 0).check { $0 == 0 || $0 == 1 }
+            }
+        }
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o700], ofItemAtPath: url.deletingLastPathComponent().path)
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             migrator.asyncMigrate(queue) { result in
                 continuation.resume(with: result.map { _ in () })
