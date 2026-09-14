@@ -176,6 +176,13 @@
       "name": "@repo/codex-capture",
       "version": "0.0.0",
     },
+    "integrations/work-log": {
+      "name": "@repo/work-log",
+      "version": "0.0.0",
+      "dependencies": {
+        "@repo/api-client": "workspace:*",
+      },
+    },
     "packages/api-client": {
       "name": "@repo/api-client",
       "version": "0.0.0",
@@ -884,6 +891,8 @@
     "@repo/typescript-config": ["@repo/typescript-config@workspace:packages/typescript-config"],
 
     "@repo/web": ["@repo/web@workspace:apps/web"],
+
+    "@repo/work-log": ["@repo/work-log@workspace:integrations/work-log"],
 
     "@rolldown/binding-android-arm-eabi": ["@rolldown/binding-android-arm-eabi@1.2.6", "", { "os": "android", "cpu": "arm" }, "sha512-b+jTcARdTiFLI6jB4a5XjTm0RWd6KcRfQj/I2356fxUZemiho9zQLxo0RtCuMDAyKcLo6cEltkgbQp6d1+sjjQ=="],
 

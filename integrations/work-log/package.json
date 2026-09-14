@@ -1,0 +1,14 @@
+{
+  "name": "@repo/work-log",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "bun test *.test.mjs",
+    "test:capture": "bun test *.test.mjs",
+    "lint": "biome check ."
+  },
+  "dependencies": {
+    "@repo/api-client": "workspace:*"
+  }
+}
