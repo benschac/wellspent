@@ -1,9 +1,25 @@
-# Timer monorepo
+# Wellspent monorepo
+
+## License
+
+Wellspent (Timer) is available under the
+[GNU Affero General Public License, version 3 only](LICENSE)
+(`AGPL-3.0-only`), except for components with their own license notices.
+Commercial use is permitted under the AGPL; paying for a license is not required
+when you comply with its terms.
+
+For proprietary use requiring different terms, a
+[paid commercial license](COMMERCIAL-LICENSE.md) is available by separate written
+agreement. Third-party components retain their existing licenses. See
+[contribution requirements](CONTRIBUTING.md) before submitting changes.
+
+## Repository
 
 A Bun-managed Turborepo containing:
 
 - `apps/web`: Next.js App Router application
 - `apps/mobile`: Expo Router application for iOS, Android, and web
+- `apps/macos`: native SwiftUI/AppKit menu-bar and floating-sidebar application
 - `apps/api`: NestJS backend exposing oRPC-backed HTTP routes
 - `packages/api-contract`: shared, runtime-validated oRPC contract
 - `packages/api-client`: shared typed OpenAPI client factory
@@ -72,12 +88,33 @@ On native development builds, the mobile client automatically replaces the
 URLs are left unchanged. Only public, non-secret values belong in
 `EXPO_PUBLIC_*` variables.
 
+## macOS app
+
+`apps/macos` is Wellspent's native SwiftUI/AppKit app. It provides menu-bar and
+floating-sidebar controls for the shared stopwatch, authenticated Focus
+sessions, and local recording and review of foreground application and
+authorized Codex activity. Detailed observations are stored locally unless the
+user explicitly selects them for disclosure.
+
+Start the API, then open `apps/macos/TimerMac.xcodeproj` in Xcode and run the
+`TimerMac` scheme. The native package also participates in the monorepo build,
+lint, and test tasks:
+
+```bash
+bun run --cwd apps/macos build
+bun run --cwd apps/macos lint
+bun run --cwd apps/macos test
+```
+
+See the [macOS app guide](apps/macos/README.md) for local profiles, controls,
+Focus behavior, recording boundaries, and native verification details.
+
 ## Useful commands
 
 Start with `bun run test:fast` for focus behavior and CLI capture; use
 `bun run test:focus` or `bun run test:capture` for narrower checks.
 `bun run test:focus:db:local` runs rollback-only tests against the already
-running, migrated Timer database on port 54422. Tests have no Turbo build
+running, migrated Wellspent database on port 54422. Tests have no Turbo build
 prerequisite. `bun run test` also includes macOS Xcode tests, which compile
 their native target. Builds remain separate below.
 
@@ -105,9 +142,9 @@ bun run db:studio
 ```
 
 Drizzle owns the desired application schema and generates timestamped SQL plus
-metadata under `supabase/migrations`. Timer-owned tables live in the unexposed
-PostgreSQL `app` schema; Supabase continues to own `auth.users`. Review generated
-SQL before applying it, but do not append functions, triggers, grants, or other
+metadata under `supabase/migrations`. Wellspent-owned tables live in the
+unexposed PostgreSQL `app` schema; Supabase continues to own `auth.users`.
+Review generated SQL before applying it, but do not append functions, triggers, grants, or other
 manual SQL to generated structural migrations. Unsupported PostgreSQL objects
 live in explicitly named Drizzle custom migrations. The Supabase CLI is the
 migration applier and history authority; `db:migrate` is a convenience alias
@@ -128,7 +165,7 @@ The project is named `timer-desktop`; older `timer` volumes are kept separately.
 The default start command runs the full stack, including Realtime, Storage,
 Studio (`http://127.0.0.1:54423`), database metadata, and the Edge Functions
 runtime. Local MCP is available at `http://127.0.0.1:54421/mcp` through Studio.
-Use the `app` schema when inspecting Timer tables through MCP or Studio. This
+Use the `app` schema when inspecting Wellspent tables through MCP or Studio. This
 local MCP endpoint is separate from a connector configured for hosted Supabase.
 `supabase:start:lite` runs only Postgres, Auth, REST, the API gateway, and Mailpit;
 it does not provide Studio or MCP. Both modes omit optional analytics, Vector
