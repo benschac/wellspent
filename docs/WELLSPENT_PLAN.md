@@ -35,7 +35,7 @@ deliberately lost ACK/duplicate replay remains synthetic-test evidence only.
 | Local recording lifecycle and storage (Task 2) | Complete | [Synthetic proof](design/2026-09-12-macos-synthetic-recording-proof.md) records restart acceptance and failure tests. [SQLiteData migration](design/2026-09-13-macos-sqlitedata.md) records native/crash checks and supersedes the custom SQLite adapter. |
 | Foreground application collector (Task 2) | Complete | Fixture tests recorded; user reports completing the manual checklist. [C2 follow-up](design/2026-09-12-wellspent-workflow-capture-plan.md#c2-user-acceptance-follow-up--september-13-2026) preserves unknown build/signing identity and individual results. |
 | Ordinary agent activity (Task 3) | C3a and C3b complete for the selected live Debug workflow | [C3b evidence](design/2026-09-13-c3b-local-codex-intake.md): real PostToolUse/Stop pending across offline closure and helper restart, unchanged bodies, one row each, ACKs and visible reports. Signed distribution/full pairing UI acceptance remain separate. |
-| Session timeline (Task 4) | Partial foundation | `RecordingReviewContent` displays committed events, source labels, intervals and gaps in save order. Full correlated timeline, real notes/corrections and native UI acceptance remain C4. |
+| Session timeline (Task 4) | C4 in progress | The September 14 deterministic timeline slice groups immutable events by interval, orders them by their closest known time, and makes known/unknown coverage gaps and empty intervals explicit. Real notes/corrections and native UI acceptance remain C4. |
 | Grounded recap and usefulness (Task 5) | Pending | Selected-input disclosure, persisted recap references and real-use evaluation remain C5. Existing Focus recap does not establish this capture recap. |
 
 ## Ordered work
@@ -70,9 +70,16 @@ Status: **complete — implementation, synthetic verification and selected live 
 
 ### C4 — Make the combined timeline useful without AI
 
-Status: **next engineering task; C3's event contract and selected live Debug workflow are established**. Full combined real-work acceptance still needs C2's formal evidence and the signed distribution checks; implementation can proceed now.
+Status: **in progress; first deterministic timeline slice completed September 14, 2026**. `RecordingTimeline` groups immutable events by their established interval and orders them by source-reported occurrence, hook receipt, or native receipt, with save order as a deterministic tie-breaker. `RecordingReviewContent` now shows interval boundaries, source labels, empty intervals, known/unknown coverage gaps, and the distinction between an agent hook time and native save time. It does not add durations together as human time, mutate recordings, alter intake, or infer completion. Full combined real-work acceptance still needs C2's formal evidence and the signed distribution checks; implementation can proceed now.
 
 Extend the existing review with application intervals, real agent events, user-authored notes and corrections that preserve originals. Make ordering, source, uncertainty and missing coverage understandable. Do not add foreground and agent durations together as human time. Done when a selected recorded session can be reconstructed manually and keyboard/native UI checks pass. See [Task 4](design/2026-09-12-wellspent-workflow-capture-plan.md#task-4--make-the-timeline-inspectable).
+
+#### C4 first timeline slice — September 14, 2026
+
+- **Changed:** `RecordingTimeline` and focused tests; `RecordingReviewContent` now renders interval-scoped timeline sections with explicit time basis, coverage and gap labels. Capture, SQLite schema/data, Codex pairings, helper queues, backend contracts and dependencies were untouched.
+- **Passed:** `bun run --cwd apps/macos lint`, `git diff --check`, and `bun run --cwd apps/macos test` on the local macOS Xcode target. The suite includes the existing rendered `RecordingWindowTests` fixture and the new deterministic ordering, known-gap, unknown-interruption and empty-interval projection tests.
+- **Evidence boundary:** the Debug build and automated native test/render pass establish compilation and deterministic projection behavior. They do not establish keyboard traversal, VoiceOver, visual suitability in the running app, signed distribution, C2 formal acceptance, or a user-authored note/correction flow.
+- **Next bounded C4 step:** design and persist a small local annotation/correction model that references immutable event IDs, never overwrites source observations, then exercise the resulting editor and timeline with keyboard/native UI checks.
 
 ### C5 — Add a grounded recap and evaluate real work
 
@@ -99,10 +106,10 @@ The [research register](design/2026-09-12-wellspent-research-roadmap.md) owns de
 
 ## Next-session prompt
 
-Suggested session: **Wellspent — useful combined timeline (C4)**. C3b's selected live Debug capture/restart check passed; C2 formal and signed distribution evidence remain separate.
+Suggested session: **Wellspent — timeline annotations and corrections (C4)**. The deterministic timeline projection is complete; C3b's selected live Debug capture/restart check passed; C2 formal and signed distribution evidence remain separate.
 
 ```text
-Read AGENTS.md, docs/WELLSPENT_PLAN.md, the Task 4 section of docs/design/2026-09-12-wellspent-workflow-capture-plan.md and the final live evidence in docs/design/2026-09-13-c3b-local-codex-intake.md. Implement one outcome-sized C4 improvement to RecordingReviewContent: make committed foreground-app intervals, real Codex events, notes/corrections, ordering, uncertainty and coverage gaps inspectable. Begin with current source and preserve existing recordings, grants, queues and dirty changes. Do not repeat C3b's completed real PostToolUse/Stop pending-restart check or infer human focused time/completion from agent metadata. No transcript reads, uploads, new permissions/dependencies or backend changes are implied. Use focused checks and native UI evidence appropriate to the chosen change. Keep C2 formal evidence, signed distribution and deliberately lost-ACK live testing distinct from the verified Debug workflow. Record the result and next bounded C4 step.
+Read AGENTS.md, docs/WELLSPENT_PLAN.md, the Task 4 section of docs/design/2026-09-12-wellspent-workflow-capture-plan.md and the final live evidence in docs/design/2026-09-13-c3b-local-codex-intake.md. The deterministic `RecordingTimeline` projection already makes interval ordering, known/unknown gaps, empty intervals, source labels and receipt-time uncertainty inspectable. Implement the next outcome-sized C4 improvement: a small local user-authored annotation/correction flow that references immutable event IDs and preserves original observations. Begin with current source and preserve existing recordings, grants, queues and dirty changes. Do not repeat C3b's completed real PostToolUse/Stop pending-restart check or infer human focused time/completion from agent metadata. No transcript reads, uploads, new permissions/dependencies or backend changes are implied. Use focused checks plus actual keyboard/native UI evidence for the new editor. Keep C2 formal evidence, signed distribution and deliberately lost-ACK live testing distinct from the verified Debug workflow. Record the result and next bounded C4 step.
 ```
 
 ## Keeping the plan current

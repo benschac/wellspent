@@ -15,21 +15,43 @@ agreement. Third-party components retain their existing licenses. See
 
 ## Repository
 
-A Bun-managed Turborepo containing:
+A Bun-managed Turborepo.
+
+### Applications
 
 - `apps/web`: Next.js App Router application
 - `apps/mobile`: Expo Router application for iOS, Android, and web
 - `apps/macos`: native SwiftUI/AppKit menu-bar and floating-sidebar application
+- `apps/desktop`: Tauri 2 desktop shell for the shared timer package
 - `apps/api`: NestJS backend exposing oRPC-backed HTTP routes
-- `packages/api-contract`: shared, runtime-validated oRPC contract
-- `packages/api-client`: shared typed OpenAPI client factory
-- `packages/database`: shared Drizzle schema, PostgreSQL client, and migrations
-- `packages/typescript-config`: reusable TypeScript configurations
-- `biome.json`: shared JavaScript/TypeScript linting and formatting
+
+### Packages
+
+- `packages/api-contract` (`@repo/api-contract`): runtime-validated oRPC and
+  OpenAPI contracts shared by the API and its clients
+- `packages/api-client` (`@repo/api-client`): typed HTTP, TanStack Query,
+  Google integration, and CLI/MCP work-log clients
+- `packages/database` (`@repo/database`): Drizzle schema and PostgreSQL client;
+  reviewed migrations live under `supabase/migrations`
+- `packages/lib` (`@repo/lib`): small reusable React hooks shared by the web
+  and mobile applications
+- `packages/liquid-ui` (`@repo/liquid-ui`): shared Swift liquid-surface renderer
+  with an Expo iOS bridge and Android/web fallback
+- `packages/session-domain` (`@repo/session-domain`): platform-neutral Focus
+  session schemas, transition rules, optimistic projection, and recap logic
+- `packages/timer` (`@repo/timer`): shared stopwatch, WebSocket synchronization,
+  and React Native Skia timer-dial primitives
+- `packages/typescript-config` (`@repo/typescript-config`): reusable TypeScript
+  configurations for libraries, Next.js, and NestJS
+
+JavaScript and TypeScript linting and formatting are configured centrally in
+`biome.json`.
 
 The web and mobile apps depend on the client package, the client depends on the
-contract, and the NestJS app implements the contract. Apps never import one
-another or reach across package boundaries.
+contract, and the NestJS app implements the contract. Shared Focus rules live
+in the session-domain package, while the realtime stopwatch remains in the
+timer package. Apps never import one another or reach across package
+boundaries.
 
 ## Requirements
 
@@ -144,11 +166,11 @@ bun run db:studio
 Drizzle owns the desired application schema and generates timestamped SQL plus
 metadata under `supabase/migrations`. Wellspent-owned tables live in the
 unexposed PostgreSQL `app` schema; Supabase continues to own `auth.users`.
-Review generated SQL before applying it, but do not append functions, triggers, grants, or other
-manual SQL to generated structural migrations. Unsupported PostgreSQL objects
-live in explicitly named Drizzle custom migrations. The Supabase CLI is the
-migration applier and history authority; `db:migrate` is a convenience alias
-for `db:migrate:local`.
+Review generated SQL before applying it, but do not append functions, triggers,
+grants, or other manual SQL to generated structural migrations. Unsupported
+PostgreSQL objects live in explicitly named Drizzle custom migrations. The
+Supabase CLI is the migration applier and history authority; `db:migrate` is a
+convenience alias for `db:migrate:local`.
 
 Local Supabase lifecycle commands:
 
