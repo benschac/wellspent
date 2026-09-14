@@ -39,14 +39,16 @@ guide doesn't cover, search through the source code in `node_modules/effect/src`
 - Schema: `packages/database/src/schema/index.ts` is Drizzle's desired state; reviewed SQL and metadata live in `supabase/migrations`. Use Drizzle generation for structural changes and named custom migrations for unsupported objects. Supabase CLI applies migrations. Preserve this ownership when using generic database skills.
 - Local Timer Supabase: API `127.0.0.1:54421`, Postgres `127.0.0.1:54422`. Local verification must not inherit a hosted `DATABASE_URL` or reset an existing database.
 
-## Current milestone and verification
+## Task selection and scope
 
-For the current Wellspent priority and next task, read [the current plan](docs/WELLSPENT_PLAN.md). C3b local Codex intake is complete for the selected live Debug workflow; C4's combined timeline is next. Signed distribution and formal C2 Mac acceptance remain separate. The [architecture checkpoint and task acceptance](docs/design/2026-08-29-focus-timer-product-and-sync-architecture.md#26-recommended-next-implementation-sequence) retains the browser recovery/Android track; it is not the default capture queue. Broader design sections describe target behavior unless current evidence marks it implemented.
+- Follow the user's requested outcome. When choosing the next task, use [the current plan](docs/WELLSPENT_PLAN.md); keep milestone status and priorities there instead of duplicating them in this file.
+- Read linked design and acceptance documents when relevant to the task. Treat design proposals as intended behavior until supported by current source and evidence; current source and executed checks take precedence over historical progress notes.
+- Keep work bounded by the requested scope, behavior to preserve, and acceptance criteria. Complete independent work when a blocker affects only part of the task, and report what remains blocked or deferred.
 
-- `bun run test:fast`: focus domain/browser and capture tests; no app builds or database.
-- `bun run test:focus` / `bun run test:capture`: narrower checks.
-- `bun run test:focus:db:local`: rollback-only integration tests against Timer's fixed local database; requires an already running, migrated stack and fails if unavailable.
-- `bun run --cwd apps/api typecheck` / `bun run --cwd apps/web typecheck`: targeted static checks.
-- Builds, HTTP smoke, and physical-device checks are separate; follow [verification](docs/verification.md). `bun run test` also includes macOS Xcode tests.
+## Verification
 
-For focus persistence/replay verification, read [verify-focus-sync](docs/skills/verify-focus-sync/SKILL.md). For requested native/device acceptance, read [run-native-acceptance](docs/skills/run-native-acceptance/SKILL.md). These repository skills are linked here rather than installed into the global skill catalog. Their commands and evidence boundaries live in the verification guide. Keep task requests outcome-sized: scope, preserved behavior, acceptance evidence, and deferred work. Current source and executed checks take precedence over old progress notes.
+- Use [the verification guide](docs/verification.md) and the owning package's scripts to select the smallest relevant checks. Expand verification when failures, cross-package effects, or acceptance criteria require it.
+- `bun run test:fast` covers focus and capture without app builds or database access. `bun run test` also includes macOS Xcode tests; do not treat it as a lightweight default.
+- Database verification requires the existing, migrated local stack. Keep setup separate from checks; never silently substitute a hosted database or reset an existing database to make tests pass.
+- For focus persistence/replay verification, read [verify-focus-sync](docs/skills/verify-focus-sync/SKILL.md). For requested native/device acceptance, read [run-native-acceptance](docs/skills/run-native-acceptance/SKILL.md).
+- Report what executed checks establish and what remains unverified. Static checks, synthetic tests, builds, live behavior, physical-device acceptance, and signed distribution are separate evidence boundaries; skipped or unavailable checks are not passes.
