@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SettingsView: View {
+    @Environment(TimerWindowCoordinator.self) private var windows
     @State private var selectedCategory: SettingsCategory? = .accounts
 
     var body: some View {
@@ -16,12 +17,18 @@ struct SettingsView: View {
             .toolbar(removing: .sidebarToggle)
         } detail: {
             VStack(alignment: .leading, spacing: 0) {
-                Text((selectedCategory ?? .accounts).rawValue)
-                    .font(.title2.bold())
-                    .padding(.horizontal, 24)
-                    .padding(.top, 20)
-                    .padding(.bottom, 12)
-                    .accessibilityAddTraits(.isHeader)
+                HStack {
+                    Text((selectedCategory ?? .accounts).rawValue)
+                        .font(.title2.bold())
+                        .accessibilityAddTraits(.isHeader)
+                    Spacer()
+                    Button(
+                        "Local Recordings…", systemImage: "waveform.path.ecg",
+                        action: windows.showRecordingWindow)
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 20)
+                .padding(.bottom, 12)
 
                 SettingsDetailView(selectedCategory: selectedCategory ?? .accounts)
             }

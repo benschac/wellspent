@@ -56,6 +56,7 @@ final class TimerAppComposition {
         foregroundApplicationMonitor.synchronize()
         recording.load()
         recording.codex.start()
+        recording.harness.start()
         sidebar.restore()
         preparationTask = Task { [weak self] in await self?.prepareFocus() }
     }

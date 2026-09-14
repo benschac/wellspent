@@ -31,12 +31,14 @@ struct RecordingTimeline: Equatable, Sendable {
             case nativeReceipt
             case sourceReportedOccurrence
             case hookReceipt
+            case noteSubmission
 
             var label: String {
                 switch self {
                 case .nativeReceipt: "Native receipt"
                 case .sourceReportedOccurrence: "Source-reported occurrence"
                 case .hookReceipt: "Hook receipt; occurrence unknown"
+                case .noteSubmission: "MCP note submission; reported activity"
                 }
             }
         }
@@ -90,6 +92,7 @@ struct RecordingTimeline: Equatable, Sendable {
     }
 
     private static func timing(for event: RecordingEvent) -> (date: Date, source: Entry.TimeSource) {
+        if let reportedAt = event.workNote?.reportedAt { return (reportedAt, .noteSubmission) }
         switch event.timeBasis {
         case .hookReceived:
             if let hookReceivedAt = event.agentMetadata?.hookReceivedAt {

@@ -127,7 +127,7 @@ struct LocalCodexTransport: Sendable {
         }
     }
 
-    private func send(_ packet: CodexIntakeContract.Packet, path: String) async throws -> Data {
+    func send(_ packet: CodexIntakeContract.Packet, path: String) async throws -> Data {
         try Task.checkCancellation()
         let configuration = URLSessionConfiguration.ephemeral
         configuration.connectionProxyDictionary = [:]

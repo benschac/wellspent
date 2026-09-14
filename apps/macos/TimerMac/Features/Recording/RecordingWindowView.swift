@@ -13,6 +13,7 @@ struct RecordingWindowView: View {
             Text("Record foreground app transitions and explicitly paired local Codex activity.")
                 .foregroundStyle(.secondary)
             RecordingControlsView()
+            LocalHarnessView()
             LocalCodexPairingView()
             Divider()
             HStack(alignment: .top, spacing: 16) {

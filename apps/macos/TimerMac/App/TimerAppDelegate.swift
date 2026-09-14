@@ -4,6 +4,7 @@ import AppKit
 final class TimerAppDelegate: NSObject, NSApplicationDelegate {
     let composition = TimerAppComposition()
     private lazy var focusShortcut = FocusGlobalShortcut { [weak self] in self?.composition.windows.showFocusWindow() }
+    private lazy var statusItem = TimerStatusItemController(windows: composition.windows)
     private var terminationTask: Task<Void, Never>?
     private var isRunning = false
 
@@ -12,6 +13,8 @@ final class TimerAppDelegate: NSObject, NSApplicationDelegate {
         guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
         isRunning = true
         composition.start()
+        statusItem.start()
+        composition.windows.showMainWindow()
         do { try focusShortcut.register() } catch {
             composition.windows.focusShortcutError = error.localizedDescription
         }
@@ -34,7 +37,8 @@ final class TimerAppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         guard isRunning else { return false }
-        composition.sidebar.show()
+        // The floating panel can be visible even when every app window is closed.
+        composition.windows.showMainWindow()
         return false
     }
 
@@ -45,6 +49,7 @@ final class TimerAppDelegate: NSObject, NSApplicationDelegate {
             let canTerminate = await composition.shutdown()
             if canTerminate {
                 isRunning = false
+                statusItem.stop()
                 focusShortcut.unregister()
                 NSWorkspace.shared.notificationCenter.removeObserver(self)
             } else {
@@ -57,6 +62,7 @@ final class TimerAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        statusItem.stop()
         focusShortcut.unregister()
         NSWorkspace.shared.notificationCenter.removeObserver(self)
     }

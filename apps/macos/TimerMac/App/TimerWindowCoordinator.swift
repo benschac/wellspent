@@ -57,11 +57,12 @@ final class TimerWindowCoordinator {
     func showMainWindow() {
         if mainWindow == nil {
             mainWindow = makeWindow(
-                title: "Timer", size: CGSize(width: 560, height: 480),
+                title: "Timer", size: CGSize(width: 640, height: 600),
                 view: TimerWindowView().environment(model).environment(sidebar).environment(self)
             )
         }
         NSApplication.shared.activate()
+        mainWindow?.deminiaturize(nil)
         mainWindow?.makeKeyAndOrderFront(nil)
     }
 
@@ -108,6 +109,7 @@ final class TimerWindowCoordinator {
                 view: RecordingWindowView().environment(recording))
         }
         NSApplication.shared.activate()
+        recordingWindow?.deminiaturize(nil)
         recordingWindow?.makeKeyAndOrderFront(nil)
     }
 

@@ -55,11 +55,12 @@ struct RecordingWindowTests {
             content:
                 VStack(alignment: .leading, spacing: 16) {
                     RecordingControlsView()
+                    LocalHarnessView()
                     if let selected = recording.selected { RecordingReviewContent(recording: selected) }
                 }
                 .environment(recording)
                 .padding(20)
-                .frame(width: 700, height: 760, alignment: .topLeading)
+                .frame(width: 700, height: 960, alignment: .topLeading)
                 .background(.background)
                 .environment(\.colorScheme, .light))
         let bitmap = NSBitmapImageRep(cgImage: try #require(renderer.cgImage))

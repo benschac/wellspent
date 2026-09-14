@@ -26,6 +26,11 @@ struct RecordingTimelineEventView: View {
                 .font(.caption)
                 Text("Event \(event.id.uuidString)").font(.caption2).foregroundStyle(.secondary)
             }
+            if event.workNote != nil {
+                Text("Explicitly submitted note. This does not verify completion or focused time.")
+                    .font(.caption).foregroundStyle(.secondary)
+                Text("Event \(event.id.uuidString)").font(.caption2).foregroundStyle(.secondary)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .textSelection(.enabled)

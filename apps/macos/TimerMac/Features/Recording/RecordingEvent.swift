@@ -63,6 +63,7 @@ struct RecordingEvent: Codable, Equatable, Sendable, Identifiable {
     let captureConfiguration: CaptureConfiguration?
     let applicationIdentity: ApplicationIdentity?
     let agentMetadata: CodexAgentMetadata?
+    let workNote: RecordingWorkNote?
 
     init(
         id: UUID = UUID(), localScopeID: String, recordingID: UUID, intervalID: UUID?, kind: Kind,
@@ -70,6 +71,7 @@ struct RecordingEvent: Codable, Equatable, Sendable, Identifiable {
         text: String = "", focusLink: FocusLink? = nil,
         captureConfiguration: CaptureConfiguration? = nil,
         applicationIdentity: ApplicationIdentity? = nil, agentMetadata: CodexAgentMetadata? = nil,
+        workNote: RecordingWorkNote? = nil,
         schemaVersion: Int = 1
     ) {
         self.id = id
@@ -86,6 +88,7 @@ struct RecordingEvent: Codable, Equatable, Sendable, Identifiable {
         self.captureConfiguration = captureConfiguration
         self.applicationIdentity = applicationIdentity
         self.agentMetadata = agentMetadata
+        self.workNote = workNote
     }
 
     var sourceLabel: String {
@@ -94,7 +97,7 @@ struct RecordingEvent: Codable, Equatable, Sendable, Identifiable {
             applicationIdentity == nil ? "Synthetic application observation" : "Foreground application"
         case .agentCompletion:
             agentMetadata == nil ? "Synthetic agent report" : "Local Codex report · outcome unverified"
-        case .note: "User note"
+        case .note: workNote == nil ? "User note" : "Codex log_work · reported note · outcome unverified"
         default: "Recording boundary"
         }
     }
@@ -110,9 +113,11 @@ struct RecordingEvent: Codable, Equatable, Sendable, Identifiable {
             kind == .start || captureConfiguration == nil,
             kind == .application || applicationIdentity == nil,
             (timeBasis == .hookReceived) == (agentMetadata != nil),
-            agentMetadata == nil || kind == .agentCompletion
+            agentMetadata == nil || kind == .agentCompletion,
+            workNote == nil || kind == .note
         else { throw RecordingError.invalidEvent }
         try applicationIdentity?.validate()
         try agentMetadata?.validate(event: self)
+        try workNote?.validate(event: self)
     }
 }

@@ -23,6 +23,7 @@ final class RecordingModel {
     @ObservationIgnored private var needsRecovery = true
     @ObservationIgnored var captureStateDidChange: (@MainActor () -> Void)?
     @ObservationIgnored lazy var codex = LocalCodexIntakeModel(recording: self)
+    @ObservationIgnored lazy var harness = LocalHarnessModel(recording: self)
 
     init(
         repository: any RecordingRepository = SQLiteRecordingRepository(), localScopeID: String = "synthetic-default",
@@ -195,6 +196,53 @@ final class RecordingModel {
         }
     }
 
+    var activeHarnessInterval: LocalHarnessContract.Active? {
+        guard canAct, acceptingEvents, errorMessage == nil, let current,
+            let intervalID = current.activeIntervalID
+        else { return nil }
+        return .init(recordingID: current.id, intervalID: intervalID, localScopeID: localScopeID)
+    }
+
+    /// Admission is serialized with recording boundaries. Only an exact already-committed retry
+    /// can succeed after closure/relaunch; new evidence always needs this process's active interval.
+    func receiveWorkNote(
+        _ packet: CodexIntakeContract.Packet, connection: LocalHarnessContract.Connection, epoch: UUID
+    ) async throws -> RecordingEvent {
+        let note = try LocalHarnessContract.note(packet, connection: connection)
+        guard connection.localScopeID == localScopeID else { throw LocalHarnessContract.Failure.wrongScope }
+        return try await codexAction {
+            // Read durable history as a previous commit may have succeeded before its ACK was lost.
+            let saved = try await self.repository.load()
+            if let original = saved.flatMap(\.events).first(where: { $0.id == note.eventID }) {
+                guard original.workNote?.exactBody == packet.body, original.localScopeID == self.localScopeID else {
+                    throw LocalHarnessContract.Failure.identityConflict
+                }
+                self.recordings = saved.filter { $0.localScopeID == self.localScopeID }
+                return original
+            }
+            let now = self.stamp()
+            let reportedAt = try CodexIntakeContract.date(note.reportedAt)
+            guard note.epoch == epoch, now.wall.timeIntervalSince(reportedAt) >= 0,
+                now.wall.timeIntervalSince(reportedAt) <= 15
+            else { throw LocalHarnessContract.Failure.expiredRequest }
+            guard self.acceptingEvents, !self.isShuttingDown, self.errorMessage == nil,
+                self.current?.id == note.recordingID, self.current?.activeIntervalID == note.intervalID,
+                let interval = self.current?.intervals.last,
+                reportedAt >= interval.start.wall.addingTimeInterval(-0.001)
+            else { throw LocalHarnessContract.Failure.inactiveInterval }
+            try Task.checkCancellation()
+            let event = RecordingEvent(
+                id: note.eventID, localScopeID: note.localScopeID, recordingID: note.recordingID,
+                intervalID: note.intervalID, kind: .note, stamp: now, text: note.text,
+                workNote: .init(exactBody: packet.body, bodyDigest: CodexIntakeContract.digest(packet.body)))
+            let updated = try await self.repository.commit(event)
+            if let index = self.recordings.firstIndex(where: { $0.id == updated.id }) {
+                self.recordings[index] = updated
+            }
+            return event
+        }
+    }
+
     /// Reuse the recording operation gate so shutdown waits for intake and UI snapshots cannot
     /// overwrite each other across awaits. The repository independently enforces grant atomicity.
     private func codexAction<Value>(_ action: @escaping @MainActor () async throws -> Value) async throws -> Value {
@@ -229,10 +277,12 @@ final class RecordingModel {
         guard !isClosed else { return true }
         isShuttingDown = true
         acceptingEvents = false
+        await harness.stop()
         await codex.stop()
         await operation?.value
         guard pendingEvent == nil else {
             isShuttingDown = false
+            harness.resumeAfterFailedShutdown()
             return false
         }
         if let current, current.status != .interrupted {
@@ -242,6 +292,7 @@ final class RecordingModel {
             await commitPending()
             guard pendingEvent == nil else {
                 isShuttingDown = false
+                harness.resumeAfterFailedShutdown()
                 return false
             }
         }

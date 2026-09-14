@@ -5,49 +5,55 @@ struct TimerWindowView: View {
     @Environment(TimerWindowCoordinator.self) private var windows
 
     var body: some View {
-        VStack {
-            Text(model.backendProfileLabel)
-                .font(.caption)
-                .foregroundStyle(model.isProductionAPI ? .orange : .secondary)
-            HStack {
-                Label("Timer", systemImage: "timer")
-                    .font(.title2)
-                    .bold()
+        VStack(spacing: 0) {
+            TimerWorkspaceNavigationView()
+                .padding()
+            Divider()
+            ScrollView {
+                VStack(spacing: 20) {
+                    HStack {
+                        Label("Timer", systemImage: "timer")
+                            .font(.title2)
+                            .bold()
 
-                Spacer()
+                        Spacer()
 
-                ConnectionStatusView(state: model.syncStatus)
-            }
+                        ConnectionStatusView(state: model.syncStatus)
+                    }
 
-            Spacer()
+                    Text(model.backendProfileLabel)
+                        .foregroundStyle(model.isProductionAPI ? .orange : .secondary)
+                        .textSelection(.enabled)
 
-            TimerReadoutView()
-            TimerControlsView()
-            Text(model.saveStatus)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+                    Divider()
 
-            if let errorMessage = model.errorMessage {
-                ErrorBannerView(message: errorMessage)
-            }
-
-            Spacer()
-
-            HStack {
-                if let revision = model.latestRevision {
-                    Text("Server revision \(revision)")
+                    TimerReadoutView()
+                    TimerControlsView()
+                    Text(model.saveStatus)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
-                }
 
-                Spacer()
+                    if let errorMessage = model.errorMessage {
+                        ErrorBannerView(message: errorMessage)
+                    }
 
-                Button(action: windows.showSettings) {
-                    Label("Settings", systemImage: "gearshape")
+                    if let shortcutError = windows.focusShortcutError {
+                        Label(shortcutError, systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                    }
+
+                    TimerWindowActionsView()
+
+                    if let revision = model.latestRevision {
+                        Text("Server revision \(revision)")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                 }
+                .padding()
             }
         }
-        .padding()
-        .frame(minWidth: 440, minHeight: 360)
+        .frame(minWidth: 520, minHeight: 500)
     }
 }

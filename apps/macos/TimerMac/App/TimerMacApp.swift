@@ -5,21 +5,19 @@ struct TimerMacApp: App {
     @NSApplicationDelegateAdaptor(TimerAppDelegate.self) private var delegate
 
     var body: some Scene {
-        MenuBarExtra {
-            TimerMenuView()
-                .environment(delegate.composition.model)
-                .environment(delegate.composition.sidebar)
-                .environment(delegate.composition.windows)
-        } label: {
-            Label(delegate.composition.model.menuBarTitle, systemImage: "timer")
-                .accessibilityLabel(delegate.composition.model.accessibilityTimerLabel)
-        }
-        .menuBarExtraStyle(.menu)
-        .commands {
-            CommandGroup(replacing: .appSettings) {
-                Button("Settings…", action: delegate.composition.windows.showSettings)
-                    .keyboardShortcut(",", modifiers: .command)
+        Settings { EmptyView() }
+            .commands {
+                CommandMenu("Workspace") {
+                    Button("Local Recordings…", action: delegate.composition.windows.showRecordingWindow)
+                        .keyboardShortcut("r", modifiers: [.command, .shift])
+                    Button("Open Focus", action: delegate.composition.windows.showFocusWindow)
+                        .keyboardShortcut("f", modifiers: [.control, .option, .command])
+                    Button("Open Timer", action: delegate.composition.windows.showMainWindow)
+                }
+                CommandGroup(replacing: .appSettings) {
+                    Button("Settings…", action: delegate.composition.windows.showSettings)
+                        .keyboardShortcut(",", modifiers: .command)
+                }
             }
-        }
     }
 }
