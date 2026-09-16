@@ -1,6 +1,6 @@
 # Wellspent: current plan
 
-Updated September 13, 2026. **Read this first to choose work.** This file owns current priority, status and the next handoff. Detailed acceptance criteria live in the linked execution plan; dated evidence stays in its original document. Historical “start here” prompts do not override this queue.
+Updated September 16, 2026. **Read this first to choose work.** This file owns current priority, status and the next handoff. Detailed acceptance criteria live in the linked execution plan; dated evidence stays in its original document. Historical “start here” prompts do not override this queue.
 
 ## Outcome and current position
 
@@ -39,6 +39,14 @@ deliberately lost ACK/duplicate replay remains synthetic-test evidence only.
 | Grounded recap and usefulness (Task 5) | Pending | Selected-input disclosure, persisted recap references and real-use evaluation remain C5. Existing Focus recap does not establish this capture recap. |
 
 ## Ordered work
+
+September 16 UI follow-up: the user reports C4a complete (individual acceptance
+results and build identity were not supplied) and requested recording UI improvements
+before annotations/corrections. Local Recordings now lives in Settings, with a
+larger timeline area, secondary connection/sample controls, and newest-first
+ordering. See [UI changes and verification](design/2026-09-16-recordings-settings-ui.md).
+The next engineering slice remains append-only annotations/corrections; do not
+restart C4a acceptance solely because its older detailed checklist remains open.
 
 Stable IDs below subdivide the existing Tasks 2–5; they are not another competing roadmap. Complete one bounded task per session. Preserve existing behavior, dirty changes and committed recordings.
 
@@ -106,10 +114,18 @@ The [research register](design/2026-09-12-wellspent-research-roadmap.md) owns de
 
 ## Next-session prompt
 
-Suggested session: **Wellspent — timeline annotations and corrections (C4)**. The deterministic timeline projection is complete; C3b's selected live Debug capture/restart check passed; C2 formal and signed distribution evidence remain separate.
+Suggested engineering session: **Wellspent — C4 append-only annotations/corrections**.
+The user reports C4a complete; detailed live check results and build identity remain
+unspecified. Do not repeat setup by default. The September 16 Settings/timeline UI
+follow-up precedes this slice. C2 formal and signed distribution evidence remain separate.
 
 ```text
-Read AGENTS.md, docs/WELLSPENT_PLAN.md, the Task 4 section of docs/design/2026-09-12-wellspent-workflow-capture-plan.md and the final live evidence in docs/design/2026-09-13-c3b-local-codex-intake.md. The deterministic `RecordingTimeline` projection already makes interval ordering, known/unknown gaps, empty intervals, source labels and receipt-time uncertainty inspectable. Implement the next outcome-sized C4 improvement: a small local user-authored annotation/correction flow that references immutable event IDs and preserves original observations. Begin with current source and preserve existing recordings, grants, queues and dirty changes. Do not repeat C3b's completed real PostToolUse/Stop pending-restart check or infer human focused time/completion from agent metadata. No transcript reads, uploads, new permissions/dependencies or backend changes are implied. Use focused checks plus actual keyboard/native UI evidence for the new editor. Keep C2 formal evidence, signed distribution and deliberately lost-ACK live testing distinct from the verified Debug workflow. Record the result and next bounded C4 step.
+Read AGENTS.md, docs/WELLSPENT_PLAN.md and the Task 4 execution criteria. Implement
+append-only user annotations/corrections in the local recording review, preserving
+original observations and their identity/time. Build on the Settings recording
+workspace and newest-first timeline. Preserve recordings, grants, queues and dirty
+changes. Verify persistence and native UI behavior with focused checks and record
+their evidence limits. Keep C5 recap generation outside this slice.
 ```
 
 ## Keeping the plan current

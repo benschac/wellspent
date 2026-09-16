@@ -23,9 +23,9 @@ struct RecordingTimelineTests {
             recording.events[2].id,
         ]
 
-        #expect(interval.entries.map(\.event.id) == expectedEventIDs)
-        #expect(interval.entries[1].timeSource == .sourceReportedOccurrence)
-        #expect(interval.entries[1].timelineTime == fixture.wall(2))
+        #expect(interval.entries.map(\.event.id) == expectedEventIDs.reversed())
+        #expect(interval.entries[2].timeSource == .sourceReportedOccurrence)
+        #expect(interval.entries[2].timelineTime == fixture.wall(2))
     }
 
     @Test
@@ -39,10 +39,10 @@ struct RecordingTimelineTests {
         try recording.append(report)
 
         let interval = try #require(RecordingTimeline(recording: recording).intervals.first)
-        #expect(interval.entries[1].event.id == report.id)
-        #expect(interval.entries[1].timeSource == .hookReceipt)
-        #expect(interval.entries[1].timelineTime == fixture.wall(2))
-        #expect(interval.entries[1].timelineTime != report.stamp.wall)
+        #expect(interval.entries[2].event.id == report.id)
+        #expect(interval.entries[2].timeSource == .hookReceipt)
+        #expect(interval.entries[2].timelineTime == fixture.wall(2))
+        #expect(interval.entries[2].timelineTime != report.stamp.wall)
     }
 
     @Test
@@ -54,8 +54,8 @@ struct RecordingTimelineTests {
         try recording.append(fixture.event(.finish, seconds: 25, intervalID: resumedID))
 
         let timeline = RecordingTimeline(recording: recording)
-        let first = try #require(timeline.intervals.first)
-        let second = try #require(timeline.intervals.last)
+        let first = try #require(timeline.intervals.last)
+        let second = try #require(timeline.intervals.first)
         let gap = try #require(first.gapAfter)
         #expect(gap.previousEnd == fixture.wall(10))
         #expect(gap.nextStart == fixture.wall(20))
@@ -71,11 +71,30 @@ struct RecordingTimelineTests {
         try recording.append(fixture.event(.resume, seconds: 20, intervalID: resumedID, processID: resumedProcess))
         try recording.append(fixture.event(.finish, seconds: 25, intervalID: resumedID, processID: resumedProcess))
 
-        let first = try #require(RecordingTimeline(recording: recording).intervals.first)
+        let first = try #require(RecordingTimeline(recording: recording).intervals.last)
         let gap = try #require(first.gapAfter)
         #expect(first.coverage == .endUnknown)
         #expect(gap.endIsKnown == false)
         #expect(gap.nextStart == fixture.wall(20))
+    }
+
+    @Test
+    func newestIntervalsAndEqualTimeEventsAppearFirstWithoutChangingEvidence() throws {
+        var recording = try fixture.started()
+        try recording.append(fixture.event(.pause, seconds: 10))
+        let resumedID = UUID()
+        try recording.append(fixture.event(.resume, seconds: 20, intervalID: resumedID))
+        let firstNote = fixture.event(.note, seconds: 21, intervalID: resumedID, text: "First")
+        let secondNote = fixture.event(.note, seconds: 21, intervalID: resumedID, text: "Second")
+        try recording.append(firstNote)
+        try recording.append(secondNote)
+        let originalEvents = recording.events
+
+        let timeline = RecordingTimeline(recording: recording)
+        #expect(timeline.intervals.map(\.ordinal) == [2, 1])
+        let newest = try #require(timeline.intervals.first)
+        #expect(Array(newest.entries.prefix(2).map(\.id)) == [secondNote.id, firstNote.id])
+        #expect(recording.events == originalEvents)
     }
 
     private func hookReport(

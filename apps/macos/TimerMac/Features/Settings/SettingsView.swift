@@ -2,11 +2,12 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(TimerWindowCoordinator.self) private var windows
-    @State private var selectedCategory: SettingsCategory? = .accounts
 
     var body: some View {
+        @Bindable var windows = windows
+
         NavigationSplitView(columnVisibility: .constant(.all)) {
-            List(SettingsCategory.allCases, selection: $selectedCategory) { category in
+            List(SettingsCategory.allCases, selection: $windows.selectedSettingsCategory) { category in
                 SettingsSidebarLabel(category: category)
                     .tag(category)
             }
@@ -18,24 +19,25 @@ struct SettingsView: View {
         } detail: {
             VStack(alignment: .leading, spacing: 0) {
                 HStack {
-                    Text((selectedCategory ?? .accounts).rawValue)
+                    Text((windows.selectedSettingsCategory ?? .accounts).rawValue)
                         .font(.title2.bold())
                         .accessibilityAddTraits(.isHeader)
                     Spacer()
-                    Button(
-                        "Local Recordings…", systemImage: "waveform.path.ecg",
-                        action: windows.showRecordingWindow)
                 }
                 .padding(.horizontal, 24)
                 .padding(.top, 20)
                 .padding(.bottom, 12)
 
-                SettingsDetailView(selectedCategory: selectedCategory ?? .accounts)
+                if windows.selectedSettingsCategory == .recordings {
+                    RecordingWindowView()
+                } else {
+                    SettingsDetailView(selectedCategory: windows.selectedSettingsCategory ?? .accounts)
+                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .navigationTitle("Timer Settings")
-        .frame(minWidth: 740, minHeight: 580)
+        .frame(minWidth: 1000, minHeight: 580)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(SettingsFrostedBackdrop().ignoresSafeArea())
         .preferredColorScheme(.dark)

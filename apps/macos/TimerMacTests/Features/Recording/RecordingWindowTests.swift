@@ -37,33 +37,23 @@ struct RecordingWindowTests {
         recording.simulateGap()
         await recording.waitForIdle()
 
-        let window = try #require(app.windows.recordingWindow)
+        let window = try #require(app.windows.settingsWindow)
         let content = try #require(window.contentView)
         let identity = recording.current?.id
         window.performClose(nil)
         #expect(recording.current?.id == identity)
         #expect(await store.closeCount == 0)
         app.windows.showRecordingWindow()
-        #expect(app.windows.recordingWindow === window)
+        #expect(app.windows.settingsWindow === window)
         #expect(window.contentView === content)
+        #expect(app.windows.selectedSettingsCategory == .recordings)
         #expect(app.recording === recording)
         #expect(recording.current?.status == .suspended)
         #expect(app.model.isStarted == false)
         content.layoutSubtreeIfNeeded()
         window.displayIfNeeded()
-        let renderer = ImageRenderer(
-            content:
-                VStack(alignment: .leading, spacing: 16) {
-                    RecordingControlsView()
-                    LocalHarnessView()
-                    if let selected = recording.selected { RecordingReviewContent(recording: selected) }
-                }
-                .environment(recording)
-                .padding(20)
-                .frame(width: 700, height: 960, alignment: .topLeading)
-                .background(.background)
-                .environment(\.colorScheme, .light))
-        let bitmap = NSBitmapImageRep(cgImage: try #require(renderer.cgImage))
+        let bitmap = try #require(content.bitmapImageRepForCachingDisplay(in: content.bounds))
+        content.cacheDisplay(in: content.bounds, to: bitmap)
         let png = try #require(bitmap.representation(using: .png, properties: [:]))
         let screenshot = FileManager.default.temporaryDirectory.appendingPathComponent("\(name).png")
         try png.write(to: screenshot)

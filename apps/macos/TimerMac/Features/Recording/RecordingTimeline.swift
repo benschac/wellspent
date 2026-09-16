@@ -58,8 +58,8 @@ struct RecordingTimeline: Equatable, Sendable {
         }
 
         fileprivate static func ordered(_ lhs: Self, _ rhs: Self) -> Bool {
-            if lhs.timelineTime != rhs.timelineTime { return lhs.timelineTime < rhs.timelineTime }
-            return lhs.saveOrder < rhs.saveOrder
+            if lhs.timelineTime != rhs.timelineTime { return lhs.timelineTime > rhs.timelineTime }
+            return lhs.saveOrder > rhs.saveOrder
         }
     }
 
@@ -83,7 +83,7 @@ struct RecordingTimeline: Equatable, Sendable {
             return Interval(
                 id: interval.id, ordinal: index + 1, start: interval.start.wall,
                 coverage: Self.coverage(for: interval), entries: entries, gapAfter: gapAfter)
-        }
+        }.reversed()
     }
 
     private static func coverage(for interval: RecordingSnapshot.Interval) -> Interval.Coverage {

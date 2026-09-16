@@ -5,7 +5,8 @@ struct RecordingControlsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(model.saveStatus).font(.headline).accessibilityIdentifier("recording-save-status")
+            Text(model.saveStatus).font(.caption).foregroundStyle(.secondary).accessibilityIdentifier(
+                "recording-save-status")
             if let message = model.errorMessage {
                 Text(message).foregroundStyle(.orange).textSelection(.enabled)
                 Button("Retry local save / load", action: model.retry).disabled(model.isBusy)
@@ -15,29 +16,33 @@ struct RecordingControlsView: View {
                     Text(current.status.rawValue.capitalized)
                     if current.status == .recording {
                         Button("Pause", systemImage: "pause", action: model.pause)
-                        Button("Simulate coverage gap", action: model.simulateGap)
                     } else {
                         Button("Resume", systemImage: "play", action: model.resume)
                     }
                     Button("Finish", systemImage: "stop", action: model.finish)
                 } else {
-                    Button("Start sample recording", systemImage: "record.circle", action: model.startRecording)
                     Button(
-                        "Start foreground app recording", systemImage: "apps.macwindow",
+                        "Start recording", systemImage: "apps.macwindow",
                         action: model.startForegroundApplicationRecording)
                 }
             }
             .disabled(!model.canAct)
-            HStack {
+            Menu("Sample controls", systemImage: "hammer") {
+                Button("Start sample recording", action: model.startRecording)
+                    .disabled(!model.canAct || model.current != nil)
+                Button("Simulate coverage gap", action: model.simulateGap)
+                    .disabled(!model.canAct || !model.acceptingEvents)
+                Divider()
                 Button("Add sample app event", action: model.addApplicationSample)
+                    .disabled(!model.canAct || !model.acceptingEvents)
                 Button("Add sample agent report", action: model.addAgentSample)
+                    .disabled(!model.canAct || !model.acceptingEvents)
                 Button("Add sample note", action: model.addNoteSample)
+                    .disabled(!model.canAct || !model.acceptingEvents)
             }
-            .disabled(!model.canAct || !model.acceptingEvents)
-            Text(
-                "Foreground-app recording stores app name, bundle ID, and PID only. It never reads windows, documents, input, or screen contents. Local Codex intake requires an explicit pairing."
-            )
-            .font(.caption).foregroundStyle(.secondary)
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+            .font(.caption)
         }
     }
 }

@@ -4,15 +4,38 @@ struct RecordingTimelineView: View {
     let timeline: RecordingTimeline
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        LazyVStack(alignment: .leading, spacing: 16) {
             Text("Timeline").font(.title3.bold()).accessibilityAddTraits(.isHeader)
-            Text("UTC · ordered by the closest known event time")
+            Text("Newest first · UTC · closest known event time")
                 .font(.caption).foregroundStyle(.secondary)
             Text("Intervals show collection coverage, not focused human time.")
                 .font(.caption).foregroundStyle(.secondary)
 
             ForEach(timeline.intervals) { interval in
                 VStack(alignment: .leading, spacing: 10) {
+                    if let gap = interval.gapAfter {
+                        Divider()
+                        if let previousEnd = gap.previousEnd {
+                            Text("Coverage gap before the next explicit Resume")
+                                .font(.subheadline.bold())
+                            Text(
+                                "Ended: \(previousEnd.formatted(Date.FormatStyle(date: .numeric, time: .standard, timeZone: .gmt)))"
+                            )
+                            .font(.caption).foregroundStyle(.secondary)
+                            Text(
+                                "Resumed: \(gap.nextStart.formatted(Date.FormatStyle(date: .numeric, time: .standard, timeZone: .gmt)))"
+                            )
+                            .font(.caption).foregroundStyle(.secondary)
+                        } else {
+                            Text("Coverage gap before the next explicit Resume; prior coverage end is unknown")
+                                .font(.subheadline.bold()).foregroundStyle(.orange)
+                            Text(
+                                "Next interval started: \(gap.nextStart.formatted(Date.FormatStyle(date: .numeric, time: .standard, timeZone: .gmt)))"
+                            )
+                            .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+
                     Text("Interval \(interval.ordinal)").font(.headline)
                     Text(interval.start, format: Date.FormatStyle(date: .numeric, time: .standard, timeZone: .gmt))
                         .font(.caption).foregroundStyle(.secondary)
@@ -37,28 +60,6 @@ struct RecordingTimelineView: View {
                         Divider()
                     }
 
-                    if let gap = interval.gapAfter {
-                        Divider()
-                        if let previousEnd = gap.previousEnd {
-                            Text("Coverage gap before the next explicit Resume")
-                                .font(.subheadline.bold())
-                            Text(
-                                "Ended: \(previousEnd.formatted(Date.FormatStyle(date: .numeric, time: .standard, timeZone: .gmt)))"
-                            )
-                            .font(.caption).foregroundStyle(.secondary)
-                            Text(
-                                "Resumed: \(gap.nextStart.formatted(Date.FormatStyle(date: .numeric, time: .standard, timeZone: .gmt)))"
-                            )
-                            .font(.caption).foregroundStyle(.secondary)
-                        } else {
-                            Text("Coverage gap before the next explicit Resume; prior coverage end is unknown")
-                                .font(.subheadline.bold()).foregroundStyle(.orange)
-                            Text(
-                                "Next interval started: \(gap.nextStart.formatted(Date.FormatStyle(date: .numeric, time: .standard, timeZone: .gmt)))"
-                            )
-                            .font(.caption).foregroundStyle(.secondary)
-                        }
-                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityElement(children: .contain)
