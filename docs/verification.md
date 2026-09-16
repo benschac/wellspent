@@ -20,6 +20,23 @@ These checks do not demonstrate browser IndexedDB transactions, React lifecycle 
 
 ## Static checks, builds, and HTTP smoke
 
+### Unused code and dependencies
+
+Run `bun run knip` from the repository root. This delegates to the uncached
+Turbo root task `//#knip:check`, which runs Knip once across all workspaces so
+cross-package consumers remain visible. This is a deliberate exception to
+package-local checks: unused exports require the repository-wide import graph.
+
+`knip.jsonc` supplements framework discovery with Metro platform variants,
+Expo config plugins, Vercel and CLI entry points, and Xcode/manual scripts.
+The check currently reports an existing backlog and exits nonzero when it
+finds issues; it is not part of `lint`, `test:fast`, or a CI gate. Review findings
+against runtime wiring before removing code or dependencies. Knip analyzes
+JavaScript/TypeScript, not the native Swift, Kotlin, or Rust implementations.
+
+To narrow the report, run `bun run knip -- --workspace apps/mobile` (Knip also
+considers related workspaces). See the [Knip workspace documentation](https://knip.dev/features/monorepos-and-workspaces).
+
 For optional private focus notifications, configuration and the rollback-only Realtime authorization test are documented in [focus live notifications](focus-realtime.md). The fast focus suite includes notification publisher/subscriber tests; these are separate from rendered-browser and hosted delivery acceptance.
 
 ### Vercel API compilation

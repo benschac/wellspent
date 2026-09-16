@@ -29,6 +29,8 @@
     "format": "biome format --write .",
     "format:check": "biome format .",
     "ios:device": "bun run --cwd apps/mobile ios:device",
+    "knip": "turbo run knip:check --",
+    "knip:check": "knip",
     "lint": "turbo run lint",
     "skia:web": "turbo run skia:web",
     "supabase:start": "bun run supabase:start:full",
@@ -46,7 +48,10 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.12",
+    "@types/node": "26.4.0",
     "effect": "4.0.0-rc.112",
-    "turbo": "2.10.12"
+    "knip": "6.35.1",
+    "turbo": "2.10.12",
+    "typescript": "6.0.3"
   }
 }

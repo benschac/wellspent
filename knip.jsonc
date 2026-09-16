@@ -1,0 +1,44 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "workspaces": {
+    ".": {
+      // Xcode shell phases and manually invoked research probes.
+      "entry": [
+        "scripts/macos-harness-resources.mjs",
+        "docs/design/probes/**/*.mjs"
+      ]
+    },
+    "apps/api": {
+      // Vercel invokes this queue consumer outside the Nest import graph.
+      "entry": ["src/main.ts", "api/google-calendar-jobs.mjs"]
+    },
+    "apps/desktop": {
+      // Vite aliases react-native to react-native-web.
+      "ignoreDependencies": ["react-native-web"]
+    },
+    "apps/mobile": {
+      // Metro selects platform variants; Expo loads local config plugins.
+      "entry": [
+        "index.ts",
+        "index.web.ts",
+        "lib/get-localhost.ts",
+        "lib/get-localhost.native.ts",
+        "modules/timer-live-activity/src/index.ios.ts",
+        "modules/timer-live-activity/app.plugin.js",
+        "plugins/with-timer-widget-actions.js"
+      ],
+      // app.json enables experiments.reactCompiler through Expo's Babel preset.
+      "ignoreDependencies": ["babel-plugin-react-compiler"]
+    },
+    "integrations/codex": {
+      "entry": ["timer-capture.mjs", "local-helper.mjs", "harness-mcp.mjs"]
+    },
+    "integrations/work-log": {
+      "entry": ["cli.mjs", "mcp.mjs"]
+    },
+    "packages/liquid-ui": {
+      // Metro selects the iOS implementation for the shared component.
+      "entry": ["src/LiquidView.ios.tsx"]
+    }
+  }
+}

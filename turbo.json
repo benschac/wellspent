@@ -1,6 +1,9 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
   "tasks": {
+    "//#knip:check": {
+      "cache": false
+    },
     "build": {
       "dependsOn": ["^build", "skia:web"],
       "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**", "dist/**"]
