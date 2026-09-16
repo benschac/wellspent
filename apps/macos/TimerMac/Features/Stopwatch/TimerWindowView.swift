@@ -2,6 +2,7 @@ import SwiftUI
 
 struct TimerWindowView: View {
     @Environment(TimerModel.self) private var model
+    @Environment(TimerSidebarController.self) private var sidebar
     @Environment(TimerWindowCoordinator.self) private var windows
 
     var body: some View {
@@ -29,6 +30,15 @@ struct TimerWindowView: View {
 
                     TimerReadoutView()
                     TimerControlsView()
+                    if let controls = sidebar.recordingControls {
+                        Text(controls.status).font(.footnote)
+                        if let message = controls.errorMessage ?? controls.recording.errorMessage {
+                            ErrorBannerView(message: message)
+                        }
+                        Button("Review local recording", action: windows.showRecordingWindow)
+                        Text("Records foreground app names on this Mac. Codex activity requires a separate connection.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                     Text(model.saveStatus)
                         .font(.footnote)
                         .foregroundStyle(.secondary)

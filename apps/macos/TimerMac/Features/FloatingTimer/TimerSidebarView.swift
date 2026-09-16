@@ -16,6 +16,7 @@ struct TimerSidebarView: View {
             ZStack(alignment: .topLeading) {
                 TimerDragSurface(
                     model: model,
+                    recordingStatus: sidebar.recordingControls?.status,
                     isLocked: sidebar.isPositionLocked,
                     onPress: sidebar.holdPosition,
                     onClick: sidebar.clickTimer,
@@ -73,6 +74,10 @@ struct TimerSidebarView: View {
         .transaction { $0.animation = nil }
         .preferredColorScheme(.dark)
         .contextMenu {
+            if let controls = sidebar.recordingControls {
+                Text(controls.status)
+                if let message = controls.errorMessage ?? controls.recording.errorMessage { Text(message) }
+            }
             Text("Sync: \(model.syncStatus.label)")
             Text(model.saveStatus)
             Button("Open Timer Window", action: sidebar.openTimerWindow)

@@ -7,6 +7,24 @@ import Testing
 @Suite(.serialized, .timeLimit(.minutes(1)))
 struct TimerAppCompositionTests {
     @Test
+    func timerButtonRoutesThroughRecordingLifecycle() async throws {
+        let suite = "timer-recording-wiring-\(UUID())"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let app = makeComposition(defaults: defaults)
+        #expect(app.sidebar.recordingControls === app.recordingControls)
+        app.sidebar.toggleTimer()
+        await app.recordingControls.waitForIdle()
+        #expect(app.model.isRunning)
+        #expect(app.recording.canCaptureForegroundApplications)
+        app.sidebar.toggleTimer()
+        await app.recordingControls.waitForIdle()
+        #expect(!app.model.isRunning)
+        #expect(app.recording.current?.status == .paused)
+        await app.shutdown()
+    }
+
+    @Test
     func constructionIsInertAndLifecycleIsExplicitAndTerminal() async throws {
         let suite = "timer-lifecycle-\(UUID())"
         let defaults = try #require(UserDefaults(suiteName: suite))

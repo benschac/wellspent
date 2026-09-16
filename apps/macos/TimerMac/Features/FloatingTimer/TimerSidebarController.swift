@@ -7,6 +7,7 @@ import SwiftUI
 @MainActor
 @Observable
 final class TimerSidebarController {
+    let recordingControls: TimerRecordingController?
     @ObservationIgnored var openSettings: () -> Void = {}
     @ObservationIgnored var openTimerWindow: () -> Void = {}
     @ObservationIgnored var quitApplication: () -> Void = {}
@@ -59,8 +60,12 @@ final class TimerSidebarController {
     @ObservationIgnored private var resizeRing = CGPoint.zero
     @ObservationIgnored private var detachmentHaptic = TimerDetachmentHaptic()
 
-    init(model: TimerModel, defaults: UserDefaults = .standard) {
+    init(
+        model: TimerModel, defaults: UserDefaults = .standard,
+        recordingControls: TimerRecordingController? = nil
+    ) {
         self.model = model
+        self.recordingControls = recordingControls
         self.defaults = defaults
         let savedCollapsed = defaults.bool(forKey: "sidebarCollapsed")
         isCollapsed = savedCollapsed
@@ -107,6 +112,10 @@ final class TimerSidebarController {
     }
 
     func toggleTimer() {
+        if let recordingControls {
+            recordingControls.toggle()
+            return
+        }
         if model.isRunning { model.pause() } else { model.startOrResume() }
     }
 

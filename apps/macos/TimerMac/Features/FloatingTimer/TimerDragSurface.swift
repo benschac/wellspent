@@ -3,6 +3,7 @@ import SwiftUI
 
 struct TimerDragSurface: NSViewRepresentable {
     let model: TimerModel
+    var recordingStatus: String? = nil
     let isLocked: Bool
     let onPress: () -> Void
     let onClick: () -> Void
@@ -18,9 +19,13 @@ struct TimerDragSurface: NSViewRepresentable {
 
     func updateNSView(_ view: TimerDragView, context: Context) {
         let label = "Timer, \(model.accessibilityTimerLabel)"
-        let help = isLocked ? "Click to start or pause. Position locked." : "Click to start or pause. Drag to move."
+        let action =
+            recordingStatus == nil
+            ? "Click to start or pause." : "Click to start or pause the timer and local app recording."
+        let help = "\(action) \(isLocked ? "Position locked." : "Drag to move.") \(recordingStatus ?? "")"
         if view.accessibilityLabel() != label { view.setAccessibilityLabel(label) }
         if view.accessibilityHelp() != help { view.setAccessibilityHelp(help) }
+        if view.toolTip != help { view.toolTip = help }
         if view.isLocked != isLocked {
             view.isLocked = isLocked
             view.window?.invalidateCursorRects(for: view)

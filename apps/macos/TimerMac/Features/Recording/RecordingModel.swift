@@ -72,6 +72,48 @@ final class RecordingModel {
     }
 
     func pause() { transition(.pause, text: "Manual pause — explicit Resume required") }
+
+    /// Revoke intake at the click, retaining a boundary behind any in-flight start or observation.
+    func pauseFromTimer() {
+        guard isLoaded, !isClosed, !isShuttingDown, !needsRecovery else { return }
+        acceptingEvents = false
+        guard isBusy || pendingEvent == nil else {
+            // Retry must repair an already-failed save with an unknown coverage gap.
+            // A later click cannot establish a known end for that interrupted capture.
+            captureStateDidChange?()
+            return
+        }
+        let pending = [pendingEvent].compactMap { $0 } + queuedEvents
+        let boundary = pending.last(where: { !$0.kind.isObservation })
+        let recordingID: UUID
+        let intervalID: UUID
+        if let boundary {
+            guard boundary.kind == .start || boundary.kind == .resume, let id = boundary.intervalID else {
+                captureStateDidChange?()
+                return
+            }
+            recordingID = boundary.recordingID
+            intervalID = id
+        } else {
+            guard let current, let id = current.activeIntervalID else {
+                captureStateDidChange?()
+                return
+            }
+            recordingID = current.id
+            intervalID = id
+        }
+        let event = RecordingEvent(
+            localScopeID: localScopeID, recordingID: recordingID, intervalID: intervalID,
+            kind: .pause, stamp: stamp(), text: "Timer paused — explicit Resume required")
+        if pendingEvent != nil {
+            // Preserve the in-flight event's identity and receipt order.
+            queuedEvents.append(event)
+        } else {
+            submit(event)
+        }
+        captureStateDidChange?()
+    }
+
     func resume() { transition(.resume, text: "Explicit resume — new interval") }
     func finish() { transition(.finish, text: "Recording finished") }
     func simulateGap() { transition(.suspend, text: "Synthetic sleep / unavailable session — coverage gap") }
