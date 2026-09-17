@@ -1,12 +1,38 @@
 # Wellspent: current plan
 
-Updated September 16, 2026. **Read this first to choose work.** This file owns current priority, status and the next handoff. Detailed acceptance criteria live in the linked execution plan; dated evidence stays in its original document. Historical “start here” prompts do not override this queue.
+Updated September 17, 2026. **Read this first to choose work.** This file owns current priority, status and the next handoff. Detailed acceptance criteria live in the linked execution plan; dated evidence stays in its original document. Historical “start here” prompts do not override this queue.
+
+## September 17 architecture sprint — requirements being resolved
+
+The user selected **resolving the hardest architecture decisions and proving them with small working experiments** as the outcome through September 20. This planning sprint takes priority over automatically starting the C4 feature handoff below. C4 remains unfinished; this does not reopen completed C3b/C4a work or establish any new acceptance.
+
+**Walkthrough:** [visual system design](design/2026-09-17-wellspent-system-design.md), [rendered diagrams](design/2026-09-17-wellspent-system-design.html), and [architecture documentation index](design/README.md). The September 17 review produced seven validated diagrams, current-source ownership and an ordered experiment proposal. No Rust/vault implementation was added. Frontload the portable Rust protocol/durability experiment and a native binding smoke alongside evidence attribution; complete the relevant trust/record decisions before treating any experimental wire format as production.
+
+The [documentation app](../apps/docs/README.md) now presents these canonical sources through Fumadocs. Run `bun run dev:docs` for the architecture, plan, package guides, integration guides and generated native HTTP reference. Documentation delivery does not establish new product or security acceptance.
+
+Confirmed direction:
+
+- Mac-first usefulness together with a future independently writable cross-device product. Exact first phone capabilities and web participation remain open.
+- Distribution target: **Mac App Store and signed direct download**, with app stores preferred on supported platforms where feasible. This does not yet promise identical capabilities or simultaneous releases. Frontload [sandbox-compatible helper packaging](design/2026-09-17-wellspent-system-design.md#distribution-target-and-helper-feasibility) alongside the Rust binding experiment; store approval remains unproven.
+- The first workflow is **Codex in the terminal**, where the user currently does most work. Observe the existing workflow by default; requiring Wellspent to launch or own agent sessions is not selected. Authentication mode remains unspecified. Claude Code/OpenRouter adapters are not required for the first experiment.
+- Context switching must cover **both project/task changes and application changes**, including work that changes within the same terminal application. Project/repository identity is useful evidence but does not alone establish task identity; attribution needs explicit links or labelled, correctable inference.
+- GitHub is the next desired integration. Feedback must cover **both recurring review findings/rework and time/model usage from starting work through an accepted PR, with evidence attached and no single productivity score**. Keep observed review outcomes separate from inferred quality or causal claims about model choice. Identity links between work and PRs, the definition of accepted, and treatment of waiting time/parallel work remain to be decided. The user also considers OpenAI a valid external integration if helpful; first establish what it adds beyond local Codex telemetry. No account-level usage/history capability is assumed, and no live integration access has been exercised.
+- Show model identity and reasoning configuration during work; collect token usage where a reliable source exists. Treat reasoning effort, usage, estimated cost, actual billing and subscription allowance as separate concepts. Available telemetry and its correlation to ordinary terminal sessions still need a selected-workflow proof.
+- The user wants all three content capabilities considered: minimal metadata/explicit notes, richer local context with opt-in, and useful behavior without hosted disclosure. They are open to local and hosted reasoning and a memory solution such as Plastic Labs/Honcho that can interoperate with Codex, Hermes or other agents. The broader goal is understanding how effectively people use these tools. Exact offline-AI acceptance remains unspecified; openness to both modes is not a verified local-inference requirement or capability.
+- **Hosted disclosure routing: direct device-to-provider is the default; selected plaintext through Wellspent's backend is an optional premium feature.** E2EE sync remains independent of either route. Premium entitlement is not disclosure consent: the proposed enforcement contract grants access only to selected content/purpose/recipient, never vault keys or implicit whole-history access. Persistence, retention/deletion, provider credentials and background execution remain open. This product direction does not authorize reading transcripts, enabling richer collection, installing memory integrations or uploading private content during this sprint.
+- Evaluate an optional memory adapter while Wellspent retains original evidence, task/run/PR links, corrections and disclosure authority. **The first memory experiment shows findings to the user; feedback into agents comes later.** Findings must expose supporting evidence, uncertainty and correction controls. Agent context injection, retrieval of these lessons and automatic behavior changes are outside the first experiment. See [memory architecture candidate and experiment](design/2026-09-12-wellspent-local-first-architecture.md#september-17-memory-integration-candidate).
+- **Wellspent servers being unable to decrypt synced personal records is a firm product requirement. Settle the encrypted-sync architecture during this sprint.** The current plaintext Focus/backend path and unencrypted local recording store do not meet a future encrypted-vault claim. Existing data must be preserved; migration scope, local encryption, disclosure exceptions and trust/recovery rules remain decisions.
+- User-reported compute window: 54% of the current weekly allowance remains; reset September 19 at 04:40; the full reset expires September 20 at 22:00. Eastern timezone is assumed, not confirmed. Allowance percentages are not token or work-hour estimates; hands-on availability remains unspecified.
+
+Resolve these questions before selecting materially branching implementation: permitted context detail and hosted-AI disclosure; reliable project/task/PR attribution within the existing terminal workflow; PR acceptance and time-accounting semantics; first replicated dataset; membership/revocation/recovery; phone/web roles; and shared replication ownership across native clients. Use the existing [research register](design/2026-09-12-wellspent-research-roadmap.md#blocking-decisions) for R01–R10/R14 rather than creating another roadmap. The [agent-spend discovery](design/2026-09-08-agent-spend-and-workflow-discovery.md) supplies earlier hypotheses, not current telemetry acceptance.
+
+Candidate proofs, pending those decisions: one CLI run with model/effort/usage and provenance; one task spanning context switches and PR review; deterministic offline conflict/retry/restart fixtures; and three-device membership/revocation/recovery transcripts. Use synthetic data until a real-data experiment is specifically scoped. Each proof must name the decision it settles, observed failures and remaining unknowns. No provider adapter, telemetry activation, encrypted-sync prototype or GitHub access was executed by this planning update.
 
 ## Outcome and current position
 
 Record ordinary work on the Mac, stop, inspect application and agent activity with visible gaps, and know where to resume. New detailed observations stay local unless explicitly selected for disclosure.
 
-**Next engineering task: C4 — make the combined timeline useful without AI. C3b's selected live capture/restart check passed in the running Debug app.** Real PostToolUse and Stop events remained pending while the helper stopped and Timer paused, then recovered after a verified helper process restart. Each committed exactly once with its original body/time, received an ACK and appeared in Timer. Synthetic duplicate/crash tests also passed; see [C3b evidence](design/2026-09-13-c3b-local-codex-intake.md). Do not repeat basic pairing, Stop or pending-restart setup. Signed distribution, full pairing UI/keyboard behavior and C2 formal evidence remain separate acceptance work.
+**C4a is implemented and the user reports it complete as of September 16; individual live results and build identity remain unspecified. The September 16 recording UI follow-up moves history into Settings and shows newest activity first. The following C4 engineering slice is append-only annotations/corrections.** See [C4a implementation and acceptance](design/2026-09-14-c4a-local-log-work.md). C3b's selected live capture/restart check passed in the running Debug app: real PostToolUse and Stop events remained pending while the helper stopped and Timer paused, recovered after a verified helper process restart, committed exactly once with original body/time, received ACKs and appeared in Timer. See [C3b evidence](design/2026-09-13-c3b-local-codex-intake.md). Do not repeat basic pairing, Stop or pending-restart setup. Signed distribution, full pairing UI/keyboard behavior and C2 formal evidence remain separate acceptance work.
 
 The user reported completing C2's manual checklist on September 13, without build/signing identity or individual results, so formal C2 acceptance remains open. [C3a](design/2026-09-13-c3a-local-codex-intake.md) remains the settled contract. Do not repeat C2, restart discovery/storage work, or treat synthetic checks as ordinary-session acceptance.
 
@@ -35,10 +61,17 @@ deliberately lost ACK/duplicate replay remains synthetic-test evidence only.
 | Local recording lifecycle and storage (Task 2) | Complete | [Synthetic proof](design/2026-09-12-macos-synthetic-recording-proof.md) records restart acceptance and failure tests. [SQLiteData migration](design/2026-09-13-macos-sqlitedata.md) records native/crash checks and supersedes the custom SQLite adapter. |
 | Foreground application collector (Task 2) | Complete | Fixture tests recorded; user reports completing the manual checklist. [C2 follow-up](design/2026-09-12-wellspent-workflow-capture-plan.md#c2-user-acceptance-follow-up--september-13-2026) preserves unknown build/signing identity and individual results. |
 | Ordinary agent activity (Task 3) | C3a and C3b complete for the selected live Debug workflow | [C3b evidence](design/2026-09-13-c3b-local-codex-intake.md): real PostToolUse/Stop pending across offline closure and helper restart, unchanged bodies, one row each, ACKs and visible reports. Signed distribution/full pairing UI acceptance remain separate. |
-| Session timeline (Task 4) | C4 in progress | The September 14 deterministic timeline slice groups immutable events by interval, orders them by their closest known time, and makes known/unknown coverage gaps and empty intervals explicit. Real notes/corrections and native UI acceptance remain C4. |
+| Session timeline (Task 4) | C4 in progress; C4a completion user-reported | The deterministic timeline groups immutable events by interval with explicit gaps. C4a adds the local AI Harness connection and separately labelled `log_work` notes. Individual C4a acceptance results remain unspecified; append-only annotations/corrections remain; see [C4a evidence](design/2026-09-14-c4a-local-log-work.md). |
 | Grounded recap and usefulness (Task 5) | Pending | Selected-input disclosure, persisted recap references and real-use evaluation remain C5. Existing Focus recap does not establish this capture recap. |
 
 ## Ordered work
+
+September 16 session-reuse follow-up: timer Start/Resume/Pause already controls
+foreground capture and active local note admission. An unchanged connection repair
+now preserves MCP discovery instead of prompting another session restart. See
+[session reuse and evidence](design/2026-09-16-codex-session-reuse.md). Automatic
+metadata grants remain interval-bound; the user's exact restart trigger is still
+unconfirmed.
 
 September 16 UI follow-up: the user reports C4a complete (individual acceptance
 results and build identity were not supplied) and requested recording UI improvements
@@ -47,6 +80,16 @@ larger timeline area, secondary connection/sample controls, and newest-first
 ordering. See [UI changes and verification](design/2026-09-16-recordings-settings-ui.md).
 The next engineering slice remains append-only annotations/corrections; do not
 restart C4a acceptance solely because its older detailed checklist remains open.
+
+September 14 timer-control follow-up: the user requested coupling the Mac timer
+buttons to local capture. Main-window and floating-widget Start/Resume now create
+or resume a foreground recording, and Pause excludes new capture immediately,
+including during an in-flight save. Recording startup must save before the timer
+starts. Reset preserves recording history; remote state and app startup do not
+authorize capture. Recording data remains local and separate from shared timer
+sync. See [implementation and acceptance](design/2026-09-14-timer-recording-wiring.md).
+The user subsequently reported C4a complete; append-only corrections remain
+the next C4 engineering slice after the requested recording UI follow-up.
 
 Stable IDs below subdivide the existing Tasks 2–5; they are not another competing roadmap. Complete one bounded task per session. Preserve existing behavior, dirty changes and committed recordings.
 
@@ -87,7 +130,19 @@ Extend the existing review with application intervals, real agent events, user-a
 - **Changed:** `RecordingTimeline` and focused tests; `RecordingReviewContent` now renders interval-scoped timeline sections with explicit time basis, coverage and gap labels. Capture, SQLite schema/data, Codex pairings, helper queues, backend contracts and dependencies were untouched.
 - **Passed:** `bun run --cwd apps/macos lint`, `git diff --check`, and `bun run --cwd apps/macos test` on the local macOS Xcode target. The suite includes the existing rendered `RecordingWindowTests` fixture and the new deterministic ordering, known-gap, unknown-interruption and empty-interval projection tests.
 - **Evidence boundary:** the Debug build and automated native test/render pass establish compilation and deterministic projection behavior. They do not establish keyboard traversal, VoiceOver, visual suitability in the running app, signed distribution, C2 formal acceptance, or a user-authored note/correction flow.
-- **Next bounded C4 step:** design and persist a small local annotation/correction model that references immutable event IDs, never overwrites source observations, then exercise the resulting editor and timeline with keyboard/native UI checks.
+- **Following bounded C4 step:** append-only annotations/corrections. C4a below implements the explicit local note connection; its live acceptance remains separate.
+
+#### C4a — Connect `log_work` from the Wellspent UI
+
+Status: **implemented; development startup repair verified; completion reported by user September 16, individual live/native results unspecified**. [Implementation, contract and acceptance checklist](design/2026-09-14-c4a-local-log-work.md). The AI Harness controls, private local MCP adapter, active-interval admission, durable retry, revocation and separate timeline note semantics are implemented. After the user's signed-app Connect failure, `b dev` now owns development setup/server lifecycle outside App Sandbox and supplies Node's PATH. Native tests passed (231 tests / 332 executions), including the real dev-runner handoff and Node-to-SQLite commit/ACK transport; capture tests and focused lint passed. September 16 live verification established an already-connected real Codex tool call, exactly one SQLite/timeline note across exact retry, finished/paused-state rejection that remains rejected after recording resumes, original acknowledgement after dev restart, and Disconnect rejection with prior evidence preserved. Dev was restarted and Xcode rebuilt/relaunched the sandboxed ad-hoc Debug app. Native automation then disconnected; fresh Connect/discovery and remaining lifecycle/keyboard checks are still pending. See the dated acceptance evidence in the checklist. Default: **GPT-6 Astra / High** for the first end-to-end slice because it crosses native UI, the local Node MCP adapter, Codex configuration, recording-scoped authorization, restart behavior and revocation. After that contract and acceptance fixture are stable, bounded SwiftUI polish may use GPT-5.6 Terra / Medium.
+
+Add an **AI Harness** section beside the native recording/Codex controls with a one-time **Connect Codex** flow. Reuse C3's authenticated loopback transport, stable identities, private local storage and recording/interval association. Expose an MCP `log_work` tool that appends an explicit user/agent-reported note only to the active local Wellspent recording interval. Do not route this local path through the session-independent hosted work-log, require `api.wellspent.day`, create a cloud work-log token, upload observations or place a credential in the repository or global Codex configuration.
+
+- The UI owns connection status, explicit installation approval, revocation and recovery guidance. It may invoke the supported local `codex mcp add` command only after the user chooses Connect; show **Restart Codex required** until a new session discovers the tool. Never claim that an already-running session gained a tool.
+- `log_work` must return a clear non-success result when no recording interval is active, including paused, suspended, interrupted and finished states. It must never start or resume a recording automatically, guess an interval from time overlap or admit skipped work later.
+- Preserve C3's commit-before-ACK, stable-ID retry, account/local-scope isolation and original timestamps. A retry after helper/app restart must commit once. Revocation must prevent new calls without deleting prior evidence.
+- Keep explicit semantic `log_work` notes separate from optional automatic PostToolUse/Stop metadata hooks. Connecting the MCP does not silently enable hooks, transcript reads, prompts, arguments, tool output, paths or assistant prose.
+- **Done when:** a real `log_work` call from a newly started Codex session appears exactly once in the active local recording and timeline; inactive-state calls are visibly not logged; helper/app restart and retry preserve identity; disconnect/revoke blocks later calls; the UI communicates connection/restart/error states and passes focused domain/transport tests plus keyboard/native UI acceptance. Signed distribution remains a separate evidence gate.
 
 ### C5 — Add a grounded recap and evaluate real work
 
@@ -99,22 +154,25 @@ Let the user select evidence for model disclosure; save input references and rec
 
 The [macOS audit](design/2026-09-12-macos-interface-and-architecture-audit.md) retains Focus load/error recovery, unsaved Focus quit protection, Settings/stopwatch terminology, shared contract fixtures/DTOs, and fixture previews/UI smoke checks. These findings need current-source revalidation before selection. Recording's save/quit guard does not establish protection for unsaved Focus drafts. Pick a supporting fix when it blocks this loop or as an explicitly selected maintenance task; do not repeat the completed composition extraction.
 
-The [research register](design/2026-09-12-wellspent-research-roadmap.md) owns deferred questions: private-record migration, membership/revocation/recovery, web participation, convergence, native bindings/crypto, disclosure/runtime isolation, provider access, backup and portability. R01–R05 gate future encrypted sync, not local capture. Calendar/Linear, planning automation, phone replication, custom crypto/relay and a new agent runtime remain deferred. The [August checkpoint](design/2026-08-29-focus-timer-product-and-sync-architecture.md#26-recommended-next-implementation-sequence) retains browser recovery and Android follow-through; choose that track explicitly instead of treating it as the default next capture task.
+The [research register](design/2026-09-12-wellspent-research-roadmap.md) owns private-record migration, membership/revocation/recovery, web participation, convergence, native bindings/crypto, disclosure/runtime isolation, provider access, backup and portability. **September 17 promotes encrypted architecture and a bounded portable Rust experiment into the active sprint.** R01–R05 still gate production encrypted-sync decisions; synthetic hypothesis tests and a non-sensitive binding smoke can proceed with assumptions labelled. See the [experiment order and Rust handoff](design/2026-09-17-wellspent-system-design.md#8-build-order-and-the-compute-window). Calendar/Linear automation, production phone replication/relay rollout and a new agent runtime remain later work. The [August checkpoint](design/2026-08-29-focus-timer-product-and-sync-architecture.md#26-recommended-next-implementation-sequence) retains historical browser recovery and Android follow-through, subject to the new ownership/migration decisions.
 
 ## Document ownership
 
 | Document | Read it for |
 | --- | --- |
 | This file | Current status, priority, dependencies and next task. Update this when work advances. |
+| [Visual system design](design/2026-09-17-wellspent-system-design.md) and [documentation index](design/README.md) | Current versus target architecture, portable Rust boundaries, experiment dependencies and a guided review of the design corpus. |
 | [Workflow-capture execution plan](design/2026-09-12-wellspent-workflow-capture-plan.md) | Milestone scope, detailed Tasks 1–5 acceptance and historical evidence. |
 | [Local-first architecture](design/2026-09-12-wellspent-local-first-architecture.md) | Accepted product/device roles and future ownership; not the active task queue. |
 | [macOS audit](design/2026-09-12-macos-interface-and-architecture-audit.md) | Supporting findings and extraction evidence; historical recommendations require revalidation. |
-| [Research roadmap](design/2026-09-12-wellspent-research-roadmap.md) | Open decisions and experiments when a deferred track is selected. |
+| [Research roadmap](design/2026-09-12-wellspent-research-roadmap.md) | Stable decision IDs and research gates; current sprint selection lives here in the plan. |
 | [Signal matrix](design/2026-09-12-wellspent-capture-signal-matrix.md), [synthetic proof](design/2026-09-12-macos-synthetic-recording-proof.md), [SQLiteData note](design/2026-09-13-macos-sqlitedata.md) | Capability limits, accepted recording policy and dated implementation/acceptance evidence. |
 
 ## Next-session prompt
 
-Suggested engineering session: **Wellspent — C4 append-only annotations/corrections**.
+Current session: walk through the [visual system design](design/2026-09-17-wellspent-system-design.md), especially the Rust boundary and decision table. Next bounded architecture work is the Gate 0/1 record/trust contract and A/B/C adversarial fixtures, with a non-sensitive Rust binding smoke available independently. Use its [Rust handoff](design/2026-09-17-wellspent-system-design.md#first-rust-handoff) to prepare the durable synthetic proof. Do not automatically execute the earlier feature prompt below while this sprint is active.
+
+Retained feature handoff after the architecture sprint: **Wellspent — C4 append-only annotations/corrections**, subject to the resulting decisions.
 The user reports C4a complete; detailed live check results and build identity remain
 unspecified. Do not repeat setup by default. The September 16 Settings/timeline UI
 follow-up precedes this slice. C2 formal and signed distribution evidence remain separate.

@@ -7,22 +7,74 @@ authoritative timer state. The existing Tauri desktop app remains available in
 ## Run locally
 
 1. Start the API with `bun run dev --filter=@repo/api` from the repository root.
-2. Open `TimerMac.xcodeproj` and run the `TimerMac` scheme. The app opens a
-   frosted timer sidebar on the right edge of the primary display and keeps its
-   menu-bar controls. It runs without a Dock icon or an initial desktop window.
-   You can also run `.derivedData/Build/Products/Debug/TimerMac.app` after a
-   package build.
-3. Open Settings from the sidebar gear or menu-bar menu to change the API
+2. Open `TimerMac.xcodeproj` and run the `TimerMac` scheme. The app opens its
+   main Timer window and a frosted timer sidebar on the right edge of the primary
+   display. It appears in the Dock and app switcher. Its icon-only menu-bar item
+   reopens the main window without duplicating the running time. The main window
+   retains Focus, Local Recordings, settings, and floating-widget controls. You can also run
+   `.derivedData/Build/Products/Debug/TimerMac.app` after a package build.
+3. Open Settings from the sidebar gear or the app's Settings menu to change the API
    URL. The default is `http://localhost:3001`.
+
+With Timer active, choose **Workspace → Local Recordings…** or press **⌘⇧R**
+to open recording history and developer controls directly. A Local Recordings
+button is also pinned above the main timer and in every Settings category header.
+Clicking Timer in the
+Dock reopens its main window even when the floating widget is already visible.
+
+The main timer and floating widget now start/resume local foreground-app recording
+with **Start/Resume**, and pause new capture with **Pause**. Startup waits for the
+recording boundary to save; a recording error leaves the timer stopped and appears
+in the timer UI. Review saved activity through **Local Recordings**. Capture stores
+app name, bundle ID and PID locally; Codex hooks and `log_work` still require their
+separate pairing/connection. **Reset** resets elapsed time while preserving recording
+history; use **Finish** in Local Recordings to close that recording. Relaunch, sleep
+recovery and remote stopwatch updates do not automatically resume local capture.
+See [wiring and acceptance](../../docs/design/2026-09-14-timer-recording-wiring.md).
 
 Focus authentication is separate from the shared stopwatch. Existing optional
 stopwatch credentials remain in their original Keychain store; Focus account
 changes never reconnect or clear the stopwatch.
 
+### Local widget sync errors
+
+`b dev` starts the API and harness, but does not start Timer's local Postgres.
+The existing Timer stack must be running on port **54422**; another project's
+Supabase on 54322 does not satisfy that dependency. Start the Timer stack with
+`bun run supabase:start` from this repository; do not reset its database.
+
+If another dev app owns IPv6 `::1:3001`, `localhost:3001` can reach that app even
+while Timer's API is listening on IPv4. Set
+`LOCAL_API_URL=http://127.0.0.1:3001` in `apps/web/.env.local`, which also supplies
+the native local launch profile. Rebuild/run Timer in Xcode to update the bundled
+address; restarting `b dev` alone does not update the running native app.
+
+### Local Codex AI Harness
+
+Run `bun run dev` (`b dev` with your Bun alias) from the repository root. It also
+starts the local harness supervisor. For only the harness, use
+`bun run dev:harness`; it does not require the API or Supabase.
+
+Rebuild/run the current macOS app, then open **Workspace → Local Recordings…**
+(**⌘⇧R**) → **AI Harness** → **Connect Codex…** and approve the disclosure.
+Node 22+ and the Codex CLI must be installed. Start a new Codex session after
+connecting so it discovers `log_work`. Start/resume a local recording yourself
+before submitting a note.
+
+The sandboxed app delegates the approved setup to the terminal's dev process;
+it does not launch your home-installed Node/Codex from its sandbox. Keep the dev
+command running for delivery. Restarting dev resumes an existing connection,
+but never reconnects a revoked one or starts a recording. **Disconnect** blocks
+new calls and retains saved notes. Automatic metadata hooks remain separate.
+
+See [local harness setup](../../integrations/codex/README.md#local-macos-ai-harness)
+for private storage and troubleshooting. This is the development setup, not a
+packaged background-service installer.
+
 ## Focus sessions
 
 Press **Control–Option–Command–F (⌃⌥⌘F)** while Timer is running, or choose
-**Open Focus** in the menu bar or Settings. This opens a separate native window
+**Open Focus** in Settings. This opens a separate native window
 for the authenticated `/api/focus/sessions` API:
 
 - Browse the latest 100 sessions; start, pause, resume, and finish sessions.
@@ -43,7 +95,7 @@ web interface; captured activity is readable here.
 
 The global shortcut uses the system hotkey API, with no extra dependency or
 Accessibility permission. If registration fails, Settings and the Focus window
-show the error and the menu remains available. Custom shortcuts in other apps
+show the error and the app remains available from the Dock or status item. Custom shortcuts in other apps
 can still conflict. The floating sidebar continues to control the separate shared
 stopwatch; it does not control these focus sessions.
 
@@ -74,7 +126,8 @@ are separate acceptance checks.
   while paused, and uses a one-second cadence with Reduce Motion enabled.
 - Settings contains reset, an explicit Open Timer Window button,
   magnetic-edge and position-lock toggles, and connection configuration.
-  The menu bar uses a compact native menu instead of another timer popover.
+  The icon-only menu-bar item opens the normal Timer app window; the running time
+  remains on the floating widget instead of being duplicated in the menu bar.
 - Placement and visibility are remembered across launches. Position is stored
   relative to the display's usable area so resolution changes remain safe.
   A disconnected preferred display falls back to the primary display until it

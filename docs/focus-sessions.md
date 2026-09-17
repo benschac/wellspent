@@ -1,6 +1,6 @@
 # Durable focus sessions and CLI context
 
-Implemented September 5, 2026. The web `/focus` route is the first authenticated session-to-recap flow. The original anonymous stopwatch and native clients still use their existing realtime prototype; they do not share this new session history yet.
+Implemented September 5, 2026. The web `/focus` route is the first authenticated session-to-recap flow. September 17 source review: macOS also has a separate authenticated Focus client and shares this server history. The original shared stopwatch and mobile timer remain on the realtime prototype. Native durable offline Focus persistence is still absent. See the [current/target architecture](design/2026-09-17-wellspent-system-design.md).
 
 ## Identity and persistence
 
@@ -46,7 +46,7 @@ Fifteen-minute sections use actual accumulated timer-running intervals, excludin
 - The web timer outbox preserves original command IDs/timestamps and retries after reconnect. Private browsing/storage failure cannot provide durable offline storage.
 - Manual note and recap drafts remain in the open editor on request failure; they are not part of the durable timer-command outbox.
 - The standalone hook must be configured for the intended focus session. There is no automatic project-to-session matching, hosted MCP server, GitHub/Linear connector, Accessibility collector, or screen recording in this slice.
-- Existing macOS/mobile realtime clients require a separate authenticated session migration before they can control these sessions.
+- macOS has a separate authenticated Focus window; its shared-stopwatch controls remain a different domain. Mobile still requires authenticated Focus integration. Neither native timer path establishes durable offline Focus replication.
 
 ## Verification
 
