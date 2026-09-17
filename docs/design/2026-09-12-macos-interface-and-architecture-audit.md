@@ -1,8 +1,8 @@
 # macOS interface and architecture audit
 
-Date: September 12, 2026. Status: audit and recommendations, with the step 2 ownership extraction now implemented and automatically verified in the working tree. See the completion evidence below. Recording activation is not implemented.
+Date: September 12, 2026. Status: historical audit and recommendations, with step 2 ownership extraction implemented. For current status and next work, read [the current plan](../WELLSPENT_PLAN.md). The recommendations and handoff below describe the audit baseline; do not rerun the completed extraction.
 
-Follow-up: [synthetic local recording](2026-09-12-macos-synthetic-recording-proof.md) now implements the next durability slice under `Features/Recording/` and `Services/Recording/`. Live collection remains disabled; the original findings below describe the audit baseline.
+September 13 follow-up: [synthetic local recording](2026-09-12-macos-synthetic-recording-proof.md), foreground application capture and [SQLiteData persistence](2026-09-13-macos-sqlitedata.md) are implemented. Selected signed/live acceptance remains open. The signal matrix confirms the three recording decisions discussed as open below; original findings remain historical unless revalidated.
 
 The current SwiftUI/AppKit foundation is appropriate. The next useful architectural investment is explicit ownership of application lifecycle, recording, and durable data. Keep the existing observable models and native presentation, and introduce boundaries as each feature needs them.
 
@@ -200,6 +200,8 @@ Use **High** as the default for changes involving concurrency, authentication, r
 Official model documentation checked September 12, 2026: Astra supports complex reasoning/coding and High/XHigh; Terra is positioned to balance intelligence and cost and supports Medium/High; Sol supports High. These facts support the available choices, not a guarantee of task success or account availability. Sources: [Astra](https://developers.openai.com/api/docs/models/gpt-6-astra), [Terra](https://developers.openai.com/api/docs/models/gpt-5.6-terra), [Sol](https://developers.openai.com/api/docs/models/gpt-5.6-sol).
 
 ### Handoff: start the architecture work
+
+Historical prompt: this extraction is complete (see evidence below). Use [the current handoff](../WELLSPENT_PLAN.md#next-session-prompt) for new work.
 
 Suggested session title: **macOS — app and window ownership**. Select **GPT-5.6 Terra / High**.
 

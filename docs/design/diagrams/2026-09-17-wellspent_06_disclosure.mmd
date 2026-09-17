@@ -1,0 +1,25 @@
+flowchart TB
+  accTitle: Findings and optional disclosure
+  accDescr: Local review is independent of providers. User-authorized selected inputs may go directly to a provider or through premium processing. Derived findings return to local storage. Agent feedback is deferred.
+  Evidence[("💾 Private local evidence")]
+  Evidence --> Local["Offline timeline / search / corrections<br/>target useful baseline"]
+  Evidence --> Select["Select evidence and purpose<br/>exclude unrelated private context"]
+  Select --> Grant{"🔐 Authorized recipient<br/>and data scope?"}
+  Grant -->|"no"| Local
+  Grant -->|"yes"| Route{"Execution route"}
+  Route -->|"local inference candidate"| DeviceModel["On-device model / memory<br/>hardware feasibility open"]
+  Route -->|"default hosted"| Direct["Device → chosen provider"]
+  Route -->|"premium + explicit disclosure"| Backend["Wellspent processor<br/>selected plaintext only"]
+  Backend --> Hosted["Chosen AI / memory service"]
+  Direct --> Hosted
+  DeviceModel --> Receipt["Input references + receipt<br/>output version + uncertainty"]
+  Hosted --> Receipt
+  Receipt --> Findings["👤 Findings for the user<br/>inspect and correct"]
+  Findings --> Evidence
+  Deferred["Agent memory injection / actions<br/>deferred; no automatic feedback"]
+  classDef proposed fill:#FFF0D1,stroke:#8D5D11,stroke-width:2px,color:#493005
+  classDef private fill:#DCECFB,stroke:#285B85,stroke-width:2px,color:#173B58
+  classDef later fill:#EEEEEE,stroke:#666666,stroke-width:2px,color:#303030
+  class Select,Grant,Route,DeviceModel,Direct,Backend,Hosted,Receipt,Findings proposed
+  class Evidence,Local private
+  class Deferred later

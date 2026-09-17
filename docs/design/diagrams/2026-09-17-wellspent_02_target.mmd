@@ -1,0 +1,28 @@
+flowchart TB
+  accTitle: Target ownership and trust boundaries
+  accDescr: Native devices own private evidence. Rust protects replicated records. A ciphertext relay has no vault keys. Selected AI or memory disclosure is separately authorized.
+  subgraph device["💻 Trusted Mac — target architecture"]
+    Capture["CLI + app collectors<br/>permission-scoped"] --> Evidence["Evidence and task links<br/>originals + corrections"]
+    Git["Git / GitHub read adapter<br/>proposed device-side intake"] --> Evidence
+    Evidence --> DB[("Canonical local repository<br/>events + projections + outbox")]
+    DB --> UI["Timeline and findings<br/>shown to the user first"]
+    DB --> Replica["Replica engine<br/>causality and conflicts"]
+    Replica --> Crypto["Portable Rust vault core<br/>authenticated encryption"]
+    Keys["Native secure storage<br/>device and vault keys"] --- Crypto
+    DB --> Broker["Local disclosure policy<br/>select, preview, authorize"]
+    Findings["Local findings<br/>sources + uncertainty"] --> DB
+  end
+  Crypto <-->|"opaque envelopes"| Relay["☁️ Wellspent sync relay<br/>ciphertext + routing metadata"]
+  Relay <-->|"opaque envelopes"| Phone["📱 Trusted phone replica<br/>own local DB and Rust core"]
+  Broker -->|"default: selected plaintext"| Provider["Chosen AI / memory provider<br/>separate disclosure recipient"]
+  Broker -->|"optional premium + consent"| Premium["Wellspent AI processing<br/>selected payload only"]
+  Premium --> Provider
+  Provider -->|"derived output"| Findings
+  Account["Account / entitlement service<br/>not vault membership authority"] -.->|"service access"| Relay
+  Later["Agent feedback and automation<br/>later phase"]
+  classDef target fill:#FFF0D1,stroke:#8D5D11,stroke-width:2px,color:#493005
+  classDef private fill:#DCECFB,stroke:#285B85,stroke-width:2px,color:#173B58
+  classDef later fill:#EEEEEE,stroke:#666666,stroke-width:2px,color:#303030
+  class Capture,Evidence,Git,Replica,Crypto,Broker,Relay,Phone,Premium,Findings,UI target
+  class DB,Keys,Provider,Account private
+  class Later later

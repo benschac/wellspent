@@ -1,5 +1,7 @@
 # macOS synthetic recording durability proof
 
+Historical evidence for the synthetic slice. The [current plan](../WELLSPENT_PLAN.md) owns next work. Foreground collection was subsequently implemented, and [SQLiteData/GRDB](2026-09-13-macos-sqlitedata.md) supersedes the custom connection/executor described below. Preserve this run's evidence boundaries; its “next task” text is no longer the current handoff.
+
 Date: September 12, 2026. Baseline: `0b33e7b` plus the scoped implementation below. Status: **synthetic-storage slice complete**, including user-run persistence/restart acceptance corroborated by read-only SQLite queries. Real collection remains disabled and the broader Task 2 live-capture gates remain open.
 
 ## Try the slice

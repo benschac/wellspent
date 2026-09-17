@@ -1,0 +1,22 @@
+flowchart TB
+  accTitle: Proposed architecture experiment order
+  accDescr: Resolve product and trust contracts first. Run synthetic crypto, portable binding, and evidence attribution proofs before integrating real devices or production services. The diagram states dependencies, not completed work.
+  Start["1 · Contracts and failure examples<br/>R01–R07: records, trust, recovery, ownership"]
+  Start --> State["2A · Membership / conflict state machine<br/>adversarial A-B-C fixtures · Gate 1"]
+  Start --> FFI["2B · Portable binding smoke<br/>Rust ↔ Swift / Kotlin · part of Gate 3"]
+  Start --> Trace["2C · Codex-to-PR evidence fixture<br/>model/usage attribution + corrections"]
+  State --> Rust["3A · Rust crypto + durable local replica<br/>directory relay · Gate 2"]
+  Rust --> Faults["4A · Crash, replay, rotation, recovery<br/>same bytes on retry; preserve pending work"]
+  FFI --> Integrate["5 · Native integration<br/>local storage, key lifecycle, real devices"]
+  Faults --> Integrate
+  Trace --> Findings["3B · User-facing findings<br/>simple retrieval vs optional memory"]
+  Findings --> Policy["4B · Disclosure / correction / deletion proof<br/>local baseline; no agent feedback"]
+  Policy --> Integrate
+  Integrate --> Relay["6 · Relay + legacy import rehearsal<br/>Gate 4; preserve original data"]
+  Relay --> Release["Later · Reviewed protocol + signed release<br/>external review and operational acceptance"]
+  classDef early fill:#DCECFB,stroke:#285B85,stroke-width:2px,color:#173B58
+  classDef compute fill:#FFF0D1,stroke:#8D5D11,stroke-width:2px,color:#493005
+  classDef later fill:#EEEEEE,stroke:#666666,stroke-width:2px,color:#303030
+  class Start,State,FFI,Trace early
+  class Rust,Faults,Findings,Policy compute
+  class Integrate,Relay,Release later

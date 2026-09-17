@@ -1,0 +1,26 @@
+sequenceDiagram
+  accTitle: Proposed offline write and encrypted delivery
+  accDescr: Local save, relay acknowledgement and application on another device are separate. Durable operation identity precedes sealing. Retries reuse stored ciphertext. Incoming records and cursors commit together.
+  participant UI as 📱 Device A UI
+  participant DB as Local repository
+  participant Core as Replica + Rust crypto
+  participant Relay as Opaque relay
+  participant B as Trusted device B
+  UI->>DB: Transaction: operation ID, projection, pending seal
+  DB-->>UI: Locally saved, not yet synced
+  Note over DB,Core: Offline work survives restart. Encryption at rest is a separate requirement
+  DB->>Core: Durable operation + trusted membership checkpoint
+  Core-->>DB: Candidate authenticated ciphertext + checkpoint precondition
+  DB->>DB: Transaction: compare checkpoint and store ciphertext/outbox
+  Note over DB,Core: Changed checkpoint means discard candidate and reseal. Never upload it
+  loop Until authenticated relay receipt
+    DB->>Relay: Upload identical stored bytes and operation ID
+    Relay-->>DB: Durable relay receipt or retryable failure
+  end
+  DB->>DB: Persist relay delivery status
+  Note over Relay,B: Relay ACK does not mean another device applied the operation
+  B->>Relay: Fetch bounded batch after delivery cursor
+  Relay-->>B: Envelopes and candidate cursor
+  B->>B: Authenticate, validate membership, resolve or quarantine
+  B->>B: Transaction: records, projection/conflict, checkpoint, cursor
+  Note over DB,B: Same valid operations converge or produce the same explicit conflict

@@ -1,0 +1,24 @@
+flowchart TB
+  accTitle: Portable Rust boundary to test
+  accDescr: Rust owns versioned cryptographic operations and membership validation. Swift and Kotlin adapters own platform integration. Replication ownership is an explicit decision; storage and crypto are not automatically the same component.
+  Mac["💻 Native Mac<br/>SwiftUI / AppKit"] --> Swift["Swift native facade"]
+  Expo["📱 Expo UI<br/>TypeScript"] --> Module["Expo native module<br/>Swift / Kotlin"]
+  Swift --> FFI["UniFFI candidate<br/>coarse calls + structured errors"]
+  Module --> FFI
+  subgraph rust["🦀 Proposed portable Rust library — no implementation yet"]
+    FFI --> Protocol["Vault protocol<br/>versions + membership validation"]
+    Protocol --> Primitives["Vetted crypto dependencies<br/>envelopes + record AEAD"]
+    Protocol --> Result["Validated transition result<br/>no hidden network or DB writes"]
+  end
+  Keystore["🔑 Native key storage per device<br/>lock / restore behavior"] --- Swift
+  Keystore --- Module
+  Result --> Replica["Replica / domain engine<br/>Rust or conformance-tested adapters<br/>R07 decision before freezing API"]
+  Replica --> Store["Platform transaction boundary<br/>records + outbox + checkpoints"]
+  Store --> Transport["Relay transport<br/>retries stored ciphertext"]
+  JS["JS receives UI data / opaque handles<br/>not long-lived vault keys"] -.-> Module
+  classDef proposed fill:#FFF0D1,stroke:#8D5D11,stroke-width:2px,color:#493005
+  classDef platform fill:#DCECFB,stroke:#285B85,stroke-width:2px,color:#173B58
+  classDef decision fill:#F8DEE7,stroke:#8F3554,stroke-width:2px,color:#551D32
+  class FFI,Protocol,Primitives,Result,Transport proposed
+  class Mac,Expo,Swift,Module,Keystore,Store,JS platform
+  class Replica decision

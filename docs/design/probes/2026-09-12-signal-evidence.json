@@ -1,0 +1,63 @@
+{
+  "date": "2026-09-12",
+  "baselineCommit": "6e1b3f5",
+  "os": "macOS 26.3 (25D125)",
+  "swift": "6.3.3",
+  "codexCLI": "0.154.0",
+  "probeSigning": {
+    "identity": "ad-hoc",
+    "hardenedRuntime": true,
+    "entitlements": [
+      "com.apple.security.app-sandbox",
+      "com.apple.security.network.client"
+    ]
+  },
+  "native": {
+    "accessibilityTrustedForProbe": false,
+    "activationWithBundleID": 0,
+    "durationSeconds": 5,
+    "foregroundApplicationAvailable": true,
+    "foregroundBundleIdentifierAvailable": true,
+    "foregroundPIDPositive": true,
+    "homeDirectoryUsesAppContainer": true,
+    "idleChangedBetweenSamples": true,
+    "idleSamplesFiniteAndNonnegative": true,
+    "notificationCounts": {
+      "appActivated": 0,
+      "didWake": 0,
+      "screensSleep": 0,
+      "screensWake": 0,
+      "sessionActive": 0,
+      "sessionInactive": 0,
+      "willSleep": 0
+    },
+    "probeVersion": 1,
+    "screenCaptureGrantedForProbe": false
+  },
+  "codexSynthetic": {
+    "kind": "tool_completed",
+    "summary": "Tool completed: Bash (reported success).",
+    "retainedKeys": [
+      "id",
+      "source",
+      "sourceSessionId",
+      "occurredAt",
+      "kind",
+      "summary",
+      "project"
+    ],
+    "stableIdWithInvocation": true,
+    "timeBasis": "adapter invocation clock",
+    "duplicateNormalizationChangesTimestamp": true,
+    "assistantTextDisabled": true,
+    "rawContentRetained": false,
+    "networkCalls": 0
+  },
+  "nativeTransitionScenariosRun": false,
+  "ordinaryCodexHookObserved": false,
+  "notes": [
+    "No raw application identifiers or content retained.",
+    "Native permission booleans apply to the probe identity only.",
+    "Capture suites used the existing dirty working tree and synthetic transports."
+  ]
+}

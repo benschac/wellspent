@@ -1,0 +1,96 @@
+{
+  "date": "2026-09-12",
+  "baselineCommit": "0b33e7b",
+  "scope": "Task 1 verification of pre-existing discovery artifacts",
+  "environment": {
+    "os": "macOS 26.3 (25D125)",
+    "architecture": "arm64",
+    "swift": "6.3.3",
+    "bun": "1.4.0",
+    "codexCLI": "0.154.0",
+    "codexApp": "26.903.71938 (8576)",
+    "chatGPTApp": "26.903.61454 (8378)",
+    "backend": "none; tests used fake transports"
+  },
+  "captureTests": { "passed": 29, "failed": 0, "assertions": 173 },
+  "syntheticNormalizer": {
+    "passed": true,
+    "stableIdWithInvocation": true,
+    "timeBasis": "adapter invocation clock",
+    "duplicateNormalizationChangesTimestamp": true,
+    "assistantTextDisabled": true,
+    "rawContentRetained": false,
+    "networkCalls": 0
+  },
+  "nativeToolSandbox": {
+    "durationSeconds": 5,
+    "foregroundApplicationAvailable": false,
+    "idleChangedBetweenSamples": false,
+    "notificationRegistrationDiagnostics": true,
+    "interpretation": "insufficient workspace access; not an OS capability verdict"
+  },
+  "nativeNormalHost": {
+    "durationSeconds": 5,
+    "appSandboxSigned": false,
+    "homeDirectoryUsesAppContainer": false,
+    "foregroundApplicationAvailable": true,
+    "foregroundBundleIdentifierAvailable": true,
+    "foregroundPIDPositive": true,
+    "idleSamplesFiniteAndNonnegative": true,
+    "idleChangedBetweenSamples": true,
+    "accessibilityTrustedForProbe": false,
+    "screenCaptureGrantedForProbe": false,
+    "activationWithBundleID": 0,
+    "notificationCounts": {
+      "appActivated": 0,
+      "didWake": 0,
+      "screensSleep": 0,
+      "screensWake": 0,
+      "sessionActive": 0,
+      "sessionInactive": 0,
+      "willSleep": 0
+    }
+  },
+  "existingTimerDebugArtifact": {
+    "adHocSigned": true,
+    "sandboxEntitlementPresent": false,
+    "networkClientEntitlementPresent": false,
+    "launchedOrModifiedByThisPass": false,
+    "observationBoundary": "artifact at inspection time; concurrent native build work later appeared"
+  },
+  "configurationInspection": {
+    "userHooksFileExists": false,
+    "projectHooksFileExists": false,
+    "projectConfigExists": false,
+    "userHookStateTableExists": true,
+    "userLifecycleHandlerArraysPresent": false,
+    "timerAdapterReferenceFound": false,
+    "timerWorkLogMcpEntryFound": false,
+    "pluginManagedSourcesExhaustivelyChecked": false
+  },
+  "appServerSchema": {
+    "generated": true,
+    "experimentalFlagUsed": false,
+    "itemStartedAtMsPresent": true,
+    "itemCompletedAtMsPresent": true,
+    "threadTurnIdsPresent": true,
+    "tokenUsageNotificationPresent": true,
+    "runtimeSubscriptionAttempted": false
+  },
+  "gates": {
+    "ordinaryCodexHookObserved": false,
+    "nativeTransitionScenariosRun": false,
+    "permissionDenialRevocationTested": false,
+    "signedDistributionRetested": false,
+    "persistentCaptureEnabled": false,
+    "tasks2Through5ImplementedByThisPass": false,
+    "concurrentRecordingFilesAppeared": true,
+    "concurrentRecordingFilesValidated": false
+  },
+  "notes": [
+    "Prior signed-probe evidence remains in 2026-09-12-signal-evidence.json.",
+    "No raw app identifiers, titles, paths, transcripts or credentials retained.",
+    "No OS permissions changed, hooks installed or delivery queues opened.",
+    "Encryption, multi-device sync and external integrations remain deferred."
+  ]
+}

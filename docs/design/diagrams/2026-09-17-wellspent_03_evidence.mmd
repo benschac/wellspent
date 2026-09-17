@@ -1,0 +1,24 @@
+flowchart LR
+  accTitle: Proposed evidence model
+  accDescr: Tasks link many recordings, agent runs and pull requests. Usage belongs to its reported scope, corrections preserve originals, and findings cite evidence. Links carry explicit or inferred provenance.
+  Project["📁 Project<br/>stable repo identity"] --> Task["Task<br/>user intent"]
+  Task --> Links["Versioned associations<br/>explicit or inferred<br/>confidence + correction"]
+  Recording["⏱ Recording<br/>authorized intervals + gaps"] --> Links
+  Run["Agent run / thread<br/>turns + parent links"] --> Links
+  PR["GitHub PR<br/>repo ID + PR number"] --> Links
+  Recording --> App["App observations<br/>not task identity"]
+  Run --> Config["Model / native effort<br/>per reported scope"]
+  Run --> Usage["Usage observations<br/>delta or cumulative<br/>source + coverage"]
+  PR --> Review["Review / CI / commits<br/>provider IDs + revision"]
+  Links --> Sources["Evidence references"]
+  App --> Sources
+  Config --> Sources
+  Usage --> Sources
+  Review --> Sources
+  Correction["✎ Append-only correction<br/>target + author + reason"] --> Sources
+  Sources --> Finding["User-facing finding<br/>claim + sources + uncertainty"]
+  Finding --> Memory["Optional derived memory<br/>rebuildable and replaceable"]
+  classDef proposed fill:#FFF0D1,stroke:#8D5D11,stroke-width:2px,color:#493005
+  classDef evidence fill:#DCECFB,stroke:#285B85,stroke-width:2px,color:#173B58
+  class Project,Task,Links,Config,Usage,PR,Review,Correction,Finding,Memory proposed
+  class Recording,Run,App,Sources evidence

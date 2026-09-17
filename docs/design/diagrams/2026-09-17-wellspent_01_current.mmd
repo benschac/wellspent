@@ -1,0 +1,40 @@
+flowchart TB
+  accTitle: Current Wellspent architecture
+  accDescr: Three separate authorities exist today: local Mac recording history, authenticated server records, and one shared stopwatch. Existing AI and Google services receive plaintext.
+  subgraph local["💻 Local Mac recording — implemented"]
+    direction LR
+    CLI["Codex terminal<br/>paired hooks and explicit log_work"] --> Helper["Node helpers<br/>private durable spools"]
+    Helper -->|"authenticated loopback pull"| Native["Swift recording intake"]
+    OS["Foreground app identity<br/>and lifecycle gaps"] --> Native
+    Native -->|"commit before ACK"| SQLite[("SQLiteData / GRDB<br/>local recording events")]
+    SQLite --> Review["Settings timeline"]
+  end
+  subgraph cloud["☁️ Authenticated records — implemented, plaintext on server"]
+    direction LR
+    Focus["Web + Mac Focus<br/>Supabase sign-in"] --> HTTP["Nest HTTP / oRPC"]
+    Logs["Separate cloud<br/>CLI / MCP work log"] --> HTTP
+    HTTP --> PG[("Postgres<br/>Focus + work logs")]
+    PG --> Jobs["Selected exports<br/>durable Calendar jobs"]
+    Jobs --> Google["Google Calendar / Sheets"]
+  end
+  subgraph timer["⏱ Shared stopwatch — implemented, separate singleton"]
+    direction LR
+    Clients["Web / Expo / Tauri / Mac"] --> WS["WebSocket API"]
+    WS --> Row[("Postgres<br/>realtime_timer_state id=1")]
+    Row --> Fanout["After commit<br/>process-local broadcast / APNs"]
+    Fanout --> Clients
+  end
+  subgraph ai["Existing assistant — separate plaintext path"]
+    direction LR
+    Chat["Web assistant"] --> AI["Nest → AI Gateway<br/>plaintext messages"]
+  end
+  %% Invisible links only arrange the independent lanes vertically.
+  local ~~~ cloud
+  cloud ~~~ timer
+  timer ~~~ ai
+  classDef current fill:#DDF4E4,stroke:#23613B,stroke-width:2px,color:#163D26
+  classDef store fill:#E4EAFE,stroke:#354D87,stroke-width:2px,color:#172D56
+  classDef separate fill:#F2F2F2,stroke:#626262,stroke-width:2px,color:#222222
+  class CLI,Helper,Native,OS,Review,Focus,Logs,HTTP,Jobs,Google,Clients,WS,Fanout current
+  class SQLite,PG,Row store
+  class Chat,AI separate

@@ -1,8 +1,10 @@
 # Focus Timer Product and Sync Architecture
 
+> **Historical scope — September 17, 2026:** this document records the server-authoritative plaintext Focus design and its implementation checkpoint. Its “decision-complete” / “locked” labels do not govern the new E2EE private-record architecture. Server conflict authority, mandatory sign-in, full offline web, client-framework choices, retention and server-owned AI/integration interpretation must be reconsidered for that target. Start with the [visual system design](2026-09-17-wellspent-system-design.md) and [current plan](../WELLSPENT_PLAN.md). Preserve this document's original evidence and useful failure matrix.
+
 **Status:** Decision-complete; first authenticated web session/evidence slice implemented; native synchronization gates remain
 
-**Last updated:** 2026-09-06
+**Last updated:** 2026-09-07
 
 **Current implementation note:** [Durable focus sessions and CLI context](../focus-sessions.md) records the Supabase-authenticated web flow, persisted timer transitions, offline browser command outbox, Codex capture adapter, and editable recaps. Sections 6 and 26 distinguish this implementation from remaining work. Other architectural sections describe the target, not proof of shipped behavior: native durable sessions, IndexedDB/SQLite repositories, the device/cursor protocol, and broader platform gates remain incomplete.
 
@@ -21,6 +23,8 @@ The foundational technical requirement is therefore not specifically “use Powe
 A WebSocket provides a low-latency transport but not offline synchronization by itself. The first release therefore uses a narrow custom synchronization protocol: SQLite on native clients, IndexedDB on web, a durable local outbox, HTTP upload and catch-up through Nest on Vercel, and Supabase Realtime as an opportunistic live-notification path. Postgres remains canonical. Legend-State v3 provides fine-grained reactive client state above the repository and may persist lightweight UI state through its Expo SQLite key-value plugin on native and IndexedDB plugin on web. It does not own canonical timer events, the outbox, projections, or the sync cursor. PowerSync is not part of v1; preserve the repository boundary so managed replication can be reconsidered if the domain expands or maintaining custom sync becomes disproportionate.
 
 The first release permits several sessions to run simultaneously. Conflicts are scoped to a single session, and reports show both full per-session duration and deduplicated wall-clock focus time so overlaps remain understandable.
+
+**Hosting and integration decision (2026-09-07):** Keep Next.js and Nest on Vercel and retain Supabase Auth, Postgres, and the planned Realtime notification path. Give background execution its own boundary so a managed job service or a dedicated always-running worker can be added without relocating the API. Finish the first useful integrations and evaluate a managed integration platform before expanding the connector catalog. No execution or integration vendor is selected by this decision; it records direction, not completed implementation.
 
 ## 2. Product vision
 
@@ -178,6 +182,8 @@ As inspected on 2026-09-06, the repository has two separate timer paths:
 The durable focus path locks a session, checks command identity and timer revision, and commits its transition and projection in one Postgres transaction. Its current lifecycle is running/paused/completed; creation starts the timer. Recap edits and evidence uploads do not advance timer revisions. Generated recaps are deterministic, not LLM-generated. These behaviors are owned by `apps/api/src/focus/focus.repository.ts`, `focus-domain.ts`, and `packages/api-contract/src/contract.ts`.
 
 The browser writes account-scoped commands and cached session snapshots to `localStorage` through `focus-outbox.ts`; `use-focus-sessions.ts` replays commands and refreshes the latest 100 sessions every ten seconds and on reconnect. This is useful offline persistence, but is not the transactional IndexedDB event repository or durable cursor-based catch-up specified below. Conflict handling currently blocks the account's replay queue and offers explicit pending-command discard; per-session rejection/rebase remains work.
+
+Added 2026-09-07: optional private Supabase Broadcast hints now connect Nest's successful session creation, timer transitions, recap edits, and manual notes to authenticated web list/detail refreshes. HTTP polling, channel rejoin, and foreground refresh repair missed hints. This is a notification layer over the existing HTTP API, not the planned cursor protocol or native migration. It defaults off pending policy/configuration rollout; see [focus live notifications](../focus-realtime.md) for setup and acceptance boundaries.
 
 The separate `apps/api/src/realtime` path now persists its start/pause/reset snapshot in `app.realtime_timer_state` through `RealtimeTimerRepository`. Each command locks the row and commits before broadcast; reconnect reads the stored revision/timestamp. Running time includes API downtime, paused time does not, and reset preserves running status. This requires the `20260906224232_persist_realtime_timer.sql` migration; the initial rollout cannot reconstruct old process-only state. Live Activity registrations remain in memory, and the shared timer is still anonymous and separate from authenticated focus-session history. Native clients do not yet control those focus sessions. No shared `@repo/session-domain` package, SQLite/IndexedDB repository, device registry, versioned user event stream, contiguous cursor recovery, or repository-to-Legend binding exists yet.
 
@@ -675,7 +681,41 @@ The initial deployment uses Vercel and Supabase:
 - Production API traffic uses Supabase's transaction-mode pooler rather than a direct Postgres connection because Vercel functions are transient and auto-scaling.
 - HTTP upload and catch-up remain the correctness path. Supabase Realtime only reduces foreground propagation latency.
 
-No additional application host, queue, Redis service, or time-series database is required for the prototype. Revisit hosting only when measured limits or background-job requirements justify it.
+The core focus-sync prototype does not require another application host, queue, Redis service, or time-series database. Integration processing may introduce a job executor independently of API hosting, as described below. Revisit moving the API only when measured runtime, latency, reliability, or operating-cost constraints justify it.
+
+### 15.4 Background execution
+
+**Decision (2026-09-07):** Separate durable background execution from the HTTP API lifecycle. User-triggered integration work should begin promptly through event-driven delivery or an active worker; it must not normally wait for a minute-scale cron interval. An in-process timer inside a Vercel Function is not a reliable scheduler.
+
+The execution boundary supports either a managed queue/job service or a dedicated always-running worker. Vercel Queues, Inngest, and Trigger.dev are candidates to evaluate, not dependencies approved by this decision. A separately hosted worker can reuse application services and the existing Postgres job records while the API remains on Vercel. Choose the executor against the first concrete workload and verify its deployed behavior before expanding its use.
+
+- Postgres owns application-visible requests, ownership, provider-object mappings, and outcomes. Enqueue only the identifiers and bounded data needed to perform authorized work; keep credentials out of job messages and routine logs.
+- Acknowledge a background request only after its intent is durably recorded. Recover the gap between committing that intent and notifying an external executor, so an API crash cannot silently strand accepted work. This integration dispatch requirement is separate from opportunistic device-sync notifications in section 11.6.
+- Assign one owner for execution retries and scheduling. Adapt the existing worker when adopting a managed executor rather than running independent retry loops for the same job.
+- Treat delivery as repeatable. Use stable operation identities and provider-specific duplicate prevention or reconciliation, including the case where a provider commits a write but its response is lost. Queue deduplication alone does not make an external write exactly-once.
+- Show pending, running, completed, and actionable failure states in the product. Closing the app must not cancel accepted background work. A successful enqueue is not evidence of a successful provider write.
+- Use scheduled execution for subscription renewal, reconciliation, stranded-job recovery, and scheduled reviews. It is maintenance and recovery, not the normal trigger for an interactive publish action.
+- Add bounded concurrency, provider/account rate-limit handling, checkpoints for paginated imports, reconnect-required outcomes for invalid grants, and visibility into job age and terminal failures as each workload requires them.
+
+An always-running worker is useful for repeated polling, initial imports, webhook processing, provider reconciliation, and the AI reviews in section 17. Managed execution can provide these capabilities too. Neither choice replaces local persistence, HTTP catch-up, client reconnect handling, or operating-system background restrictions. The separate prototype WebSocket timer is not the basis for changing the durable focus architecture.
+
+Acceptance for the selected executor includes prompt start under normal conditions, API/worker termination after acceptance, lost provider responses, duplicate deliveries, rate limits, revoked credentials, and visible recovery or failure. Record actual start/completion latency; do not infer it from the hosting model. Before automatically retrying Sheets creation, establish how ambiguous creation outcomes are reconciled.
+
+### 15.5 Integration ownership and expansion
+
+**Decision (2026-09-07):** Finish the first useful Google Calendar and Sheets flows, then evaluate a managed integration platform before building a broad connector catalog. Building provider adapters ourselves and buying integration infrastructure remain separate from the API-hosting decision.
+
+| Responsibility | Ownership |
+| -------------- | --------- |
+| Job execution, retries, and scheduling | Selected executor: managed service or our worker |
+| OAuth, credential refresh, provider API access, and connector sync machinery | Existing provider code initially; evaluate a managed integration platform for expansion |
+| User authorization, session semantics, consent, evidence provenance, export contents, and canonical history | Nest application services and Postgres |
+
+Nango and Pipedream Connect are evaluation candidates. A job queue or workflow engine does not supply provider integrations by itself. A managed integration platform can reduce connector maintenance, but application-specific mapping, permissions, conflict behavior, and product UI remain our responsibility.
+
+Evaluate the next concrete provider operations, not just catalog size: required reads and writes, initial and incremental sync, webhook support, freshness, reconnect UX, rate limits, observability, data handling and retention, cost at expected connection volume, and credential/data portability. Verify a representative end-to-end operation before adopting a platform broadly. Preserve the existing shared Google credential owner until an explicit migration covers existing grants, account identity, scopes, and disconnect behavior.
+
+Imported context remains attributable evidence. Provider events or AI interpretations must not silently redefine authoritative focus history. Keep provider-specific adapters behind application services so executor or connector changes do not require rewriting session rules or client synchronization.
 
 ## 16. Privacy and activity observation
 
@@ -981,6 +1021,10 @@ Product and framework references:
 - [Supabase API security](https://supabase.com/docs/guides/api/securing-your-api)
 - [Supabase row-level security](https://supabase.com/docs/guides/database/postgres/row-level-security)
 - [Vercel NestJS deployment](https://vercel.com/docs/frameworks/backend/nestjs)
+- [Vercel Queues](https://vercel.com/docs/queues)
+- [Nango authorization](https://nango.dev/docs/guides/auth/auth-guide)
+- [Nango integration functions](https://nango.dev/docs/guides/functions/functions-guide)
+- [Pipedream Connect](https://pipedream.com/connect)
 - [TanStack DB](https://tanstack.com/db/latest)
 - [TanStack DB PowerSync collection](https://tanstack.com/db/latest/docs/collections/powersync-collection)
 - [Tauri plugin architecture](https://v2.tauri.app/develop/plugins/)
@@ -1056,6 +1100,7 @@ These defaults resolve the remaining technical details without expanding the pro
 - Vercel hosts Next.js and NestJS; Supabase hosts Auth, Postgres, and Realtime.
 - Vercel functions run in the region closest to Supabase, initially US East.
 - Nest uses the Supabase transaction-mode pooler for production database traffic.
+- Background execution is selected independently of API hosting; apply sections 15.4 and 15.5 before expanding integration infrastructure or migrating credentials.
 - Instrument local render, server commit, and remote apply boundaries.
 - Measure on an actual Android device and in the browser once the vertical slice exists.
 - Treat 50 ms local and 150 ms foreground remote P95 as initial goals rather than implementation blockers.
@@ -1065,10 +1110,16 @@ These defaults resolve the remaining technical details without expanding the pro
 
 **Current checkpoint (2026-09-06):** authenticated web sessions, atomic Postgres commands, a browser `localStorage` outbox, CLI evidence capture, and editable recaps are implemented. Shared command schemas and pure timing/projection behavior now live in `@repo/session-domain` (step 1 completed 2026-09-07); transactional repositories, native durable sessions, and device/cursor synchronization remain. Section 6 records the source boundaries.
 
-**Next milestone:** make the current session flow recover durably across browser and native process termination, then converge through authenticated HTTP. Start from the implemented narrow lifecycle. Add broader events only with their product behavior and tests.
+**Notification addition (2026-09-07):** the optional authenticated web Supabase Broadcast layer is implemented over existing HTTP refresh/recovery. Enabling it requires the private-channel policy and deployment configuration in [focus live notifications](../focus-realtime.md). It does not complete step 4's durable synchronization semantics.
+
+**Priority update (2026-09-08):** session-independent CLI/MCP work logging takes priority over browser offline persistence. The first implementation adds account-owned work entries, scoped revocable credentials, durable local capture/retry, CLI/MCP logging and readback, and `/work-log` history/setup. Focus sessions are optional associations, not prerequisites. See [work log setup and acceptance](../work-log.md). Local tests do not imply deployment or installation into the user's harness; those remain the work-log activation gate.
+
+**Separate discovery slice (2026-09-08):** [Agent spend and workflow discovery](2026-09-08-agent-spend-and-workflow-discovery.md) investigates model/effort selection and practical workflow advice using Codex and Claude interface evidence, 20–30 real tasks, and bounded comparisons. Its acceptance is actionable advice that reduces spend or effort while preserving acceptable results. It is not an implemented recommendation engine and does not replace work-log activation or the following durability milestones.
+
+**Following durability milestone:** make the current session flow recover durably across browser and native process termination, then converge through authenticated HTTP. Start from the implemented narrow lifecycle. Add broader events only with their product behavior and tests.
 
 1. **Shared session rules — completed 2026-09-07.** Extract the existing command schemas and pure timing/projection behavior into `@repo/session-domain`; keep framework, HTTP errors, and storage adapters outside it. Acceptance: server and browser consume shared behavior/fixtures; start/pause/resume/finish, original timestamps, independent recap revisions, and command replay retain their tested behavior. Introducing a second protocol or changing native clients is outside this task.
-2. **Transactional web repository — next.** Replace the browser outbox with IndexedDB behind a repository interface and connect `/focus` to it. Acceptance: account-scoped legacy snapshots and pending commands migrate with unchanged IDs, timestamps, and revisions; migration can resume after interruption without duplicates; source records are retained until the migrated transaction is committed and verified. Test atomic pending/projection writes, reload with and without pending work, multi-tab enqueue/acknowledgement, unavailable storage, and rebuild equivalence. Demonstrate offline pause/reopen/resume/finish and reconnect in a real browser. Keep unrelated-session replay moving when one session conflicts, retain rejected originals, and show the affected session's correction. Device registration and native UI are deferred to subsequent tasks.
+2. **Transactional web repository — deferred behind work-log activation.** Replace the browser outbox with IndexedDB behind a repository interface and connect `/focus` to it. Acceptance: account-scoped legacy snapshots and pending commands migrate with unchanged IDs, timestamps, and revisions; migration can resume after interruption without duplicates; source records are retained until the migrated transaction is committed and verified. Test atomic pending/projection writes, reload with and without pending work, multi-tab enqueue/acknowledgement, unavailable storage, and rebuild equivalence. Demonstrate offline pause/reopen/resume/finish and reconnect in a real browser. Keep unrelated-session replay moving when one session conflicts, retain rejected originals, and show the affected session's correction. Device registration and native UI are deferred to subsequent tasks.
 3. **Expo mobile persistence and sync (Android acceptance first).** Extend the existing React Native app in `apps/mobile`; `expo-sqlite` is already installed. It supplies the device-local SQLite database on Android and iOS, separate from backend Postgres. Implement local tables/migrations, atomic pending-command/projection writes, and the repository adapter against shared fixtures; connect authenticated native controls and replay to the durable focus API. No separate Android app, second backend, or new SQL package is implied. Acceptance: start on web, pause on physical Android, operate offline, terminate/reopen the mobile app, reconnect, and observe one explainable history on both clients. Verify local actions after token expiry, account isolation, and SQLite/IndexedDB projection equivalence. Bind reactive UI state to committed repository projections without making its persistence canonical; the planned Legend integration is separate from the SQLite storage engine. Follow with iOS lifecycle/device acceptance for the same mobile implementation.
 4. **Complete synchronization semantics.** Extend the existing focus tables/API with authorized device records, versioned events, durable per-user ordering, explicit outcomes, and HTTP catch-up. Acceptance: lost acknowledgements, stale revisions, independent sessions, out-of-order delivery, device revocation, and unsupported versions have deterministic outcomes; cursor advancement and local application are atomic. Realtime accelerates delivery only after HTTP recovery works. This work can accompany the Android peer where required to satisfy its acceptance.
 5. **Full acceptance and remaining clients.** Run section 19's compatibility, migration, fault, and physical-device checks; record latency separately from correctness. Migrate the Mac and remaining clients to the same durable session model. Preserve existing native presentation behavior. Choose the long-term Mac shell from capability evidence; do not infer app blocking or distribution readiness from its UI.
