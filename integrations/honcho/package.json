@@ -1,0 +1,12 @@
+{
+  "name": "@repo/honcho",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "honcho:start": "docker compose up -d --wait --wait-timeout 180",
+    "honcho:stop": "docker compose down",
+    "honcho:status": "docker compose ps",
+    "honcho:logs": "docker compose logs --tail 100 --follow",
+    "honcho:check": "docker compose config --quiet"
+  }
+}

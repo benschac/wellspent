@@ -6,7 +6,6 @@
     "orientation": "portrait",
     "scheme": "timer",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "experiments": {
       "reactCompiler": true
     },
@@ -15,7 +14,6 @@
       "bundleIdentifier": "com.benschac.timer"
     },
     "android": {
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.RECORD_AUDIO",
@@ -52,7 +50,10 @@
       "expo-image",
       "expo-font",
       "expo-background-task",
-      "expo-audio"
+      "expo-audio",
+      "expo-sqlite",
+      "expo-status-bar",
+      "expo-asset"
     ]
   }
 }

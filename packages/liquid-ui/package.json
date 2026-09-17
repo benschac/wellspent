@@ -6,10 +6,10 @@
   "main": "src/index",
   "types": "src/index.ts",
   "peerDependencies": {
-    "expo": "*",
+    "expo": "* || 58.0.0-preview.3",
     "@expo/ui": "*",
     "react": "*",
-    "react-native": "*"
+    "react-native": "* || 0.88.0-rc.0"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

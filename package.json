@@ -26,6 +26,7 @@
     "db:reset:local": "turbo run db:reset:local --filter=@repo/database",
     "db:studio": "turbo run db:studio --filter=@repo/database",
     "dev": "turbo run dev",
+    "dev:harness": "turbo run dev --filter=@repo/codex-capture",
     "format": "biome format --write .",
     "format:check": "biome format .",
     "ios:device": "bun run --cwd apps/mobile ios:device",
@@ -44,7 +45,12 @@
     "test:fast": "turbo run test:focus test:capture",
     "test:focus": "turbo run test:focus",
     "test:focus:db:local": "turbo run test:focus:db:local",
-    "typecheck": "turbo run typecheck"
+    "typecheck": "turbo run typecheck",
+    "honcho:start": "turbo run honcho:start --filter=@repo/honcho",
+    "honcho:stop": "turbo run honcho:stop --filter=@repo/honcho",
+    "honcho:status": "turbo run honcho:status --filter=@repo/honcho",
+    "honcho:logs": "turbo run honcho:logs --filter=@repo/honcho",
+    "honcho:check": "turbo run honcho:check --filter=@repo/honcho"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.12",

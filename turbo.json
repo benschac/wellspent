@@ -53,6 +53,11 @@
     },
     "transit": {
       "dependsOn": ["^transit"]
-    }
+    },
+    "honcho:start": {},
+    "honcho:stop": {},
+    "honcho:status": {},
+    "honcho:logs": {},
+    "honcho:check": {}
   }
 }

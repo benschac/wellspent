@@ -15,7 +15,6 @@
   },
   "dependencies": {
     "@repo/api-contract": "workspace:*",
-    "@shopify/react-native-skia": "2.6.2",
     "effect": "4.0.0-rc.112"
   },
   "devDependencies": {
@@ -24,6 +23,7 @@
     "typescript": "~6.0.3"
   },
   "peerDependencies": {
+    "@shopify/react-native-skia": ">=2.6.2 <3",
     "react": ">=19.2.0"
   }
 }
