@@ -1,0 +1,10 @@
+{
+  "extends": "../../packages/typescript-config/base.json",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "types": ["node"],
+    "lib": ["ES2024"]
+  },
+  "include": ["harness-dev.ts", "harness-helper.ts", "harness-mcp.ts"]
+}

@@ -31,7 +31,14 @@
       "ignoreDependencies": ["babel-plugin-react-compiler"]
     },
     "integrations/codex": {
-      "entry": ["timer-capture.mjs", "local-helper.mjs", "harness-mcp.mjs"]
+      "entry": [
+        "build.ts",
+        "timer-capture.mjs",
+        "local-helper.mjs",
+        "harness-dev.ts",
+        "harness-helper.ts",
+        "harness-mcp.ts"
+      ]
     },
     "integrations/work-log": {
       "entry": ["cli.mjs", "mcp.mjs"]

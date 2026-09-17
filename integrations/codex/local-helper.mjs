@@ -53,7 +53,7 @@ const reasons = new Set([
   "pairing_unavailable",
 ]);
 const directories = ["bindings", "pending", "quarantine", "receipts", "nonces"];
-async function sync(directory) {
+export async function sync(directory) {
   const handle = await open(
     directory,
     constants.O_RDONLY | constants.O_NOFOLLOW,
@@ -64,7 +64,7 @@ async function sync(directory) {
     await handle.close();
   }
 }
-async function privateDirectory(path) {
+export async function privateDirectory(path) {
   const firstCreated = await mkdir(path, { recursive: true, mode: 0o700 });
   const stat = await lstat(path);
   if (
@@ -82,7 +82,7 @@ async function privateDirectory(path) {
     }
   }
 }
-async function read(path, limit = MAX_WIRE) {
+export async function read(path, limit = MAX_WIRE) {
   const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
   try {
     const stat = await handle.stat();
@@ -106,7 +106,7 @@ async function read(path, limit = MAX_WIRE) {
     await handle.close();
   }
 }
-async function optional(path) {
+export async function optional(path) {
   try {
     return await read(path);
   } catch (error) {
@@ -114,14 +114,14 @@ async function optional(path) {
     throw error;
   }
 }
-async function remove(path) {
+export async function remove(path) {
   try {
     await unlink(path);
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
   }
 }
-async function publish(path, value, replace = false) {
+export async function publish(path, value, replace = false) {
   const text = JSON.stringify(value);
   if (Buffer.byteLength(text) > MAX_WIRE) throw new Error("packetTooLarge");
   const temporary = join(dirname(path), `.${randomUUID()}.tmp`);
@@ -162,7 +162,7 @@ function idPath(root, directory, id) {
 // Publish a populated owner directory atomically. rename cannot replace a nonempty
 // live lock. Reapers unlink only the observed unique owner file; rmdir cannot
 // remove a newly acquired (always nonempty) lock even if another reaper raced.
-async function lock(root, operation) {
+export async function lock(root, operation) {
   const lockPath = join(root, ".lock");
   const token = randomUUID();
   const ownerName = `${process.pid}-${token}.json`;

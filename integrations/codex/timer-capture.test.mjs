@@ -13,10 +13,12 @@ import {
   configure,
   enqueue,
   eventFromHook,
+  eventStatus,
   flush,
   loadConfig,
   queueStatus,
   validateConfig,
+  validateWorkLogEvent,
 } from "./timer-capture.mjs";
 
 const directories = [];
@@ -57,6 +59,156 @@ function acknowledgeAll(_url, options) {
     }),
   );
 }
+
+describe("account work log capture", () => {
+  const workConfig = validateConfig({
+    mode: "work-log",
+    userId: config.sessionId,
+    apiOrigin: config.apiOrigin,
+    project: "Timer",
+  });
+  const note = {
+    id: "c10b8783-e660-4e87-b378-7e754658084d",
+    source: "cli",
+    sourceSessionId: "terminal:one",
+    occurredAt: "2026-09-05T12:00:00.000Z",
+    kind: "note",
+    summary: "Investigated login",
+    project: "Timer",
+  };
+  test("config requires account identity but no session and keeps secrets out", () => {
+    expect(workConfig.sessionId).toBeUndefined();
+    expect(() =>
+      validateConfig({ ...workConfig, userId: undefined }),
+    ).toThrow();
+    expect(() =>
+      validateConfig({ ...workConfig, accessToken: "secret" }),
+    ).toThrow();
+    expect(validateWorkLogEvent(note)).toBe(true);
+    expect(validateWorkLogEvent({ ...note, unknown: "private" })).toBe(false);
+  });
+  test("persists offline notes across reload and token rotation, verifying identity before delivery", async () => {
+    const path = await setup();
+    await configure(path, workConfig);
+    expect(await eventStatus(path, workConfig, note.id)).toEqual({
+      status: "missing",
+    });
+    await enqueue(path, workConfig, note);
+    expect(await eventStatus(path, workConfig, note.id)).toEqual({
+      status: "queued",
+    });
+    const offline = await flush(path, workConfig, {
+      token: "old",
+      fetchImpl: async () => {
+        throw new Error("offline");
+      },
+    });
+    expect(offline.reason).toBe("offline_or_unacknowledged");
+    const reloaded = await loadConfig(path);
+    expect((await queueStatus(path, reloaded)).currentSession).toBe(1);
+    const calls = [];
+    const delivered = await flush(path, reloaded, {
+      token: "rotated",
+      fetchImpl: async (url, options) => {
+        calls.push(url);
+        expect(options.headers.Authorization).toBe("Bearer rotated");
+        return Response.json({ userId: workConfig.userId });
+      },
+      deliverEvents: async (events) => {
+        expect(calls).toEqual([`${config.apiOrigin}/api/work-log/identity`]);
+        expect(events).toEqual([note]);
+        return { acceptedEventIds: events.map(({ id }) => id) };
+      },
+    });
+    expect(delivered).toEqual({
+      acknowledged: 1,
+      quarantined: 0,
+      reason: "complete",
+    });
+    expect(await enqueue(path, reloaded, note)).toBe(false);
+    expect(await eventStatus(path, reloaded, note.id)).toEqual({
+      status: "acknowledged",
+    });
+    expect((await queueStatus(path, reloaded)).currentSession).toBe(0);
+  });
+  test("wrong account retains entries and never calls delivery", async () => {
+    const path = await setup();
+    await enqueue(path, workConfig, note);
+    let delivered = false;
+    const result = await flush(path, workConfig, {
+      token: "other-account",
+      fetchImpl: async () => Response.json({ userId: note.id }),
+      deliverEvents: async () => {
+        delivered = true;
+        return {};
+      },
+    });
+    expect(result.reason).toBe("identity_mismatch");
+    expect(delivered).toBe(false);
+    expect((await queueStatus(path, workConfig)).currentSession).toBe(1);
+    expect(
+      (await queueStatus(path, { ...workConfig, userId: note.id }))
+        .otherSessions,
+    ).toBe(1);
+    expect((await queueStatus(path, config)).otherSessions).toBe(1);
+  });
+  test("raw HTTP delivery quarantines missing optional sessions durably", async () => {
+    const path = await setup();
+    await enqueue(path, workConfig, { ...note, sessionId: config.sessionId });
+    const result = await flush(path, workConfig, {
+      token: "valid",
+      fetchImpl: async (url, options) => {
+        if (options.method === "GET")
+          return Response.json({ userId: workConfig.userId });
+        expect(url).toBe(`${config.apiOrigin}/api/work-log/events`);
+        return Response.json({
+          acceptedEventIds: [],
+          rejectedEvents: [{ id: note.id, reason: "session_not_found" }],
+        });
+      },
+    });
+    expect(result.quarantined).toBe(1);
+    expect(await eventStatus(path, workConfig, note.id)).toEqual({
+      status: "rejected",
+      reason: "session_not_found",
+    });
+    expect((await queueStatus(path, workConfig)).currentSessionRejected).toBe(
+      1,
+    );
+    expect(await enqueue(path, workConfig, note)).toBe(false);
+  });
+  test("hook identity includes account and explicit project and excludes logging recursion", async () => {
+    const event = eventFromHook(hook, workConfig);
+    expect(event.project).toBe("Timer");
+    expect(event.id).not.toBe(eventFromHook(hook, config).id);
+    expect(event.id).not.toBe(
+      eventFromHook(hook, { ...workConfig, userId: note.id }).id,
+    );
+    for (const tool_name of [
+      "mcp__timer__work_log_log",
+      "mcp__work_log__log",
+      "mcp__timer-work-log__log",
+    ]) {
+      expect(eventFromHook({ ...hook, tool_name }, workConfig)).toBeNull();
+    }
+    expect(
+      eventFromHook(
+        {
+          ...hook,
+          tool_input: { cmd: "bun integrations/work-log/cli.ts log hello" },
+        },
+        workConfig,
+      ),
+    ).toBeNull();
+    const path = await setup();
+    await expect(enqueue(path, config, note)).rejects.toThrow(
+      "Invalid work event",
+    );
+    await expect(
+      enqueue(path, config, { ...event, project: undefined }),
+    ).rejects.toThrow("Invalid work event");
+  });
+});
 
 describe("metadata capture", () => {
   test("captures only allowlisted metadata, never raw inputs, output, paths or prompts", () => {

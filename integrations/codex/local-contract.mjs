@@ -47,31 +47,34 @@ export function base64(value, max = MAX_BODY) {
     throw new Error("invalidPacket");
   return bytes;
 }
-export function sign(body, key, domain = "event") {
+export function sign(body, key, domain = "event", maxBody = MAX_BODY) {
   const bytes = Buffer.from(JSON.stringify(body));
-  if (bytes.length > MAX_BODY) throw new Error("packetTooLarge");
-  return {
+  if (bytes.length > maxBody) throw new Error("packetTooLarge");
+  const packet = {
     body: bytes.toString("base64"),
     mac: createHmac("sha256", key)
       .update(`wellspent-c3a-${domain}\0`)
       .update(bytes)
       .digest("base64"),
   };
+  if (Buffer.byteLength(JSON.stringify(packet)) > MAX_WIRE)
+    throw new Error("packetTooLarge");
+  return packet;
 }
-export function decode(packet) {
+export function decode(packet, maxBody = MAX_BODY) {
   if (
     !exactKeys(packet, ["body", "mac"]) ||
     Buffer.byteLength(JSON.stringify(packet)) > MAX_WIRE
   )
     throw new Error("invalidPacket");
-  const bytes = base64(packet.body);
+  const bytes = base64(packet.body, maxBody);
   const mac = base64(packet.mac, 32);
   if (mac.length !== 32) throw new Error("invalidPacket");
   const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
   return { bytes, mac, value: JSON.parse(text) };
 }
-export function verify(packet, key, domain) {
-  const decoded = decode(packet);
+export function verify(packet, key, domain, maxBody = MAX_BODY) {
+  const decoded = decode(packet, maxBody);
   const expected = createHmac("sha256", key)
     .update(`wellspent-c3a-${domain}\0`)
     .update(decoded.bytes)

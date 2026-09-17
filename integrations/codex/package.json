@@ -4,9 +4,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node harness-dev.mjs",
-    "test": "bun test timer-capture.test.mjs && node --test local-helper.test.mjs harness-helper.test.mjs harness-dev.test.mjs",
-    "test:capture": "bun test timer-capture.test.mjs && node --test local-helper.test.mjs harness-helper.test.mjs harness-dev.test.mjs",
-    "test:harness": "node --test harness-helper.test.mjs harness-dev.test.mjs"
+    "dev": "bun run build:harness && node harness-dev.mjs",
+    "test": "bun run build:harness && bun test timer-capture.test.mjs && node --test local-helper.test.mjs harness-helper.test.mjs harness-dev.test.mjs",
+    "test:capture": "bun run build:harness && bun test timer-capture.test.mjs && node --test local-helper.test.mjs harness-helper.test.mjs harness-dev.test.mjs",
+    "test:harness": "bun run build:harness && node --test harness-helper.test.mjs harness-dev.test.mjs",
+    "build:harness": "bun run build.ts",
+    "typecheck": "tsc --project tsconfig.json"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.0.0",
+    "execa": "10.0.1",
+    "zod": "^4.2.0"
   }
 }

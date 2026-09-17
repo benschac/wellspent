@@ -1,5 +1,98 @@
 # Codex focus-session capture
 
+## Local macOS AI Harness
+
+For local recording notes (C4a), run `bun run dev` from the repository root, or
+`bun run dev:harness` for only this integration. With a `b` alias for Bun, these
+are `b dev` and `b dev:harness`. Node 22+ and the Codex CLI must already be
+installed. Run `bun install --frozen-lockfile` to install Execa, the MCP SDK and Zod;
+no API server, cloud token, or database is required.
+
+1. Keep the dev command running and rebuild/run the current macOS app.
+2. Choose **Workspace → Local Recordings…** (**⌘⇧R**) → **AI Harness** →
+   **Connect Codex…**, then approve the disclosed installation.
+3. Start a new Codex session to discover `wellspent-local` / `log_work`.
+4. Explicitly start/resume a local recording before submitting a selected note.
+   Notes are reports, not verified completion or focused human time.
+
+The dev supervisor runs outside App Sandbox. It handles only fresh, explicitly
+approved Connect/Disconnect requests from the app's private directory, and
+serves an existing installed, nonrevoked connection. Startup alone never changes
+Codex registration or starts recording. It does not install automatic hooks,
+read transcripts, or upload notes. Connect preserves unrelated MCP registrations
+and refuses an unrelated `wellspent-local` name collision.
+
+For the signed sandboxed macOS app, state lives in
+`~/Library/Containers/com.benjaminschachter.timer.macos/Data/.config/wellspent/codex-harness`.
+Directories are private (0700), files are private (0600), and keys are never
+printed or placed in Codex configuration. Dev control messages contain no note
+text or credentials. A runner-specific heartbeat prevents an old pending request
+from being replayed after dev restarts. Existing evidence is retained on shutdown
+and revocation. Only the supervisor's own listener is closed.
+
+If Connect says the dev server is unavailable, start/restart `bun run dev:harness`
+and retry in the rebuilt app. If Codex is unavailable, verify `codex --version`
+in that terminal. A name collision requires resolving the existing registration;
+the app does not overwrite an unrelated connection. After moving the checkout,
+explicit Connect repairs an owned registration. Keep dev running for delivery;
+packaged background-service installation is not part of this development setup.
+
+The older unsandboxed app-owned helper uses `~/.config/wellspent/codex-harness`.
+For that development build only, the supervisor can target its private root with
+`node integrations/codex/harness-dev.mjs --root /absolute/private/root`.
+
+### Local MCP implementation and verification
+
+`harness-dev.ts`, `harness-helper.ts`, and `harness-mcp.ts` are the checked
+TypeScript sources. The helper uses Execa for bounded Codex CLI execution, while
+the MCP server uses the official `@modelcontextprotocol/server` 2.0.0
+`McpServer` and `StdioServerTransport`, with a strict Zod input schema. The
+4096-byte limit uses UTF-8 byte length; whitespace-only text, malformed Unicode,
+extra properties and malformed UUIDs are rejected before calling the helper.
+The existing helper still owns connection checks, durable admission, receipts,
+UUID conflicts and retries. Only a native acknowledged receipt is success.
+Every non-success result also explains how to retain the original ID/text.
+
+Initialization binds once to the local connection; discovery and tool calls
+cannot adopt a replacement connection. A small SDK `Server` subclass uses the protected `_wrapHandler` extension point
+for initialization/discovery guards, and the `McpServer` subclass installs it
+before registering tools. There is no external protected-member access or type
+suppression. Keep the SDK pinned and rerun the wire tests before upgrading this
+integration seam.
+
+SDK differences: invalid tool inputs now produce `isError: true` tool results;
+invalid protocol envelopes still use SDK protocol errors. Malformed JSON lines
+are skipped, invalid envelopes report a generic stderr diagnostic, and an
+incomplete final line is discarded at EOF. The SDK decodes invalid UTF-8 bytes
+with replacement characters instead of the old fatal decoder. Its buffer is
+capped at 128 KiB; the old separate 16 KiB per-line limit is gone. The note
+limit remains 4096 UTF-8 bytes. Requests can run concurrently; durable helper
+operations retain their existing locks and idempotency rules. Revoked
+connections now fail initialization immediately as well as later operations.
+
+The tiny `.mjs` launchers preserve stable Node command paths. `bun run --cwd
+integrations/codex build:harness` compiles self-contained Node bundles beside
+them; generated output is ignored by Git. Execa, the MCP SDK, Zod, and the local
+storage/contract modules are bundled, so the installed commands do not resolve
+workspace `node_modules` or source modules at runtime. Development and test
+scripts build first. Restart development after editing the TypeScript source.
+`bun run --cwd integrations/codex typecheck` checks all three TypeScript sources
+in strict mode.
+
+Run `bun run --cwd integrations/codex test:harness` for real SDK stdio,
+loopback-helper, retry, byte-limit, CLI and bundle tests using temporary roots.
+The macOS resource script bundles both the native helper and MCP entry point with
+Bun (targeting Node), so building those resources requires Bun and installed
+workspace dependencies; running either bundled command requires only Node.
+These tests simulate native acknowledgements; they do not establish live
+Codex/macOS UI or signed-distribution acceptance.
+
+## Hosted capture
+
+For a work log without starting or selecting a focus session, use the
+[account work-log setup](../../docs/work-log.md). This adapter supports both
+destinations; the instructions below retain the original session-bound flow.
+
 A dependency-free Node 22+ hook adapter for Timer. It records selected Codex activity against one explicitly selected focus session. It never starts a timer, installs hooks, changes Codex settings, or obtains credentials automatically.
 
 ## Connect a session

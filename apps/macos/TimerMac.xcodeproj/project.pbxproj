@@ -223,7 +223,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "export PATH=\"/opt/homebrew/bin:/usr/local/bin:$PATH\"\nnode \"$SRCROOT/../../scripts/macos-auth-configuration.mjs\" \"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/FocusAuthConfiguration.json\"\n";
+			shellScript = "export PATH=\"/opt/homebrew/bin:/usr/local/bin:$PATH\"\nnode \"$SRCROOT/../../scripts/macos-auth-configuration.mjs\" \"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/FocusAuthConfiguration.json\"\nbun \"$SRCROOT/../../scripts/macos-harness-resources.ts\" \"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/LocalHarness\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
