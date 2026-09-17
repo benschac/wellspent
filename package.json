@@ -59,5 +59,10 @@
     "knip": "6.35.1",
     "turbo": "2.10.12",
     "typescript": "6.0.3"
+  },
+  "patchedDependencies": {
+    "react-native-drawer-layout@4.2.10": "patches/react-native-drawer-layout@4.2.10.patch",
+    "react-native-gesture-handler@3.2.1": "patches/react-native-gesture-handler@3.2.1.patch",
+    "react-native@0.88.0-rc.0": "patches/react-native@0.88.0-rc.0.patch"
   }
 }

@@ -1,0 +1,131 @@
+diff --git a/lib/module/views/Drawer.native.js b/lib/module/views/Drawer.native.js
+index 263fb160bc7f939f2f512a0bee2c819bbc097480..2cb825be3269cc7b0bbcde5c3abdd54ca209ede9 100644
+--- a/lib/module/views/Drawer.native.js
++++ b/lib/module/views/Drawer.native.js
+@@ -252,7 +252,7 @@ export function Drawer({
+         (drawerType === 'back' ? 0 : translateX.value) + (direction === 'rtl' ? drawerPosition === 'left' ? -distanceFromEdge : 0 : drawerPosition === 'left' ? 0 : distanceFromEdge)
+       }]
+     };
+-  }, [direction, drawerPosition, drawerType, drawerWidth, isHidden, layout.width, translateX]);
++  });
+   const contentAnimatedStyle = useAnimatedStyle(() => {
+     return {
+       // FIXME: Force Reanimated to commit to the shadow tree
+@@ -266,7 +266,7 @@ export function Drawer({
+         drawerType === 'front' ? 0 : translateX.value + drawerWidth * (drawerPosition === 'left' ? 1 : -1)
+       }]
+     };
+-  }, [drawerPosition, drawerType, drawerWidth, translateX]);
++  });
+   const progress = useDerivedValue(() => {
+     return drawerType === 'permanent' ? 1 : interpolate(translateX.value, [getDrawerTranslationX(false), getDrawerTranslationX(true)], [0, 1]);
+   });
+@@ -281,7 +281,7 @@ export function Drawer({
+     return {
+       accessibilityElementsHidden: hidden
+     };
+-  }, [drawerType, progress]);
++  });
+   const drawerContentAnimatedProps = useAnimatedProps(() => {
+     const hidden = drawerType !== 'permanent' && progress.value < 1 - PROGRESS_EPSILON;
+     if (Platform.OS === 'android') {
+@@ -293,7 +293,7 @@ export function Drawer({
+     return {
+       accessibilityElementsHidden: hidden
+     };
+-  }, [drawerType, progress]);
++  });
+   return /*#__PURE__*/_jsx(GestureHandlerRootView, {
+     style: [styles.container, style],
+     children: /*#__PURE__*/_jsx(DrawerProgressContext.Provider, {
+diff --git a/lib/module/views/Overlay.native.js b/lib/module/views/Overlay.native.js
+index 8925237fe8dce59cd0935e8a4459bddc779cef55..258c82fe91308d54d255fbc1b0cddbbaabd641dd 100644
+--- a/lib/module/views/Overlay.native.js
++++ b/lib/module/views/Overlay.native.js
+@@ -15,14 +15,14 @@ export function Overlay({
+     return {
+       opacity: progress.value
+     };
+-  }, [progress]);
++  });
+   const animatedProps = useAnimatedProps(() => {
+     const active = progress.value > PROGRESS_EPSILON;
+     return {
+       pointerEvents: active ? 'auto' : 'none',
+       'aria-hidden': !active
+     };
+-  }, [progress]);
++  });
+   return /*#__PURE__*/_jsx(Animated.View, {
+     ...rest,
+     style: [StyleSheet.absoluteFill, styles.overlay, animatedStyle, style],
+diff --git a/src/views/Drawer.native.tsx b/src/views/Drawer.native.tsx
+index e91f2a8aff28b9554c91b4a0bb9905e839176a4e..07103e8160b791b46d80652be6b52c33182ec752 100644
+--- a/src/views/Drawer.native.tsx
++++ b/src/views/Drawer.native.tsx
+@@ -405,15 +405,7 @@ export function Drawer({
+               },
+             ],
+     };
+-  }, [
+-    direction,
+-    drawerPosition,
+-    drawerType,
+-    drawerWidth,
+-    isHidden,
+-    layout.width,
+-    translateX,
+-  ]);
++  });
+ 
+   const contentAnimatedStyle = useAnimatedStyle(() => {
+     return {
+@@ -435,7 +427,7 @@ export function Drawer({
+               },
+             ],
+     };
+-  }, [drawerPosition, drawerType, drawerWidth, translateX]);
++  });
+ 
+   const progress = useDerivedValue(() => {
+     return drawerType === 'permanent'
+@@ -459,7 +451,7 @@ export function Drawer({
+     }
+ 
+     return { accessibilityElementsHidden: hidden };
+-  }, [drawerType, progress]);
++  });
+ 
+   const drawerContentAnimatedProps = useAnimatedProps<ViewProps>(() => {
+     const hidden =
+@@ -473,7 +465,7 @@ export function Drawer({
+     }
+ 
+     return { accessibilityElementsHidden: hidden };
+-  }, [drawerType, progress]);
++  });
+ 
+   return (
+     <GestureHandlerRootView style={[styles.container, style]}>
+diff --git a/src/views/Overlay.native.tsx b/src/views/Overlay.native.tsx
+index 56758f561acc5172428546e01cd18b6ec39158ed..fdcfba752985e69018e74b0ca9eb54a34747a527 100644
+--- a/src/views/Overlay.native.tsx
++++ b/src/views/Overlay.native.tsx
+@@ -19,7 +19,7 @@ export function Overlay({
+     return {
+       opacity: progress.value,
+     };
+-  }, [progress]);
++  });
+ 
+   const animatedProps = useAnimatedProps(() => {
+     const active = progress.value > PROGRESS_EPSILON;
+@@ -28,7 +28,7 @@ export function Overlay({
+       pointerEvents: active ? 'auto' : 'none',
+       'aria-hidden': !active,
+     } as const;
+-  }, [progress]);
++  });
+ 
+   return (
+     <Animated.View

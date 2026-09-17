@@ -1,0 +1,15 @@
+diff --git a/package.json b/package.json
+index 161dd02d4172bd74407d0508050306300896285f..aa049fa1f38502548e46ba2caa48ce0ad5c4cd8f 100644
+--- a/package.json
++++ b/package.json
+@@ -59,6 +59,10 @@
+       "types": null,
+       "default": "./src/unstable-internals-do-not-use.js"
+     },
++    "./src/private/featureflags/ReactNativeFeatureFlags": {
++      "types": null,
++      "default": "./src/private/featureflags/ReactNativeFeatureFlags.js"
++    },
+     "./src/fb_internal/*": "./src/fb_internal/*",
+     "./package.json": "./package.json"
+   },

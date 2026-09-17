@@ -1,0 +1,85 @@
+diff --git a/lib/module/components/GestureComponents.js b/lib/module/components/GestureComponents.js
+index 6b5cb6f55dbf4aaa2bf75b47ffc6f23e43cbef83..a27e6b102b1521786f6fbd3505e1f230f0775907 100644
+--- a/lib/module/components/GestureComponents.js
++++ b/lib/module/components/GestureComponents.js
+@@ -1,7 +1,7 @@
+ "use strict";
+ 
+ import * as React from 'react';
+-import { DrawerLayoutAndroid as RNDrawerLayoutAndroid, FlatList as RNFlatList, RefreshControl as RNRefreshControl, ScrollView as RNScrollView, Switch as RNSwitch, TextInput as RNTextInput } from 'react-native';
++import { FlatList as RNFlatList, RefreshControl as RNRefreshControl, ScrollView as RNScrollView, Switch as RNSwitch, TextInput as RNTextInput } from 'react-native';
+ import createNativeWrapper from '../handlers/createNativeWrapper';
+ import { nativeViewProps } from '../handlers/NativeViewGestureHandler';
+ import { toArray } from '../utils';
+@@ -10,6 +10,15 @@ import { toArray } from '../utils';
+  * @deprecated use `RefreshControl` instead
+  */
+ import { jsx as _jsx } from "react/jsx-runtime";
++const DeferredRNDrawerLayoutAndroid = /*#__PURE__*/React.forwardRef((props, ref) => {
++  const {
++    DrawerLayoutAndroid
++  } = require('react-native');
++  return /*#__PURE__*/_jsx(DrawerLayoutAndroid, {
++    ...props,
++    ref: ref
++  });
++});
+ export const LegacyRefreshControl = createNativeWrapper(RNRefreshControl, {
+   disallowInterruption: true,
+   shouldCancelWhenOutside: false
+@@ -69,7 +78,7 @@ export const LegacyTextInput = createNativeWrapper(RNTextInput);
+ /**
+  * @deprecated use `DrawerLayoutAndroid` instead
+  */
+-export const LegacyDrawerLayoutAndroid = createNativeWrapper(RNDrawerLayoutAndroid, {
++export const LegacyDrawerLayoutAndroid = createNativeWrapper(DeferredRNDrawerLayoutAndroid, {
+   disallowInterruption: true
+ });
+ // eslint-disable-next-line @typescript-eslint/no-redeclare
+diff --git a/src/components/GestureComponents.tsx b/src/components/GestureComponents.tsx
+index c0dde9f4f51eed6631dace80204571f6c6c54d2a..9b42ae2e2bd1c95eaab5a9c323ccd7af155a036d 100644
+--- a/src/components/GestureComponents.tsx
++++ b/src/components/GestureComponents.tsx
+@@ -1,6 +1,7 @@
+ import type { PropsWithChildren, ReactElement } from 'react';
+ import * as React from 'react';
+ import type {
++  DrawerLayoutAndroid as RNDrawerLayoutAndroid,
+   DrawerLayoutAndroidProps as RNDrawerLayoutAndroidProps,
+   FlatListProps as RNFlatListProps,
+   ScrollViewProps as RNScrollViewProps,
+@@ -8,7 +9,6 @@ import type {
+   TextInputProps as RNTextInputProps,
+ } from 'react-native';
+ import {
+-  DrawerLayoutAndroid as RNDrawerLayoutAndroid,
+   FlatList as RNFlatList,
+   RefreshControl as RNRefreshControl,
+   ScrollView as RNScrollView,
+@@ -21,6 +21,17 @@ import type { NativeViewGestureHandlerProps } from '../handlers/NativeViewGestur
+ import { nativeViewProps } from '../handlers/NativeViewGestureHandler';
+ import { toArray } from '../utils';
+ 
++const DeferredRNDrawerLayoutAndroid = React.forwardRef<
++  React.ComponentRef<typeof import('react-native').DrawerLayoutAndroid>,
++  PropsWithChildren<RNDrawerLayoutAndroidProps>
++>((props, ref) => {
++  const { DrawerLayoutAndroid } = require('react-native') as typeof import(
++    'react-native'
++  );
++
++  return <DrawerLayoutAndroid {...props} ref={ref} />;
++});
++
+ /**
+  * @deprecated use `RefreshControl` instead
+  */
+@@ -102,7 +113,7 @@ export type LegacyTextInput = typeof LegacyTextInput & RNTextInput;
+ export const LegacyDrawerLayoutAndroid: React.ComponentType<
+   PropsWithChildren<RNDrawerLayoutAndroidProps> & NativeViewGestureHandlerProps
+ > = createNativeWrapper<PropsWithChildren<RNDrawerLayoutAndroidProps>>(
+-  RNDrawerLayoutAndroid,
++  DeferredRNDrawerLayoutAndroid,
+   { disallowInterruption: true }
+ );
+ // eslint-disable-next-line @typescript-eslint/no-redeclare
