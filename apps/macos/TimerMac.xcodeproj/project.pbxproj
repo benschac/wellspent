@@ -11,10 +11,10 @@
 		B00000000000000000000002 /* LiquidUI in Frameworks */ = {isa = PBXBuildFile; productRef = B00000000000000000000004 /* LiquidUI */; };
 		D00000000000000000000001 /* SQLiteData in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000003 /* SQLiteData */; };
 		D00000000000000000000002 /* SQLiteData in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000004 /* SQLiteData */; };
-        F00000000000000000000010 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = E00000000000000000000010 /* GRDB */; };
-        F00000000000000000000011 /* StructuredQueriesSQLite in Frameworks */ = {isa = PBXBuildFile; productRef = E00000000000000000000011 /* StructuredQueriesSQLite */; };
-        F00000000000000000000020 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = E00000000000000000000020 /* GRDB */; };
-        F00000000000000000000021 /* StructuredQueriesSQLite in Frameworks */ = {isa = PBXBuildFile; productRef = E00000000000000000000021 /* StructuredQueriesSQLite */; };
+		F00000000000000000000010 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = E00000000000000000000010 /* GRDB */; };
+		F00000000000000000000011 /* StructuredQueriesSQLite in Frameworks */ = {isa = PBXBuildFile; productRef = E00000000000000000000011 /* StructuredQueriesSQLite */; };
+		F00000000000000000000020 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = E00000000000000000000020 /* GRDB */; };
+		F00000000000000000000021 /* StructuredQueriesSQLite in Frameworks */ = {isa = PBXBuildFile; productRef = E00000000000000000000021 /* StructuredQueriesSQLite */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -52,8 +52,8 @@
 			files = (
 				B00000000000000000000001 /* LiquidUI in Frameworks */,
 				D00000000000000000000001 /* SQLiteData in Frameworks */,
-                F00000000000000000000011 /* StructuredQueriesSQLite in Frameworks */,
-                F00000000000000000000010 /* GRDB in Frameworks */,
+				F00000000000000000000011 /* StructuredQueriesSQLite in Frameworks */,
+				F00000000000000000000010 /* GRDB in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -63,8 +63,8 @@
 			files = (
 				B00000000000000000000002 /* LiquidUI in Frameworks */,
 				D00000000000000000000002 /* SQLiteData in Frameworks */,
-                F00000000000000000000021 /* StructuredQueriesSQLite in Frameworks */,
-                F00000000000000000000020 /* GRDB in Frameworks */,
+				F00000000000000000000021 /* StructuredQueriesSQLite in Frameworks */,
+				F00000000000000000000020 /* GRDB in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,8 +112,8 @@
 			packageProductDependencies = (
 				B00000000000000000000003 /* LiquidUI */,
 				D00000000000000000000003 /* SQLiteData */,
-                E00000000000000000000011 /* StructuredQueriesSQLite */,
-                E00000000000000000000010 /* GRDB */,
+				E00000000000000000000011 /* StructuredQueriesSQLite */,
+				E00000000000000000000010 /* GRDB */,
 			);
 			productName = TimerMac;
 			productReference = A00000000000000000000005 /* TimerMac.app */;
@@ -139,8 +139,8 @@
 			packageProductDependencies = (
 				B00000000000000000000004 /* LiquidUI */,
 				D00000000000000000000004 /* SQLiteData */,
-                E00000000000000000000021 /* StructuredQueriesSQLite */,
-                E00000000000000000000020 /* GRDB */,
+				E00000000000000000000021 /* StructuredQueriesSQLite */,
+				E00000000000000000000020 /* GRDB */,
 			);
 			productName = TimerMacTests;
 			productReference = A00000000000000000000006 /* TimerMacTests.xctest */;
@@ -175,8 +175,8 @@
 			mainGroup = A00000000000000000000001;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				D00000000000000000000007 /* GRDB */,
-				D00000000000000000000006 /* swift-structured-queries */,
+				D00000000000000000000007 /* XCRemoteSwiftPackageReference "GRDB" */,
+				D00000000000000000000006 /* XCRemoteSwiftPackageReference "swift-structured-queries" */,
 				D00000000000000000000005 /* XCRemoteSwiftPackageReference "sqlite-data" */,
 				B00000000000000000000005 /* XCLocalSwiftPackageReference "../../packages/liquid-ui" */,
 			);
@@ -297,7 +297,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
-				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_LSUIElement = NO;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -321,7 +321,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
-				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_LSUIElement = NO;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -428,16 +428,22 @@
 				version = 1.11.0;
 			};
 		};
-        D00000000000000000000006 /* swift-structured-queries */ = {
-            isa = XCRemoteSwiftPackageReference;
-            repositoryURL = "https://github.com/pointfreeco/swift-structured-queries";
-            requirement = { kind = exactVersion; version = 0.36.0; };
-        };
-        D00000000000000000000007 /* GRDB */ = {
-            isa = XCRemoteSwiftPackageReference;
-            repositoryURL = "https://github.com/groue/GRDB.swift";
-            requirement = { kind = exactVersion; version = 7.11.1; };
-        };
+		D00000000000000000000006 /* XCRemoteSwiftPackageReference "swift-structured-queries" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/swift-structured-queries";
+			requirement = {
+				kind = exactVersion;
+				version = 0.36.0;
+			};
+		};
+		D00000000000000000000007 /* XCRemoteSwiftPackageReference "GRDB" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/groue/GRDB.swift";
+			requirement = {
+				kind = exactVersion;
+				version = 7.11.1;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -459,26 +465,26 @@
 			package = D00000000000000000000005 /* XCRemoteSwiftPackageReference "sqlite-data" */;
 			productName = SQLiteData;
 		};
-        E00000000000000000000010 /* GRDB */ = {
-            isa = XCSwiftPackageProductDependency;
-            package = D00000000000000000000007;
-            productName = GRDB;
-        };
-        E00000000000000000000011 /* StructuredQueriesSQLite */ = {
-            isa = XCSwiftPackageProductDependency;
-            package = D00000000000000000000006;
-            productName = StructuredQueriesSQLite;
-        };
-        E00000000000000000000020 /* GRDB */ = {
-            isa = XCSwiftPackageProductDependency;
-            package = D00000000000000000000007;
-            productName = GRDB;
-        };
-        E00000000000000000000021 /* StructuredQueriesSQLite */ = {
-            isa = XCSwiftPackageProductDependency;
-            package = D00000000000000000000006;
-            productName = StructuredQueriesSQLite;
-        };
+		E00000000000000000000010 /* GRDB */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D00000000000000000000007 /* XCRemoteSwiftPackageReference "GRDB" */;
+			productName = GRDB;
+		};
+		E00000000000000000000011 /* StructuredQueriesSQLite */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D00000000000000000000006 /* XCRemoteSwiftPackageReference "swift-structured-queries" */;
+			productName = StructuredQueriesSQLite;
+		};
+		E00000000000000000000020 /* GRDB */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D00000000000000000000007 /* XCRemoteSwiftPackageReference "GRDB" */;
+			productName = GRDB;
+		};
+		E00000000000000000000021 /* StructuredQueriesSQLite */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D00000000000000000000006 /* XCRemoteSwiftPackageReference "swift-structured-queries" */;
+			productName = StructuredQueriesSQLite;
+		};
 /* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A00000000000000000000000 /* Project object */;

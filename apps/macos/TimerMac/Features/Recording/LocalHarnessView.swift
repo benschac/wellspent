@@ -13,7 +13,7 @@ struct LocalHarnessView: View {
                     .accessibilityIdentifier("harness-status")
                 Text(harness.recordingStatus).font(.caption).foregroundStyle(.secondary)
                 HStack {
-                    Button(harness.isConnected ? "Reconnect Codex…" : "Connect Codex…") {
+                    Button(harness.isConnected ? "Repair connection…" : "Connect Codex…") {
                         approvingConnection = true
                     }
                     .disabled(harness.isBusy)
@@ -25,6 +25,10 @@ struct LocalHarnessView: View {
                     }
                     if harness.isBusy { ProgressView().controlSize(.small).accessibilityLabel("Updating connection") }
                 }
+                Text(
+                    "Connect once. Timer Start/Resume enables notes; Pause stops new notes. Keep the same Codex session open."
+                )
+                .font(.caption).foregroundStyle(.secondary)
                 Text(
                     "Only notes explicitly submitted with log_work are saved. Automatic metadata hooks are configured separately below."
                 )
@@ -38,7 +42,7 @@ struct LocalHarnessView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text(
-                "This adds the local wellspent-local MCP server to your Codex configuration. Node and the Codex CLI must be installed. Explicit log_work text stays on this Mac and requires an active recording interval. This does not enable automatic hooks or transcript access. Credentials stay in private local storage. Open a new Codex session after connecting."
+                "This adds the local wellspent-local MCP server to your Codex configuration. Node and the Codex CLI must be installed. Explicit log_work text stays on this Mac and requires an active recording interval. This does not enable automatic hooks or transcript access. Credentials stay in private local storage. A new or changed installation requires a new Codex session. Timer pauses and resumes do not."
             )
         }
     }
