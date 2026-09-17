@@ -1,6 +1,21 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { resolveLocalLink, transformMarkdown } from "./content.mjs";
+import {
+  isAllowedDocumentationAsset,
+  resolveLocalLink,
+  transformMarkdown,
+} from "./content.mjs";
+
+test("documentation assets allow macOS entitlements without allowing arbitrary files", () => {
+  assert.equal(
+    isAllowedDocumentationAsset("apps/macos/TimerMac/TimerMac.entitlements"),
+    true,
+  );
+  assert.equal(
+    isAllowedDocumentationAsset("apps/macos/TimerMac/secret.bin"),
+    false,
+  );
+});
 
 test("relative links resolve against their canonical source, preserving anchors", () => {
   assert.deepEqual(

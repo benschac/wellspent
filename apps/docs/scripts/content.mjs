@@ -7,6 +7,28 @@ import { visit } from "unist-util-visit";
 
 const markdown = unified().use(remarkParse).use(remarkGfm).use(remarkStringify);
 
+const documentationAssetExtensions = new Set([
+  ".entitlements",
+  ".json",
+  ".md",
+  ".mjs",
+  ".mmd",
+  ".rs",
+  ".sh",
+  ".sql",
+  ".swift",
+  ".toml",
+  ".ts",
+  ".tsx",
+]);
+
+export function isAllowedDocumentationAsset(target) {
+  return (
+    documentationAssetExtensions.has(posix.extname(target)) ||
+    ["LICENSE", "COMMERCIAL-LICENSE.md", "CONTRIBUTING.md"].includes(target)
+  );
+}
+
 export function resolveLocalLink(source, url) {
   if (!url || /^(?:[a-z][a-z\d+.-]*:|\/\/|#)/i.test(url)) return null;
   const match = /^([^?#]*)(.*)$/.exec(url);

@@ -12,7 +12,7 @@ import { dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { generateFilesOnly } from "fumadocs-openapi";
 import { createOpenAPI } from "fumadocs-openapi/server";
-import { transformMarkdown } from "./content.mjs";
+import { isAllowedDocumentationAsset, transformMarkdown } from "./content.mjs";
 
 export const appRoot = fileURLToPath(new URL("..", import.meta.url));
 export const repoRoot = resolve(appRoot, "../..");
@@ -108,22 +108,7 @@ export async function prepare() {
     // Only explicit documentation references become assets, never whole source directories.
     const extension = extname(target);
     const image = [".svg", ".png", ".jpg", ".webp"].includes(extension);
-    const allowed =
-      image ||
-      [
-        ".md",
-        ".mmd",
-        ".json",
-        ".ts",
-        ".tsx",
-        ".mjs",
-        ".swift",
-        ".rs",
-        ".toml",
-        ".sh",
-        ".sql",
-      ].includes(extension) ||
-      ["LICENSE", "COMMERCIAL-LICENSE.md", "CONTRIBUTING.md"].includes(target);
+    const allowed = image || isAllowedDocumentationAsset(target);
     if (!allowed) throw new Error(`Unsupported documentation asset: ${target}`);
     const served = image ? target : `${target}.txt`;
     const destination = join(assetsRoot, served);
