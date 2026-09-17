@@ -58,6 +58,9 @@
     "honcho:stop": {},
     "honcho:status": {},
     "honcho:logs": {},
-    "honcho:check": {}
+    "honcho:check": {},
+    "docs:prepare": {},
+    "openapi:check": {},
+    "docs:check": {}
   }
 }
