@@ -1,0 +1,75 @@
+# Based on plastic-labs/honcho's official local-stack Compose template.
+# Dedicated project/volumes: never connects to Timer's Supabase database.
+name: timer-honcho
+
+x-honcho: &honcho
+  # Honcho 3.2.0; multi-platform digest resolved from the official image.
+  image: ghcr.io/plastic-labs/honcho@sha256:f5b2ace0caeae505b760bb1fc1ea55dee6af279bbd7fa9df652ad40f7d962066
+  env_file: .env
+  environment:
+    # Honcho names its OpenAI-compatible transport key this way internally.
+    LLM_OPENAI_API_KEY: ${OPENROUTER_API_KEY:-}
+    DB_CONNECTION_URI: postgresql+psycopg://postgres:postgres@database:5432/postgres
+    CACHE_URL: redis://redis:6379/0?suppress=true
+    CACHE_ENABLED: "true"
+    AUTH_USE_AUTH: "false"
+    SENTRY_ENABLED: "false"
+  restart: unless-stopped
+
+services:
+  api:
+    <<: *honcho
+    entrypoint: ["sh", "docker/entrypoint.sh"]
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8005:8000"
+    healthcheck:
+      test: ["CMD", "/app/.venv/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2).read()"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  deriver:
+    <<: *honcho
+    entrypoint: ["/app/.venv/bin/python", "-m", "src.deriver"]
+    depends_on:
+      api:
+        condition: service_healthy
+
+  database:
+    image: pgvector/pgvector:pg15
+    restart: unless-stopped
+    command: ["postgres", "-c", "max_connections=200"]
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:8.2
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  pgdata:
+  redis-data:

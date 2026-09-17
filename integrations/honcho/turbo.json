@@ -1,0 +1,11 @@
+{
+  "$schema": "https://turborepo.dev/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "honcho:start": { "cache": false },
+    "honcho:stop": { "cache": false },
+    "honcho:status": { "cache": false },
+    "honcho:logs": { "cache": false, "persistent": true },
+    "honcho:check": { "cache": false }
+  }
+}
