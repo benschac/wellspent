@@ -1,0 +1,67 @@
+{
+  "extends": ["//"],
+  "tasks": {
+    "docs:prepare": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/docs/**",
+        "$TURBO_ROOT$/README.md",
+        "$TURBO_ROOT$/LICENSE",
+        "$TURBO_ROOT$/COMMERCIAL-LICENSE.md",
+        "$TURBO_ROOT$/CONTRIBUTING.md",
+        "$TURBO_ROOT$/packages/*/README.md",
+        "$TURBO_ROOT$/packages/api-contract/openapi.native.json",
+        "$TURBO_ROOT$/packages/*/src/**",
+        "$TURBO_ROOT$/integrations/*/*.md",
+        "$TURBO_ROOT$/integrations/*/*.mjs",
+        "$TURBO_ROOT$/integrations/*/*.json",
+        "$TURBO_ROOT$/apps/macos/README.md",
+        "$TURBO_ROOT$/apps/macos/TimerMac/**/*.swift",
+        "$TURBO_ROOT$/apps/api/src/**",
+        "$TURBO_ROOT$/apps/web/app/**",
+        "$TURBO_ROOT$/apps/mobile/package.json",
+        "$TURBO_ROOT$/apps/mobile/app/**",
+        "$TURBO_ROOT$/apps/desktop/README.md",
+        "$TURBO_ROOT$/apps/desktop/src-tauri/Cargo.toml"
+      ],
+      "outputs": [".content/**", "public/repository/**"]
+    },
+    "build": {
+      "dependsOn": [
+        "^build",
+        "docs:prepare",
+        "@repo/api-contract#openapi:check"
+      ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/docs/**",
+        "$TURBO_ROOT$/README.md",
+        "$TURBO_ROOT$/LICENSE",
+        "$TURBO_ROOT$/COMMERCIAL-LICENSE.md",
+        "$TURBO_ROOT$/CONTRIBUTING.md",
+        "$TURBO_ROOT$/packages/*/README.md",
+        "$TURBO_ROOT$/packages/api-contract/openapi.native.json",
+        "$TURBO_ROOT$/packages/*/src/**",
+        "$TURBO_ROOT$/integrations/*/*.md",
+        "$TURBO_ROOT$/integrations/*/*.mjs",
+        "$TURBO_ROOT$/integrations/*/*.json",
+        "$TURBO_ROOT$/apps/macos/README.md",
+        "$TURBO_ROOT$/apps/macos/TimerMac/**/*.swift",
+        "$TURBO_ROOT$/apps/api/src/**",
+        "$TURBO_ROOT$/apps/web/app/**",
+        "$TURBO_ROOT$/apps/mobile/package.json",
+        "$TURBO_ROOT$/apps/mobile/app/**",
+        "$TURBO_ROOT$/apps/desktop/README.md",
+        "$TURBO_ROOT$/apps/desktop/src-tauri/Cargo.toml"
+      ]
+    },
+    "typecheck": {
+      "dependsOn": ["transit", "docs:prepare"],
+      "outputs": [".cache/*.tsbuildinfo"]
+    },
+    "docs:check": {
+      "dependsOn": ["build"],
+      "outputs": []
+    }
+  }
+}

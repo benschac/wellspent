@@ -1,0 +1,4 @@
+.content/
+.source/
+public/repository/
+next-env.d.ts
