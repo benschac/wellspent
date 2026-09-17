@@ -19,11 +19,15 @@ A Bun-managed Turborepo.
 
 ### Applications
 
+- `apps/docs`: Fumadocs architecture, package, API, and integration documentation
 - `apps/web`: Next.js App Router application
 - `apps/mobile`: Expo Router application for iOS, Android, and web
 - `apps/macos`: native SwiftUI/AppKit menu-bar and floating-sidebar application
 - `apps/desktop`: Tauri 2 desktop shell for the shared timer package
 - `apps/api`: NestJS backend exposing oRPC-backed HTTP routes
+
+Run `bun run dev:docs` and open [local documentation](http://127.0.0.1:3002/docs).
+See [documentation app setup and content ownership](apps/docs/README.md).
 
 ### Packages
 
@@ -141,7 +145,8 @@ prerequisite. `bun run test` also includes macOS Xcode tests, which compile
 their native target. Builds remain separate below.
 
 See [verification workflows](docs/verification.md), the
-[current architecture checkpoint](docs/design/2026-08-29-focus-timer-product-and-sync-architecture.md#6-current-repository-boundary),
+[visual system design](docs/design/2026-09-17-wellspent-system-design.md),
+[architecture documentation index](docs/design/README.md),
 and [agent workflows and skill audit](docs/agent-workflows.md).
 
 ```bash
@@ -323,9 +328,11 @@ Endpoints:
 Push notifications contain no event body. A durable Postgres worker claims jobs
 with `FOR UPDATE SKIP LOCKED`, refreshes the user's Google access token, performs
 incremental synchronization, and stores each deduplicated change in
-`app.google_calendar_inbound_changes`. A later timer-domain slice should consume
-that inbox and emit outbound Calendar projections only after durable timer
-transitions commit; it must not synchronize a ticking counter every second.
+`app.google_calendar_inbound_changes`. Selected completed Focus sessions already
+publish through durable outbound Calendar jobs; see
+[integration behavior](docs/google-integrations.md). Interpreting the inbound
+inbox as Focus changes remains separate future work. This does not synchronize
+a ticking counter every second.
 
 ## Google Sheets backend integration
 
