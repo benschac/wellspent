@@ -5,7 +5,7 @@ struct RecordingTaskHistoryView: View {
     let recordingID: UUID
 
     private var selections: [RecordingTaskSelection] {
-        model.taskAttribution.selections.filter { $0.recordingID == recordingID }
+        model.tasks.taskAttribution.selections.filter { $0.recordingID == recordingID }
     }
 
     var body: some View {
@@ -17,7 +17,7 @@ struct RecordingTaskHistoryView: View {
                             Text(
                                 selection.stamp.wall,
                                 format: Date.FormatStyle(date: .abbreviated, time: .standard, timeZone: .gmt))
-                            Text(model.titleForTask(selection.taskID))
+                            Text(model.tasks.titleForTask(selection.taskID))
                         }
                     }
                     Text("UTC · User selections describe foreground work, not parallel agent activity.")

@@ -70,130 +70,15 @@ final class RecordingModel {
         try await repository.loadCodexTelemetryReview(
             localScopeID: localScopeID, recordingID: recordingID, intervalID: intervalID)
     }
-    private(set) var taskAttribution = RecordingTaskAttribution()
-    private(set) var taskErrorMessage: String?
-    private(set) var tasksLoaded = false
-    private var pendingTaskAction: TaskAction?
 
-    private enum TaskAction {
-        case create(LocalTask)
-        case select(RecordingTaskSelection)
-        case correct(RecordingAttributionCommand)
-    }
-
-    var hasPendingTaskAction: Bool { pendingTaskAction != nil }
-    var canEditTasks: Bool { canAct && tasksLoaded && pendingTaskAction == nil }
-    var canSelectRecordingTask: Bool { canEditTasks && acceptingEvents && current?.activeIntervalID != nil }
-    var activeTaskTitle: String {
-        guard let current, let intervalID = current.activeIntervalID else {
-            return "Unassigned · select while recording"
-        }
-        return titleForTask(taskAttribution.selectedTaskID(recordingID: current.id, intervalID: intervalID))
-    }
-
-    func titleForTask(_ id: UUID?) -> String {
-        taskAttribution.tasks.first(where: { $0.id == id })?.title ?? "Unassigned"
-    }
-
-    func taskTitle(for event: RecordingEvent) -> String {
-        titleForTask(taskAttribution.taskID(for: event))
-    }
-
-    func assignmentTitle(_ assignment: RecordingTaskAssignment) -> String {
-        switch assignment {
-        case .task(let id): titleForTask(id)
-        case .unassigned: "Unassigned"
-        case .automatic: "Original assignment"
-        }
-    }
-
-    func createRecordingTask(title: String) {
-        guard canEditTasks else { return }
-        let task = LocalTask(
-            localScopeID: localScopeID, title: title.trimmingCharacters(in: .whitespacesAndNewlines),
-            createdAt: stamp().wall)
-        pendingTaskAction = .create(task)
-        run { await self.commitTaskAction() }
-    }
-
-    func selectRecordingTask(_ taskID: UUID?) {
-        guard canSelectRecordingTask, let current, let intervalID = current.activeIntervalID else { return }
-        let selection = RecordingTaskSelection(
-            localScopeID: localScopeID, recordingID: current.id, intervalID: intervalID, taskID: taskID,
-            stamp: stamp(),
-            expectedHeadID: taskAttribution.selectionHead(recordingID: current.id, intervalID: intervalID)?.id)
-        pendingTaskAction = .select(selection)
-        run { await self.commitTaskAction() }
-    }
-
-    func correctRecordingTask(_ event: RecordingEvent, assignment: RecordingTaskAssignment) {
-        guard canEditTasks, event.localScopeID == localScopeID else { return }
-        let command = RecordingAttributionCommand(
-            localScopeID: localScopeID, recordingID: event.recordingID, eventID: event.id,
-            expectedHeadID: taskAttribution.head(eventID: event.id)?.id, assignment: assignment, createdAt: stamp().wall
-        )
-        pendingTaskAction = .correct(command)
-        run { await self.commitTaskAction() }
-    }
-
-    func undoRecordingTask(_ operation: RecordingAttributionOperation) {
-        guard canEditTasks else { return }
-        pendingTaskAction = .correct(taskAttribution.undoCommand(for: operation, at: stamp().wall))
-        run { await self.commitTaskAction() }
-    }
-
-    func retryTaskAction() {
+    /// Task persistence shares the recording operation slot. Capture received while it awaits
+    /// storage must drain before the slot is released or a later lifecycle action can run.
+    func runTaskAction(_ action: @escaping @MainActor () async -> Void) {
         guard canAct else { return }
         run {
-            if self.pendingTaskAction != nil {
-                await self.commitTaskAction()
-            } else {
-                await self.reloadTaskAttribution()
-                await self.drainTaskCaptureQueue()
-            }
-        }
-    }
-
-    func discardTaskAction() {
-        guard canAct else { return }
-        pendingTaskAction = nil
-        run {
-            await self.reloadTaskAttribution()
+            await action()
             await self.drainTaskCaptureQueue()
         }
-    }
-
-    private func reloadTaskAttribution() async {
-        do {
-            taskAttribution = try await repository.loadTaskAttribution(localScopeID: localScopeID)
-            tasksLoaded = true
-            taskErrorMessage = nil
-        } catch {
-            tasksLoaded = false
-            taskErrorMessage = error.localizedDescription
-        }
-    }
-
-    private func commitTaskAction() async {
-        guard let action = pendingTaskAction else { return }
-        do {
-            switch action {
-            case .create(let task): _ = try await repository.createTask(task)
-            case .select(let selection): _ = try await repository.selectTask(selection)
-            case .correct(let command): _ = try await repository.correctTaskAttribution(command)
-            }
-            taskAttribution = try await repository.loadTaskAttribution(localScopeID: localScopeID)
-            tasksLoaded = true
-            pendingTaskAction = nil
-            taskErrorMessage = nil
-        } catch {
-            // Keep the exact command, including its expected head, for an idempotent retry.
-            // A refreshed head is never silently substituted into the user's failed command.
-            let message = error.localizedDescription
-            await reloadTaskAttribution()
-            taskErrorMessage = message
-        }
-        await drainTaskCaptureQueue()
     }
 
     private func drainTaskCaptureQueue() async {
@@ -212,6 +97,8 @@ final class RecordingModel {
     @ObservationIgnored private var isClosed = false
     @ObservationIgnored private var needsRecovery = true
     @ObservationIgnored var captureStateDidChange: (@MainActor () -> Void)?
+    @ObservationIgnored private(set) lazy var tasks = RecordingTaskModel(
+        recording: self, repository: repository, stamp: stamp)
     @ObservationIgnored lazy var codex = LocalCodexIntakeModel(recording: self)
     @ObservationIgnored private let telemetryRuntime: LocalHarnessRuntime?
     @ObservationIgnored private let telemetryPreferences: UserDefaults
@@ -272,16 +159,16 @@ final class RecordingModel {
     /// It is still committed by the existing operation queue, after the in-flight native write.
     var canPauseRecording: Bool {
         isLoaded && !isClosed && !isShuttingDown && !needsRecovery && errorMessage == nil
-            && pendingTaskAction == nil && acceptingEvents && current?.activeIntervalID != nil
+            && !tasks.hasPendingTaskAction && acceptingEvents && current?.activeIntervalID != nil
     }
     var canFinishRecording: Bool {
-        canPauseRecording || (canAct && pendingTaskAction == nil && current != nil && !acceptingEvents)
+        canPauseRecording || (canAct && !tasks.hasPendingTaskAction && current != nil && !acceptingEvents)
     }
 
     func pause() {
         if acceptingEvents {
             closeActiveInterval(.pause, text: "Manual pause — explicit Resume required")
-        } else if canAct, pendingTaskAction == nil, current?.status == .suspended {
+        } else if canAct, !tasks.hasPendingTaskAction, current?.status == .suspended {
             // Preserve the existing explicit suspended-to-paused transition without reopening coverage.
             transition(.pause, text: "Manual pause — explicit Resume required")
         }
@@ -395,7 +282,7 @@ final class RecordingModel {
                 self.liveTelemetryObservations = self.liveTelemetryObservations.filter {
                     $0.value.metadata.recordingID != recording.id
                 }
-                await self.reloadTaskAttribution()
+                await self.tasks.reloadTaskAttribution()
                 if self.selectedID == recording.id { self.selectedID = self.recordings.first?.id }
                 self.errorMessage = nil
             } catch {
@@ -559,15 +446,13 @@ final class RecordingModel {
 
     /// Scope changes never retarget a queued action. Finish the old scope before switching.
     func switchScope(to scope: String) async -> Bool {
-        guard canAct, pendingTaskAction == nil, current == nil, !scope.isEmpty, scope.utf8.count <= 200 else {
+        guard canAct, !tasks.hasPendingTaskAction, current == nil, !scope.isEmpty, scope.utf8.count <= 200 else {
             return false
         }
         liveTelemetryObservations.removeAll()
         localScopeID = scope
         recordings = []
-        taskAttribution = RecordingTaskAttribution()
-        tasksLoaded = false
-        taskErrorMessage = nil
+        tasks.resetForScopeChange()
         selectedID = nil
         isLoaded = false
         load()
@@ -579,7 +464,7 @@ final class RecordingModel {
     func shutdown() async -> Bool {
         guard !isClosed else { return true }
         // Resolve or explicitly dismiss an unconfirmed review action before stopping capture services.
-        guard pendingTaskAction == nil else { return false }
+        guard !tasks.hasPendingTaskAction else { return false }
         isShuttingDown = true
         acceptingEvents = false
         await telemetry.waitForIdle()
@@ -659,7 +544,7 @@ final class RecordingModel {
                 pendingEvent = nil
             }
             recordings = try await repository.load().filter { $0.localScopeID == localScopeID }
-            await reloadTaskAttribution()
+            await tasks.reloadTaskAttribution()
             isLoaded = true
             needsRecovery = false
             errorMessage = nil

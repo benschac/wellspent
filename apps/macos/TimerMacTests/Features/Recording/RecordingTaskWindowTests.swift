@@ -16,29 +16,29 @@ struct RecordingTaskWindowTests {
         model.load()
         await model.waitForIdle()
         for title in ["Review capture", "Fix persistence"] {
-            model.createRecordingTask(title: title)
+            model.tasks.createRecordingTask(title: title)
             await model.waitForIdle()
         }
-        let first = try #require(model.taskAttribution.tasks.first { $0.title == "Review capture" })
-        let second = try #require(model.taskAttribution.tasks.first { $0.title == "Fix persistence" })
+        let first = try #require(model.tasks.taskAttribution.tasks.first { $0.title == "Review capture" })
+        let second = try #require(model.tasks.taskAttribution.tasks.first { $0.title == "Fix persistence" })
         model.startRecording()
         await model.waitForIdle()
-        model.selectRecordingTask(first.id)
+        model.tasks.selectRecordingTask(first.id)
         await model.waitForIdle()
         model.addApplicationSample()
         await model.waitForIdle()
-        model.selectRecordingTask(second.id)
+        model.tasks.selectRecordingTask(second.id)
         await model.waitForIdle()
         model.addAgentSample()
         await model.waitForIdle()
         let event = try #require(model.current?.events.first { $0.kind == .agentCompletion })
-        model.correctRecordingTask(event, assignment: .task(first.id))
+        model.tasks.correctRecordingTask(event, assignment: .task(first.id))
         await model.waitForIdle()
-        let original = try #require(model.taskAttribution.head(eventID: event.id))
-        model.undoRecordingTask(original)
+        let original = try #require(model.tasks.taskAttribution.head(eventID: event.id))
+        model.tasks.undoRecordingTask(original)
         await model.waitForIdle()
-        #expect(model.taskTitle(for: event) == "Unassigned")
-        #expect(model.activeTaskTitle == "Fix persistence")
+        #expect(model.tasks.taskTitle(for: event) == "Unassigned")
+        #expect(model.tasks.activeTaskTitle == "Fix persistence")
         #expect(model.acceptingEvents)
 
         let host = NSHostingView(
@@ -82,7 +82,19 @@ struct RecordingTaskWindowTests {
             print("C4 isolated native keyboard traversal unavailable")
         }
         #expect(model.recordings.count == 1, "Rendering cannot authorize another recording")
-        #expect(model.taskAttribution.operations.count == 2)
+        #expect(model.tasks.taskAttribution.operations.count == 2)
+        if let value = ProcessInfo.processInfo.environment["WELLSPENT_TASK_REVIEW_HOLD_SECONDS"],
+            let requestedSeconds = Int(value), requestedSeconds > 0
+        {
+            window.title = "SYNTHETIC · Task attribution · disposable store"
+            window.contentView = host
+            window.setContentSize(CGSize(width: 1200, height: 860))
+            window.center()
+            window.makeKeyAndOrderFront(nil)
+            print("Task attribution synthetic store: \(fixture.url.path)")
+            // Keep the main run loop available for input against only this disposable fixture.
+            try await Task.sleep(for: .seconds(min(requestedSeconds, 600)))
+        }
         model.finish()
         await model.waitForIdle()
         #expect(await model.shutdown())

@@ -15,30 +15,30 @@ struct RecordingTaskControlsView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Menu {
-                    Button("Unassigned") { model.selectRecordingTask(nil) }
-                    ForEach(model.taskAttribution.tasks) { task in
-                        Button(task.title) { model.selectRecordingTask(task.id) }
+                    Button("Unassigned") { model.tasks.selectRecordingTask(nil) }
+                    ForEach(model.tasks.taskAttribution.tasks) { task in
+                        Button(task.title) { model.tasks.selectRecordingTask(task.id) }
                     }
                 } label: {
-                    Label(model.activeTaskTitle, systemImage: "tag")
+                    Label(model.tasks.activeTaskTitle, systemImage: "tag")
                 }
-                .disabled(!model.canSelectRecordingTask)
+                .disabled(!model.tasks.canSelectRecordingTask)
                 .accessibilityLabel("Current recording task")
                 Button("New task…", systemImage: "plus") { showingNewTask = true }
-                    .disabled(!model.canEditTasks)
+                    .disabled(!model.tasks.canEditTasks)
                 Spacer()
                 Text("Tasks persist across recordings")
                     .font(.callout).foregroundStyle(.secondary)
             }
             Text("Choose a task while recording. Agent activity stays unassigned until you assign it in review.")
                 .font(.callout).foregroundStyle(.secondary)
-            if let message = model.taskErrorMessage {
+            if let message = model.tasks.taskErrorMessage {
                 Label(message, systemImage: "exclamationmark.circle")
                     .foregroundStyle(.orange).textSelection(.enabled)
                 HStack {
-                    Button("Retry task save / load", action: model.retryTaskAction)
-                    if model.hasPendingTaskAction {
-                        Button("Clear retry and reload", action: model.discardTaskAction)
+                    Button("Retry task save / load", action: model.tasks.retryTaskAction)
+                    if model.tasks.hasPendingTaskAction {
+                        Button("Clear retry and reload", action: model.tasks.discardTaskAction)
                     }
                 }
                 .disabled(!model.canAct)
@@ -62,7 +62,7 @@ struct RecordingTaskControlsView: View {
                     Spacer()
                     Button("Create task", action: create)
                         .keyboardShortcut(.defaultAction)
-                        .disabled(trimmedTitle.isEmpty || titleIsTooLong || !model.canEditTasks)
+                        .disabled(trimmedTitle.isEmpty || titleIsTooLong || !model.tasks.canEditTasks)
                 }
             }
             .padding(24).frame(width: 420)
@@ -70,8 +70,8 @@ struct RecordingTaskControlsView: View {
     }
 
     private func create() {
-        guard !trimmedTitle.isEmpty, !titleIsTooLong, model.canEditTasks else { return }
-        model.createRecordingTask(title: trimmedTitle)
+        guard !trimmedTitle.isEmpty, !titleIsTooLong, model.tasks.canEditTasks else { return }
+        model.tasks.createRecordingTask(title: trimmedTitle)
         title = ""
         showingNewTask = false
     }

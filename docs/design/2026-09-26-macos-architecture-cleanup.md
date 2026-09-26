@@ -1,6 +1,6 @@
 # macOS architecture cleanup
 
-Status: steps 1, 2, and 5 complete. Steps 3, 4, and 6 deferred.
+Status: steps 1, 2, and 5 committed in `2f7801f`. Step 3 implemented in the working tree; focused tests, lint and build passed, with a full-suite transport-fixture failure still open (see evidence below). Steps 4 and 6 deferred.
 Scope: `apps/macos`
 Date: 2026-09-26
 
@@ -117,33 +117,56 @@ short on time** — the layer diagram is now true and the rest is optional.
 
 ---
 
-## Step 3 — Split `RecordingModel` (605 lines, 4 responsibilities)
+## Step 3 — Split `RecordingModel` (implemented)
 
-**Problem.** `Features/Recording/RecordingModel.swift` carries event
-queue/lifecycle, task attribution, Codex intake, and harness. 15 files reference
-it. The file already signals the strain: `loadTelemetryReview` sits at line 18,
-wedged between stored properties that resume at line 22. Declarations only drift
-like that once a file is too big to hold in your head.
+**Before extraction.** `Features/Recording/RecordingModel.swift` was 720 lines
+and owned recording lifecycle/queueing, task attribution, Codex intake,
+harness coordination, and live telemetry state. Its existing uncommitted telemetry
+changes were preserved. The extracted owner is 605 lines; `RecordingTaskModel`
+is 155 lines. These counts describe this implementation working tree.
 
-**Fix.** Apply the pattern the file already uses twice:
+**Implementation.** Follow the existing composed-model pattern:
 
 ```swift
-@ObservationIgnored lazy var codex = LocalCodexIntakeModel(recording: self)
-@ObservationIgnored lazy var harness = LocalHarnessModel(recording: self)
+@ObservationIgnored private(set) lazy var tasks = RecordingTaskModel(
+    recording: self, repository: repository, stamp: stamp)
 ```
 
-Add a third: `RecordingTaskModel`. The seam is already clean — it owns
+`RecordingTaskModel` now owns
 `taskAttribution`, `taskErrorMessage`, `tasksLoaded`, `pendingTaskAction`, the
-`canEditTasks` / `canSelectRecordingTask` guards, and its own
-commit/retry/discard path (`commitTaskAction`, `reloadTaskAttribution`,
-`drainTaskCaptureQueue`). Roughly 150 lines out.
+`canEditTasks` / `canSelectRecordingTask` guards, and the task commit/retry/discard path.
+`RecordingModel.runTaskAction` uses the existing operation slot and drains queued
+capture before releasing it. Event serialization and `drainTaskCaptureQueue`
+remain in `RecordingModel`; task ownership uses a weak back-reference.
 
-Cheaper interim option if the full split feels risky: keep one type, split the
-file into `RecordingModel+Tasks.swift` via extensions. Fixes readability, not
-coupling.
+Implemented scope:
 
-Update `TimerMacTests/Features/Recording/RecordingTaskModelTests.swift` to target
-the new type.
+1. Extract task state, titles, commands, persistence/reload, and retry/discard into
+   `RecordingTaskModel`, composed by `RecordingModel`.
+2. Keep the recording event queue, busy/lifecycle serialization, scope changes,
+   and quit/save protection coordinated by `RecordingModel`. Preserve pending
+   task guards on recording actions and shutdown.
+3. Update task consumers and tests without changing SQLite schemas, repository
+   protocols, telemetry admission, or displayed behavior.
+4. Keep the diff separate from the ongoing telemetry changes.
+
+Acceptance:
+
+- Lost acknowledgements retry the exact pending command without duplication.
+- Stale corrections remain visible until explicit reload/new action.
+- Corrections and undo survive reopen without changing original evidence.
+- Queued foreground observations and pause boundaries retain receipt order
+  after task reload; task work cannot bypass recording save/quit protection.
+- Scope switching resets task state, and new intervals remain unassigned until
+  explicitly selected. Task selection/correction/history still render correctly.
+
+Start with the existing `RecordingTaskModelTests`, `RecordingModelTests`,
+`RecordingTaskWindowTests`, and `TimerAppCompositionTests`; add a targeted test
+only for a coordination risk the current coverage does not exercise. Run macOS
+lint/build and the relevant native tests, then the full native suite if the
+extraction touches shared recording lifecycle behavior. Inspect the task UI via
+`docs/feature-map/README.md` and report manual UI evidence separately.
+The implementation and verification evidence is recorded below.
 
 ---
 
@@ -303,5 +326,74 @@ Executed checks:
 
 Xcode and the crash runners required host access to Swift's compiler/package
 caches; their initial sandbox attempts could not write those caches.
-Steps 3, 4, and 6 remain deferred. File organization does not establish live
+Steps 4 and 6 remain deferred. File organization does not establish live
 capture, manual visual acceptance, or signed distribution readiness.
+
+## Step 3 evidence — September 26, 2026
+
+Implemented in the working tree, without a commit or changes to repository
+protocols, SQLite schema, telemetry admission, or UI copy/layout:
+
+- Added `Features/Recording/RecordingTaskModel.swift` for task state, titles,
+  commands, repository writes/reloads, exact-command retry, and discard.
+- `RecordingModel.swift` composes the task model and retains the operation slot,
+  queue draining, scope changes, and pending-task guards on lifecycle/shutdown.
+- The three task views (`RecordingTaskControlsView`, `RecordingAttributionView`,
+  `RecordingTaskHistoryView`) and task model/window tests use `model.tasks`.
+- Added a held-reload scope-isolation test: old tasks/history clear before the
+  new scope loads; editing stays disabled; old evidence cannot be corrected in
+  the new scope; switching back restores the original projection. The lost-ACK
+  test now also checks that a pending command blocks scope switching.
+- Preserved the pre-existing telemetry edits in `RecordingModel` and the exact
+  pre-existing `RecordingModelTests` diff. Unrelated dirty files were left alone.
+- Updated this proposal, the plan's supporting-work entry, and the task feature
+  map's source ownership. The next optional cleanup is the unused Settings
+  material wrapper; C4 acceptance remains the product priority.
+
+Verification on the working tree, including pre-existing changes:
+
+- Whole-package Swift lint and `git diff --check`: passed.
+- Unsigned Debug build: passed, using the package's Xcode flags with isolated
+  derived data at `/tmp/timer-task-extraction/DerivedData`. The isolated directory
+  avoids another local Xcode run's shared build artifacts. Build log:
+  `/tmp/timer-task-extraction/build.log`.
+- Before extraction, the four focused suites passed. After extraction, the
+  serial focused run passed **24 tests in 4 suites**, zero failures/skips.
+  Result: `apps/macos/.derivedData/Logs/Test/Test-TimerMac-2026.09.26_19-04-49--0400.xcresult`.
+- The first post-extraction parallel run crashed in Xcode's
+  `XCTHResultBundleBuilder.TestState._end(activity:)`, leaving an incomplete result
+  bundle. It is not counted as a pass; the serial retry above completed normally.
+- Full native suite, serial and isolated: **280 of 281 tests passed**, one failed,
+  zero skips. Xcode reported that the runner exited with code 0 before completing
+  `LocalCodexTransportTests.rejectsMaliciousResponses(mode:)`; remaining tests ran
+  after the runner restarted. Result:
+  `/tmp/timer-task-extraction/DerivedData/Logs/Test/Test-TimerMac-2026.09.26_19-06-25--0400.xcresult`.
+  An isolated retry progressed from redirect to advertised-oversize handling,
+  then stalled in `LocalCodexTransportTests.Server.stop()` at `Process.waitUntilExit`
+  (line 158), confirmed by a process sample. That retry was cancelled and is not
+  a pass. Transport/test-fixture code was not changed by this extraction; the
+  full-suite gate remains open. The cancelled Xcode and test-host processes exited.
+- Swift hashes for this extraction's seven source/test files stayed unchanged
+  throughout isolated verification. Concurrent edits were observed in
+  `LocalCodexIntakeModel`, `RecordingTelemetryActivationTests`, and
+  `RecordingTelemetryActivationWindowTests`; those edits were preserved. These
+  are working-tree checks, not clean-commit or distribution acceptance.
+- Native screenshots at 1200×860 and 980×700, plus the isolated attribution view,
+  were visually inspected. The selected task, foreground selection spans,
+  unassigned agent observation, assignment menu, and history counts rendered.
+- Native automation attached to **SYNTHETIC · Task attribution · disposable
+  store** and exposed the task controls/history in the accessibility tree.
+  Attachment/input was slow; an assignment-menu click did not produce a verified
+  open-menu state before the timed window closed. Interactive task-menu,
+  keyboard, and VoiceOver acceptance are **unverified**. Hosted test rendering
+  and programmatic correction/undo are separate evidence.
+
+The window test now supports a bounded interactive check using
+`TEST_RUNNER_WELLSPENT_TASK_REVIEW_HOLD_SECONDS=180` (maximum 600) with
+`-parallel-testing-enabled NO -only-testing:TimerMacTests/RecordingTaskWindowTests`.
+It opens the actual `RecordingWindowView` against a unique temporary SQLite
+fixture. XCTest disables ordinary app startup; no foreground monitor, private
+session reader, backend, or personal recording store is started. Normal test
+completion closes the store and removes the fixture directory.
+The interactive run's printed `RecordingTests-180212D9-89EB-4EC9-9721-2E26E27F60CF`
+directory was confirmed removed after completion.
