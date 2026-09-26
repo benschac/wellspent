@@ -12,6 +12,8 @@ await $`mkdir -p ${output}`;
 await Promise.all(
   [
     "local-contract.mjs",
+    "telemetry-contract.mjs",
+    "selected-telemetry-reader.mjs",
     "local-helper.mjs",
     "timer-capture.mjs",
     "harness-helper.mjs",

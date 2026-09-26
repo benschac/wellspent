@@ -64,11 +64,21 @@ struct RecordingTelemetryActivationWindowTests {
                     "Pause or Finish must be exercised through the native recording controls")
             } else {
                 // Automated branch uses the production actions; it makes no claim about keyboard or VoiceOver.
+                await model.codex.stop()
                 try await fixture.authorize(model)
                 try fixture.append()
                 appended = true
                 await model.telemetry.readIfAuthorized()
+                model.addApplicationSample()
                 await model.waitForIdle()
+                for _ in 0..<3 {
+                    #expect(await model.codex.pollOnce())
+                    #expect(model.tasks.canEditTasks)
+                    try await Task.sleep(for: .milliseconds(100))
+                }
+                #expect(model.liveTelemetryObservations.count == 2)
+                host.layoutSubtreeIfNeeded()
+                try record(host, name: "C4-active-recording-polling")
                 model.pause()
                 await model.waitForIdle()
                 await model.telemetry.waitForIdle()
@@ -99,15 +109,15 @@ struct RecordingTelemetryActivationWindowTests {
         }
     }
 
-    private func record(_ host: NSView) throws {
+    private func record(_ host: NSView, name: String = "C4-opt-in-activation-review") throws {
         host.displayIfNeeded()
         let bitmap = try #require(host.bitmapImageRepForCachingDisplay(in: host.bounds))
         host.cacheDisplay(in: host.bounds, to: bitmap)
         let png = try #require(bitmap.representation(using: .png, properties: [:]))
         let path = FileManager.default.temporaryDirectory.appendingPathComponent(
-            "C4-opt-in-activation-review-\(UUID()).png")
+            "\(name)-\(UUID()).png")
         try png.write(to: path)
-        Attachment.record(png, named: "C4-opt-in-activation-review.png")
+        Attachment.record(png, named: "\(name).png")
         print("C4 activation review screenshot: \(path.path)")
     }
 }

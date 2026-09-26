@@ -13,9 +13,7 @@ struct RecordingWindowView: View {
             HStack(alignment: .top, spacing: 16) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Local Recordings").font(.title2.bold()).accessibilityAddTraits(.isHeader)
-                    Text(model.saveStatus).font(.callout).foregroundStyle(.secondary)
-                        .accessibilityIdentifier("recording-save-status")
-                    Text(model.telemetry.status).font(.caption).foregroundStyle(.secondary)
+                    RecordingHeaderStatusView()
                 }
                 RecordingControlsView()
                 Spacer(minLength: 0)
@@ -39,14 +37,10 @@ struct RecordingWindowView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         RecordingReviewView(recording: selected)
                         if selected.status != .recording {
-                            Button("Delete recording…", systemImage: "trash", role: .destructive) {
+                            RecordingDeleteButton {
                                 recordingPendingDeletion = selected
                                 showingDeletionConfirmation = true
                             }
-                            .disabled(!model.canAct)
-                            .buttonStyle(.borderless)
-                            .font(.callout)
-                            .padding(.vertical, 4)
                         }
                     }
                 } else {
@@ -105,5 +99,30 @@ struct RecordingWindowView: View {
         } message: {
             Text("This removes the recording and its local event history from this Mac.")
         }
+    }
+}
+
+private struct RecordingHeaderStatusView: View {
+    @Environment(RecordingModel.self) private var model
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(model.saveStatus).font(.callout).foregroundStyle(.secondary)
+                .accessibilityIdentifier("recording-save-status")
+            Text(model.telemetry.status).font(.caption).foregroundStyle(.secondary)
+        }
+    }
+}
+
+private struct RecordingDeleteButton: View {
+    @Environment(RecordingModel.self) private var model
+    let action: () -> Void
+
+    var body: some View {
+        Button("Delete recording…", systemImage: "trash", role: .destructive, action: action)
+            .disabled(!model.canAct)
+            .buttonStyle(.borderless)
+            .font(.callout)
+            .padding(.vertical, 4)
     }
 }

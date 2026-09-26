@@ -30,7 +30,7 @@ final class RecordingTaskModel {
     }
 
     var hasPendingTaskAction: Bool { pendingTaskAction != nil }
-    var canEditTasks: Bool { recording?.canAct == true && tasksLoaded && pendingTaskAction == nil }
+    var canEditTasks: Bool { recording?.canConfigureRecording == true && tasksLoaded && pendingTaskAction == nil }
     var canSelectRecordingTask: Bool {
         canEditTasks && recording?.acceptingEvents == true && recording?.current?.activeIntervalID != nil
     }
@@ -128,6 +128,11 @@ final class RecordingTaskModel {
     private func commitTaskAction() async {
         guard let action = pendingTaskAction, let recording else { return }
         do {
+            // A background save can fail while this exact command is waiting for its slot.
+            // Keep the command retryable until recording recovery has completed.
+            guard recording.errorMessage == nil, recording.pendingEvent == nil else {
+                throw RecordingError.invalidTransition
+            }
             switch action {
             case .create(let task): _ = try await repository.createTask(task)
             case .select(let selection): _ = try await repository.selectTask(selection)

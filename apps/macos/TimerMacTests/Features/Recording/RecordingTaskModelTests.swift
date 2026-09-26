@@ -1,10 +1,69 @@
 import Foundation
+import Observation
 import Testing
+import os
 
 @testable import TimerMac
 
 @MainActor
 struct RecordingTaskModelTests {
+    @Test(arguments: [false, true])
+    func backgroundCaptureKeepsControlsStableAndQueuesExactTaskSelection(fails: Bool) async throws {
+        let fixture = try RecordingStoreFixture()
+        defer { fixture.remove() }
+        let repository = TaskModelAcknowledgementFixture(base: SQLiteRecordingRepository(url: fixture.url))
+        let model = RecordingModel(repository: repository, stamp: RecordingModelClockFixture().stamp)
+        model.load()
+        await model.waitForIdle()
+        model.tasks.createRecordingTask(title: "Keep this click")
+        await model.waitForIdle()
+        let task = try #require(model.tasks.taskAttribution.tasks.first)
+        model.startForegroundApplicationRecording()
+        await model.waitForIdle()
+        let changed = OSAllocatedUnfairLock(initialState: false)
+        withObservationTracking {
+            #expect(model.canConfigureRecording)
+            #expect(model.tasks.canEditTasks)
+            #expect(model.tasks.canSelectRecordingTask)
+        } onChange: {
+            changed.withLock { $0 = true }
+        }
+        await repository.holdNextCommit(failing: fails)
+        model.recordForegroundApplication(nil)
+        await repository.waitUntilCommitHeld()
+        #expect(model.isBusy)
+        #expect(!model.canAct, "Native intake still uses the exclusive write gate")
+        #expect(model.canConfigureRecording)
+        #expect(model.tasks.canSelectRecordingTask)
+        #expect(!changed.withLock { $0 }, "Background IO must not invalidate control availability")
+
+        // This event precedes the click even though the first observation is still saving.
+        model.recordForegroundApplication(nil)
+        model.tasks.selectRecordingTask(task.id)
+        #expect(model.tasks.hasPendingTaskAction)
+        #expect(!model.tasks.canEditTasks, "A user click reserves the next write slot")
+        model.tasks.selectRecordingTask(nil)
+        #expect(model.tasks.taskAttribution.selections.isEmpty)
+        // A timer pause must still fence capture immediately while the chosen task waits.
+        model.pauseFromTimer()
+        #expect(!model.acceptingEvents)
+        await repository.releaseCommit()
+        await model.waitForIdle()
+        if fails {
+            #expect(model.tasks.hasPendingTaskAction)
+            #expect(model.pendingEvent?.kind == .application, "Do not overwrite the failed observation with Pause")
+            model.retry()
+            await model.waitForIdle()
+        }
+        #expect(model.tasks.taskAttribution.selections.count == 1)
+        let selection = try #require(model.tasks.taskAttribution.selections.first)
+        #expect(selection.taskID == task.id, "The queued click must not be dropped or replaced")
+        #expect(model.current?.events.map(\.kind) == [.start, .application, .application, .pause])
+        #expect(model.current?.status == .paused)
+        #expect(!model.tasks.hasPendingTaskAction)
+        #expect(await model.shutdown())
+    }
+
     @Test
     func taskSpansRecordingsWhileNewIntervalsAndAgentEvidenceRemainUnassigned() async throws {
         let fixture = try RecordingStoreFixture()
@@ -270,6 +329,23 @@ private actor TaskModelAcknowledgementFixture: RecordingRepository {
     private var heldLoad: CheckedContinuation<Void, Never>?
     private var loadWaiter: CheckedContinuation<Void, Never>?
     private(set) var corrections: [RecordingAttributionCommand] = []
+    private var holdsNextCommit = false
+    private var failsHeldCommit = false
+    private var heldCommit: CheckedContinuation<Void, Never>?
+    private var commitWaiter: CheckedContinuation<Void, Never>?
+
+    func holdNextCommit(failing: Bool) {
+        holdsNextCommit = true
+        failsHeldCommit = failing
+    }
+    func waitUntilCommitHeld() async {
+        if heldCommit != nil { return }
+        await withCheckedContinuation { commitWaiter = $0 }
+    }
+    func releaseCommit() {
+        heldCommit?.resume()
+        heldCommit = nil
+    }
 
     init(base: SQLiteRecordingRepository) { self.base = base }
     func loseNextAcknowledgement() { losesAcknowledgement = true }
@@ -283,7 +359,22 @@ private actor TaskModelAcknowledgementFixture: RecordingRepository {
         heldLoad = nil
     }
     func load() async throws -> [RecordingSnapshot] { try await base.load() }
-    func commit(_ event: RecordingEvent) async throws -> RecordingSnapshot { try await base.commit(event) }
+    func createTask(_ task: LocalTask) async throws -> LocalTask { try await base.createTask(task) }
+    func selectTask(_ selection: RecordingTaskSelection) async throws -> RecordingTaskSelection {
+        try await base.selectTask(selection)
+    }
+    func commit(_ event: RecordingEvent) async throws -> RecordingSnapshot {
+        if holdsNextCommit {
+            holdsNextCommit = false
+            await withCheckedContinuation { continuation in
+                heldCommit = continuation
+                commitWaiter?.resume()
+                commitWaiter = nil
+            }
+            if failsHeldCommit { throw RecordingError.storage(13) }
+        }
+        return try await base.commit(event)
+    }
     func delete(_ recordingID: UUID, localScopeID: String) async throws {
         try await base.delete(recordingID, localScopeID: localScopeID)
     }

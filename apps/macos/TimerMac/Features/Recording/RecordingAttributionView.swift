@@ -15,19 +15,7 @@ struct RecordingAttributionView: View {
                 Label(
                     event.kind == .application && model.tasks.taskAttribution.assignment(for: event) == .automatic
                         ? "Recording selections" : model.tasks.taskTitle(for: event), systemImage: "tag")
-                Menu("Assign task") {
-                    Button("Unassigned") { model.tasks.correctRecordingTask(event, assignment: .unassigned) }
-                    ForEach(model.tasks.taskAttribution.tasks) { task in
-                        Button(task.title) { model.tasks.correctRecordingTask(event, assignment: .task(task.id)) }
-                    }
-                    if event.kind == .application {
-                        Divider()
-                        Button("Use recording selections") {
-                            model.tasks.correctRecordingTask(event, assignment: .automatic)
-                        }
-                    }
-                }
-                .disabled(!model.tasks.canEditTasks)
+                RecordingAttributionMenuView(event: event)
             }
             .font(.callout)
             if event.kind == .application,
@@ -75,5 +63,26 @@ struct RecordingAttributionView: View {
                 .font(.callout)
             }
         }
+    }
+}
+
+private struct RecordingAttributionMenuView: View {
+    @Environment(RecordingModel.self) private var model
+    let event: RecordingEvent
+
+    var body: some View {
+        Menu("Assign task") {
+            Button("Unassigned") { model.tasks.correctRecordingTask(event, assignment: .unassigned) }
+            ForEach(model.tasks.taskAttribution.tasks) { task in
+                Button(task.title) { model.tasks.correctRecordingTask(event, assignment: .task(task.id)) }
+            }
+            if event.kind == .application {
+                Divider()
+                Button("Use recording selections") {
+                    model.tasks.correctRecordingTask(event, assignment: .automatic)
+                }
+            }
+        }
+        .disabled(!model.tasks.canEditTasks)
     }
 }

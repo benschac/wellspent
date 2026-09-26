@@ -361,3 +361,37 @@ test("Node and Swift share synthetic signed telemetry vectors", () => {
   assert.deepEqual(sign(usage, key, "telemetry"), vector.responseUsage);
   assert.doesNotMatch(JSON.stringify(vector), /SECRET/);
 });
+
+test("optional assigned chat name preserves legacy identity and rejects invalid names", () => {
+  for (const invalid of [null, undefined, 5, {}]) {
+    assert.throws(() => validateTelemetry(invalid), /invalidPacket/);
+  }
+  const old = telemetryFromSynthetic(response(), bundle.binding, at);
+  assert.equal(Object.hasOwn(old, "threadName"), false);
+  const named = telemetryFromSynthetic(
+    {
+      ...response(),
+      threadName: "Fix timeline — chat 🧭",
+      preview: "PRIVATE_CANARY",
+    },
+    bundle.binding,
+    at,
+  );
+  assert.equal(named.threadName, "Fix timeline — chat 🧭");
+  assert.equal(named.observationID, old.observationID);
+  assert.equal(JSON.stringify(named).includes("PRIVATE_CANARY"), false);
+  for (const threadName of [
+    "",
+    "  ",
+    "bad\nname",
+    "x".repeat(501),
+    "🧭".repeat(126),
+    5,
+    null,
+  ]) {
+    assert.throws(
+      () => validateTelemetry({ ...old, threadName }),
+      /invalidPacket/,
+    );
+  }
+});

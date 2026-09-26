@@ -185,3 +185,15 @@ authorization. No linked-session traversal, raw content retention, totals or tas
 inference is added. Metadata and receipts persist locally until explicitly cleaned
 up; only drained automatic binding keys are retired. See the [automatic capture evidence](../../docs/design/2026-09-26-c4-automatic-session-capture.md)
 for synthetic HTTP/native results and remaining input/live acceptance.
+
+
+### Assigned chat names in the timeline
+
+Loaded-session discovery includes the App Server's optional `thread.name` in new
+telemetry observations. Only a nonblank name of at most 500 UTF-8 bytes without
+control characters is accepted; `preview` and conversation bodies are never a
+fallback. The signed optional `threadName` field persists with the original
+observation. Renames affect later observations; retries retain the first packet.
+Existing unnamed packets and manual/directory-only sources keep generic labels.
+Upgrade the native app and restart the helper together; older native parsers
+reject the new field. Existing saved observations are not backfilled.

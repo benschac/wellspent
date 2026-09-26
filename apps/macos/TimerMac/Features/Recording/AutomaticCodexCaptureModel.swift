@@ -369,11 +369,11 @@ final class AutomaticCodexCaptureModel {
         isCollecting = result.enabled
         if !result.enabled {
             armed = false
-            status =
+            updateStatus(
                 apiFailureMessage(result.status)
-                ?? (result.status.contains("expired") || result.status == "window_ended"
-                    ? "Expired — restart capture for a fresh authorization"
-                    : "Stopped (\(result.status)) — restart capture for fresh baselines")
+                    ?? (result.status.contains("expired") || result.status == "window_ended"
+                        ? "Expired — restart capture for a fresh authorization"
+                        : "Stopped (\(result.status)) — restart capture for fresh baselines"))
         } else {
             let sourceFailures =
                 result.sources?.filter {
@@ -383,16 +383,22 @@ final class AutomaticCodexCaptureModel {
             let discovery = result.discoveryMode == "appServer" || useAppServerDiscovery ? " via Codex API" : ""
             if !exclusions.isEmpty || sourceFailures > 0 || result.status != "collecting" {
                 let reasons = exclusions.isEmpty ? result.status : exclusions.joined(separator: ", ")
-                status =
+                updateStatus(
                     "Collecting Codex activity\(discovery) · \(sourceCount) sessions · partial coverage · source limitations: \(reasons)"
+                )
             } else {
-                status = "Collecting Codex activity\(discovery) · \(sourceCount) sessions · partial coverage"
+                updateStatus("Collecting Codex activity\(discovery) · \(sourceCount) sessions · partial coverage")
             }
             if result.discoveryMode == "appServer", sourceCount == 0, exclusions.isEmpty {
-                status =
+                updateStatus(
                     "Waiting — Codex API found \(loadedSessionCount ?? 0) loaded sessions; \(inScopeSessionCount ?? 0) inside the authorized directory"
+                )
             }
         }
+    }
+
+    private func updateStatus(_ next: String) {
+        if status != next { status = next }
     }
 
     private func apiFailureMessage(_ code: String?) -> String? {

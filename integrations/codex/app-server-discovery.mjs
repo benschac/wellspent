@@ -4,6 +4,7 @@
 import { isAbsolute } from "node:path";
 import { openCodexProxy } from "./app-server-proxy.mjs";
 import { opaque } from "./local-contract.mjs";
+import { validThreadName } from "./telemetry-contract.mjs";
 
 export const API_DISCOVERY_LIMITS = Object.freeze({
   sessions: 16,
@@ -124,6 +125,7 @@ export async function discoverLoadedSessions({
             ? thread.path
             : null,
         status: thread.status.type,
+        ...(validThreadName(thread.name) ? { threadName: thread.name } : {}),
       });
     }
     if (!(await permitted())) throw new Error("authorization_required");

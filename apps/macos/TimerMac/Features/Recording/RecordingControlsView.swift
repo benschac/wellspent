@@ -11,7 +11,7 @@ struct RecordingControlsView: View {
                 Button("Retry local save / load", action: model.retry).disabled(model.isBusy)
             }
             Toggle("Include Codex activity", isOn: $capture.includeCodexActivity)
-                .disabled(!capture.hasDirectory || !model.canAct)
+                .disabled(!capture.hasDirectory || !model.canConfigureRecording)
                 .help(
                     capture.hasDirectory
                         ? "Capture newly observed Codex metadata during this recording"

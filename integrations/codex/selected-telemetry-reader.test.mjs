@@ -18,6 +18,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { createAutomaticCapture } from "./automatic-telemetry-reader.mjs";
 import { bodyDigest, decode, sign } from "./local-contract.mjs";
 import {
   capture,
@@ -646,4 +647,90 @@ test("native permit is rechecked at source open after journal/lock work", async 
   assert.equal(stopped.enabled, false);
   assert.equal(stopped.cursor, f.selection.eofOffset);
   assert.equal((await pending(f.root)).length, 0);
+});
+
+test("chat names survive rename retries without changing original usage packets", async (t) => {
+  const f = await fixtureRoot(t);
+  await selectTelemetrySource(f.root, f.selection, at);
+  await appendFile(f.filePath, line(usage()));
+  await readSelectedTelemetry(
+    f.root,
+    at,
+    undefined,
+    undefined,
+    "Assigned chat name",
+  );
+  const first = await pending(f.root);
+  assert.equal(first[0].threadName, "Assigned chat name");
+  await appendFile(f.filePath, line(usage()) + line(usage("response_2")));
+  const result = await readSelectedTelemetry(
+    f.root,
+    at,
+    undefined,
+    undefined,
+    "Renamed chat",
+  );
+  assert.equal(result.counts.duplicate, 1);
+  const saved = await pending(f.root);
+  assert.deepEqual(
+    saved.find((value) => value.responseID === "response_1"),
+    first[0],
+  );
+  assert.equal(
+    saved.find((value) => value.responseID === "response_2").threadName,
+    "Renamed chat",
+  );
+  assert.equal(JSON.stringify(saved).includes("PRIVATE_CANARY"), false);
+});
+
+test("automatic discovery attaches the matching chat name to newly captured observations", async (t) => {
+  const f = await fixtureRoot(
+    t,
+    line(
+      item("session_meta", {
+        id: bundle.binding.threadID,
+        session_id: "session_1",
+        cli_version: "0.157.1",
+      }),
+    ),
+  );
+  // Enrollment must receive a fresh binding for this activation.
+  let started = new Date(bundle.binding.issuedAt);
+  let threadName = "Assigned chat";
+  const capture = await createAutomaticCapture({
+    root: f.root,
+    directoryPath: f.dir,
+    authorizationID: randomUUID(),
+    permitted: async () => true,
+    clock: () => started,
+    discoverSessions: async () => ({
+      bytesRead: 100,
+      loadedSessionCount: 1,
+      sources: [
+        { threadID: bundle.binding.threadID, path: f.filePath, threadName },
+      ],
+    }),
+  });
+  const discovery = await capture.discover();
+  assert.equal(discovery.candidates.length, 1);
+  const enrolled = await capture.enroll(
+    discovery.candidates[0].sourceID,
+    bundle,
+  );
+  assert.equal(enrolled.sources[0].enabled, true, JSON.stringify(enrolled));
+  started = at;
+  await appendFile(f.filePath, line(usage()));
+  const captured = await capture.read();
+  const packets = await pending(f.root);
+  assert.equal(packets.length, 1, JSON.stringify(captured));
+  assert.equal(packets[0].threadName, "Assigned chat");
+  threadName = "Renamed chat";
+  await appendFile(f.filePath, line(usage("response_2")));
+  await capture.read();
+  assert.equal(
+    (await pending(f.root)).find((value) => value.responseID === "response_2")
+      .threadName,
+    "Renamed chat",
+  );
+  await capture.stop();
 });

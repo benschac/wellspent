@@ -1,4 +1,6 @@
+import AppKit
 import Foundation
+import SwiftUI
 import Testing
 
 @testable import TimerMac
@@ -7,7 +9,9 @@ private struct TelemetryFixture {
     let store: RecordingStoreFixture
     let grant: CodexIntakeContract.Grant
 
-    func packet(kind: String = "responseUsage", response: String = "response_1", total: Int = 23) throws
+    func packet(
+        kind: String = "responseUsage", response: String = "response_1", total: Int = 23, threadName: String? = nil
+    ) throws
         -> CodexIntakeContract.Packet
     {
         let binding = grant.binding
@@ -31,6 +35,7 @@ private struct TelemetryFixture {
             "usage": usage, "counterMode": kind == "responseUsage" ? "responseIncrement" : "none",
             "coverage": "partial", "privateCanary": "SECRET",
         ]
+        if let threadName { fields["threadName"] = threadName }
         // The fixture deliberately drops a private source field before signing.
         fields.removeValue(forKey: "privateCanary")
         let draft = try JSONDecoder().decode(
@@ -79,6 +84,50 @@ struct CodexTelemetryIntakeTests {
         }
     }
 
+    @Test
+    func optionalChatNameValidationKeepsLegacyPacketsReadable() async throws {
+        let store = try RecordingStoreFixture()
+        defer { store.remove() }
+        let repository = SQLiteRecordingRepository(url: store.url)
+        let context = try await fixture(repository, store: store)
+        let packet = try context.packet()
+        #expect(try CodexTelemetryContract.parse(packet.body).threadName == nil)
+        var fields = try #require(JSONSerialization.jsonObject(with: packet.body) as? [String: Any])
+        for name: Any in ["", "  ", "bad\nname", String(repeating: "🧭", count: 126), 5, NSNull()] {
+            fields["threadName"] = name
+            let body = try JSONSerialization.data(withJSONObject: fields)
+            #expect(throws: CodexTelemetryContract.Failure.invalidPacket) {
+                try CodexTelemetryContract.parse(body)
+            }
+        }
+        await repository.close()
+    }
+
+    @Test @MainActor
+    func renderAssignedChatNameInTimeline() async throws {
+        let store = try RecordingStoreFixture()
+        defer { store.remove() }
+        let repository = SQLiteRecordingRepository(url: store.url)
+        let context = try await fixture(repository, store: store)
+        let packet = try context.packet(threadName: "Show assigned chat names in the recording timeline")
+        let metadata = try CodexTelemetryContract.parse(packet.body)
+        let observation = RecordingTimelineCodexObservation(
+            metadata: metadata, sourceWrittenAt: try CodexIntakeContract.date(metadata.sourceWrittenAt),
+            nativeReceivedAt: nil)
+        let renderer = ImageRenderer(
+            content: RecordingTimelineCodexEventView(observation: observation, isLast: true)
+                .padding(24).frame(width: 900).fixedSize(horizontal: false, vertical: true)
+                .background(Color(nsColor: .windowBackgroundColor)).preferredColorScheme(.dark))
+        renderer.scale = 2
+        let image = try #require(renderer.cgImage)
+        let png = try #require(NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]))
+        let path = FileManager.default.temporaryDirectory.appendingPathComponent("wellspent-chat-name.png")
+        try png.write(to: path)
+        print("Chat name timeline render: \(path.path)")
+        Attachment.record(png, named: "wellspent-chat-name.png")
+        await repository.close()
+    }
+
     private func fixture(_ repository: SQLiteRecordingRepository, store: RecordingStoreFixture) async throws
         -> TelemetryFixture
     {
@@ -98,7 +147,7 @@ struct CodexTelemetryIntakeTests {
         defer { store.remove() }
         let repository = SQLiteRecordingRepository(url: store.url)
         let context = try await fixture(repository, store: store)
-        let packet = try context.packet()
+        let packet = try context.packet(threadName: "Fix timeline — chat 🧭")
         await #expect(throws: CodexTelemetryContract.Failure.awaitingIntervalEnd) {
             try await repository.receiveCodexTelemetry(
                 packet, bindingID: context.grant.binding.bindingID, stamp: store.event(.start, at: 7).stamp)
@@ -123,6 +172,7 @@ struct CodexTelemetryIntakeTests {
         #expect(saved.count == 2)
         #expect(saved.first?.configuredModel == nil)
         #expect(saved.first?.usage?.totalTokens == 23)
+        #expect(saved.first?.threadName == "Fix timeline — chat 🧭")
         #expect(saved.last?.configuredModel == "gpt-6-sol")
         #expect(saved.last?.usage == nil)
         #expect(try store.sql("SELECT payload FROM recording_events ORDER BY sequence") == originals)

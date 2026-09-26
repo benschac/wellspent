@@ -439,6 +439,7 @@ export async function readSelectedTelemetry(
   now = new Date(),
   checkpoint = checkpointDefault,
   allowRead = allowReadDefault,
+  threadName = undefined,
 ) {
   return lock(readerRoot(root), async () => {
     const state = await read(statePath(root));
@@ -543,7 +544,10 @@ export async function readSelectedTelemetry(
               fail("malformed_record");
             }
             input = state.skipPartial ? null : normalize(item, state);
-            if (input) telemetryFromSynthetic(input, bundle.binding, now);
+            if (input) {
+              if (threadName !== undefined) input.threadName = threadName;
+              telemetryFromSynthetic(input, bundle.binding, now);
+            }
           } catch (error) {
             if (stopErrors.has(error.message)) throw error;
             // Invalid complete lines are excluded with durable counts; missing usage is never zero.
@@ -559,7 +563,13 @@ export async function readSelectedTelemetry(
                 input.responseID ?? input.turnID,
               ]),
             );
-            const { sourceWrittenAt: _time, ...semantic } = input;
+            // A rename must not conflict with a replay of the same usage atom.
+            // Recovery retains the original first-observed name and packet.
+            const {
+              sourceWrittenAt: _time,
+              threadName: _name,
+              ...semantic
+            } = input;
             state.journal = {
               key,
               signature: hash(JSON.stringify(semantic)),

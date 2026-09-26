@@ -9,6 +9,7 @@ final class RecordingModel {
     private(set) var localScopeID: String
     private(set) var isLoaded = false
     private(set) var isBusy = false
+    private(set) var isPerformingUserAction = false
     private(set) var acceptingEvents = false {
         didSet {
             if !acceptingEvents {
@@ -26,6 +27,7 @@ final class RecordingModel {
     private(set) var liveTelemetryWarnings: [UUID: String] = [:]
 
     func setLiveTelemetryWarning(_ message: String?, bindingID: UUID) {
+        guard liveTelemetryWarnings[bindingID] != message else { return }
         liveTelemetryWarnings[bindingID] = message
     }
 
@@ -74,7 +76,14 @@ final class RecordingModel {
     /// Task persistence shares the recording operation slot. Capture received while it awaits
     /// storage must drain before the slot is released or a later lifecycle action can run.
     func runTaskAction(_ action: @escaping @MainActor () async -> Void) {
-        guard canAct else { return }
+        guard canConfigureRecording else { return }
+        if isBusy {
+            // Reserve the next user action without racing the in-flight capture write/ACK.
+            isPerformingUserAction = true
+            queuedTaskAction = action
+            queuedTaskPrecedingEventCount = queuedEvents.count
+            return
+        }
         run {
             await action()
             await self.drainTaskCaptureQueue()
@@ -83,16 +92,32 @@ final class RecordingModel {
 
     private func drainTaskCaptureQueue() async {
         // Capture can enqueue foreground events or pause while the repository is awaiting IO.
-        if !queuedEvents.isEmpty {
-            pendingEvent = queuedEvents.removeFirst()
+        await runQueuedTaskIfReady()
+        if pendingEvent == nil, !queuedEvents.isEmpty {
+            pendingEvent = takeQueuedEvent()
             await commitPending()
         }
+    }
+
+    private func runQueuedTaskIfReady() async {
+        guard pendingEvent == nil, queuedTaskPrecedingEventCount == 0,
+            let action = queuedTaskAction
+        else { return }
+        queuedTaskAction = nil
+        await action()
+    }
+
+    private func takeQueuedEvent() -> RecordingEvent {
+        if queuedTaskPrecedingEventCount > 0 { queuedTaskPrecedingEventCount -= 1 }
+        return queuedEvents.removeFirst()
     }
 
     @ObservationIgnored private let repository: any RecordingRepository
     @ObservationIgnored private let stamp: @MainActor () -> RecordingEvent.Stamp
     @ObservationIgnored private var queuedEvents: [RecordingEvent] = []
     @ObservationIgnored private var operation: Task<Void, Never>?
+    @ObservationIgnored private var queuedTaskAction: (@MainActor () async -> Void)?
+    @ObservationIgnored private var queuedTaskPrecedingEventCount = 0
     @ObservationIgnored private var isShuttingDown = false
     @ObservationIgnored private var isClosed = false
     @ObservationIgnored private var needsRecovery = true
@@ -122,15 +147,21 @@ final class RecordingModel {
     var current: RecordingSnapshot? { recordings.first(where: { $0.status != .finished }) }
     var selected: RecordingSnapshot? { recordings.first(where: { $0.id == selectedID }) ?? current ?? recordings.first }
     var canAct: Bool { isLoaded && !isBusy && pendingEvent == nil && !isClosed && !isShuttingDown && !needsRecovery }
+    /// Background capture still owns the write gate, but must not pulse native controls.
+    /// Task actions accepted here reserve that gate and retain their original command.
+    var canConfigureRecording: Bool {
+        isLoaded && !isPerformingUserAction && errorMessage == nil && !isClosed && !isShuttingDown && !needsRecovery
+    }
     var canCaptureForegroundApplications: Bool {
         isLoaded && !isClosed && !isShuttingDown && !needsRecovery && errorMessage == nil
             && acceptingEvents && current?.capturesForegroundApplications == true
     }
     var saveStatus: String {
         if pendingEvent != nil, errorMessage != nil { return "Stopped — action not confirmed saved" }
-        if isBusy { return "Saving or loading local history…" }
         if errorMessage != nil { return "Local history unavailable" }
         if !isLoaded { return "Local history not loaded" }
+        if acceptingEvents && current?.status == .recording { return "Recording on this Mac · No upload" }
+        if isBusy { return "Saving or loading local history…" }
         return "Saved on this Mac · No upload"
     }
 
@@ -432,12 +463,9 @@ final class RecordingModel {
     private func codexAction<Value>(_ action: @escaping @MainActor () async throws -> Value) async throws -> Value {
         guard canAct else { throw RecordingError.invalidTransition }
         var result: Result<Value, Error>?
-        run {
+        run(isBackground: true) {
             do { result = .success(try await action()) } catch { result = .failure(error) }
-            if !self.queuedEvents.isEmpty {
-                self.pendingEvent = self.queuedEvents.removeFirst()
-                await self.commitPending()
-            }
+            await self.drainTaskCaptureQueue()
         }
         await waitForIdle()
         guard let result else { throw RecordingError.invalidTransition }
@@ -513,18 +541,22 @@ final class RecordingModel {
 
     private func submit(_ event: RecordingEvent) {
         if isBusy {
+            if !event.kind.isObservation { isPerformingUserAction = true }
             queuedEvents.append(event)
             return
         }
         pendingEvent = event
-        run { await self.commitPending() }
+        run(isBackground: event.kind.isObservation) { await self.commitPending() }
     }
 
-    private func run(_ action: @escaping @MainActor () async -> Void) {
+    private func run(isBackground: Bool = false, _ action: @escaping @MainActor () async -> Void) {
+        isPerformingUserAction = !isBackground
         isBusy = true
         operation = Task {
             await action()
+            await self.drainTaskCaptureQueue()
             self.isBusy = false
+            self.isPerformingUserAction = false
             self.captureStateDidChange?()
         }
     }
@@ -568,10 +600,11 @@ final class RecordingModel {
                 }
                 pendingEvent = nil
                 errorMessage = nil
+                await runQueuedTaskIfReady()
                 if !queuedEvents.isEmpty {
                     // Keep receipt order and timestamps, including a boundary that revoked intake
                     // while this commit was suspended. Never reauthorize between queued saves.
-                    pendingEvent = queuedEvents.removeFirst()
+                    pendingEvent = takeQueuedEvent()
                 } else if needsRecovery {
                     await restore()
                     return

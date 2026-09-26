@@ -125,7 +125,7 @@ final class LocalCodexIntakeModel {
                     let reasons = response.status.reasons.sorted { $0.key < $1.key }
                         .map { "\($0.key): \($0.value)" }.joined(separator: ", ")
                     var message = "Thread \(grant.binding.threadID): \(counts) \(reasons)"
-                    if let packet = response.packet {
+                    if let packet = response.packet, !awaitsIntervalEnd(grant, recording: recording) {
                         guard recording.canAct else { return true }
                         do {
                             _ = try await recording.receiveLocalCodex(packet, bindingID: grant.binding.bindingID) {
@@ -150,6 +150,8 @@ final class LocalCodexIntakeModel {
                                     key: grant.key)
                             }
                         }
+                    } else if response.packet != nil {
+                        message += " Waiting for Pause or Finish to establish the interval end."
                     }
                     do {
                         if try await transport.telemetrySupported(bindingID: grant.binding.bindingID, key: grant.key) {
@@ -159,7 +161,7 @@ final class LocalCodexIntakeModel {
                                 message +=
                                     " \(telemetry.unsupported) unsupported telemetry packet(s) retained by helper; update both apps or inspect the local queue."
                             }
-                            if let packet = telemetry.packet {
+                            if let packet = telemetry.packet, !awaitsIntervalEnd(grant, recording: recording) {
                                 guard recording.canAct else { return true }
                                 do {
                                     _ = try await recording.receiveLocalCodexTelemetry(
@@ -172,6 +174,8 @@ final class LocalCodexIntakeModel {
                                         ? " Telemetry waiting for Pause or Finish."
                                         : " Telemetry retained; \(failure.rawValue). Inspect the binding or update the helper."
                                 }
+                            } else if telemetry.packet != nil {
+                                message += " Telemetry waiting for Pause or Finish."
                             }
                         } else {
                             message += " Helper has no compatible telemetry capability; v1 reports continue."
@@ -240,5 +244,15 @@ final class LocalCodexIntakeModel {
             status = "Local helper or storage unavailable. Pending reports remain queued; retrying automatically."
             return false
         }
+    }
+
+    /// An open interval cannot admit durable reports yet. Keep polling/previews alive without
+    /// taking the recording write slot (and disabling every control) for a predictable rejection.
+    /// Older closed intervals still deliver while a new interval is recording.
+    private func awaitsIntervalEnd(_ grant: CodexIntakeContract.Grant, recording: RecordingModel) -> Bool {
+        guard let current = recording.current else { return false }
+        return grant.binding.localScopeID == current.localScopeID
+            && grant.binding.recordingID == current.id
+            && grant.binding.intervalID == current.activeIntervalID
     }
 }

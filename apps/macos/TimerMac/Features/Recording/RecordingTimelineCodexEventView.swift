@@ -85,7 +85,7 @@ struct RecordingTimelineCodexEventsView: View {
 
     var body: some View {
         let items = items
-        VStack(alignment: .leading, spacing: 0) {
+        LazyVStack(alignment: .leading, spacing: 0) {
             ForEach(items) { item in
                 switch item {
                 case .event(let entry):
@@ -162,8 +162,15 @@ struct RecordingTimelineCodexEventView: View {
             .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 6) {
-                Text(metadata.kind == "turnConfiguration" ? "Codex configuration" : "Codex response usage")
-                    .font(.title3.bold())
+                Text(
+                    metadata.threadName
+                        ?? (metadata.kind == "turnConfiguration" ? "Codex configuration" : "Codex response usage")
+                )
+                .font(.title3.bold())
+                if metadata.threadName != nil {
+                    Text(metadata.kind == "turnConfiguration" ? "Codex configuration" : "Codex response usage")
+                        .font(.callout).foregroundStyle(.secondary)
+                }
                 if metadata.kind == "turnConfiguration" {
                     Text(
                         "Configured model: \(metadata.configuredModel ?? "Unknown") · effort: \(metadata.configuredEffort ?? "Unknown")"

@@ -1,5 +1,7 @@
 import Foundation
+import Observation
 import Testing
+import os
 
 @testable import TimerMac
 
@@ -71,7 +73,16 @@ struct RecordingTelemetryActivationTests {
 
             // The ordinary native poll previews every queued observation while still recording.
             #expect(try await transport.telemetryPreviewSupported(bindingID: grant.binding.bindingID, key: grant.key))
+            let busyChangedDuringPoll = OSAllocatedUnfairLock(initialState: false)
+            withObservationTracking {
+                _ = model.isBusy
+            } onChange: {
+                busyChangedDuringPoll.withLock { $0 = true }
+            }
             #expect(await model.codex.pollOnce())
+            #expect(
+                !busyChangedDuringPoll.withLock { $0 },
+                "Waiting telemetry must not flash recording controls as busy")
             #expect(model.current?.status == .recording)
             #expect(model.liveTelemetryObservations.count == 2)
             let previews = Array(model.liveTelemetryObservations.values)
@@ -82,6 +93,7 @@ struct RecordingTelemetryActivationTests {
             #expect(try await model.loadTelemetryReview(recordingID: recording.id, intervalID: interval).isEmpty)
             #expect(await model.codex.pollOnce())
             #expect(model.liveTelemetryObservations.count == 2)
+            #expect(!busyChangedDuringPoll.withLock { $0 })
             let damaged = CodexIntakeContract.Packet(body: queued.body, mac: Data(repeating: 0, count: 32))
             #expect(throws: CodexTelemetryContract.Failure.untrustedSender) {
                 try model.previewLocalCodexTelemetry(damaged, grant: grant)
@@ -106,22 +118,31 @@ struct RecordingTelemetryActivationTests {
 
             // Commit without delivering its ACK simulates a lost connection after SQLite commit.
             let ack = try await model.receiveLocalCodexTelemetry(queued, bindingID: grant.binding.bindingID)
+            #expect(model.liveTelemetryObservations.count == 1)
+            #expect(model.liveTelemetryObservations[try CodexTelemetryContract.parse(queued.body).observationID] == nil)
             let retry = try #require(
                 try await transport.pollTelemetry(bindingID: grant.binding.bindingID, key: grant.key).packet)
             #expect(retry == queued)
             let retryACK = try await model.receiveLocalCodexTelemetry(retry, bindingID: grant.binding.bindingID)
             #expect(retryACK == ack)
+            #expect(model.liveTelemetryObservations.count == 1)
             try await transport.acknowledgeTelemetry(retryACK)
             try await transport.acknowledgeTelemetry(ack)
             // The ordinary intake handles the other queued observation over HTTP after closure.
             #expect(await model.codex.pollOnce())
             let firstReview = try await model.loadTelemetryReview(recordingID: recording.id, intervalID: interval)
             #expect(firstReview.count == 2)
+            // Saved previews clear even when this interval's timeline was never mounted.
             #expect(model.liveTelemetryObservations.isEmpty)
+            let pendingItems = RecordingTimelineItem.merged(
+                entries: [], saved: [], pending: previews,
+                recordingID: recording.id, intervalID: interval)
+            #expect(pendingItems.count == 2)
             let items = RecordingTimelineItem.merged(
                 entries: [], saved: firstReview, pending: previews,
                 recordingID: recording.id, intervalID: interval)
             #expect(items.count == 2)
+            #expect(items.map(\.id) == pendingItems.map(\.id))
             #expect(
                 items.allSatisfy {
                     if case .codex(let row) = $0 { return !row.isPending }

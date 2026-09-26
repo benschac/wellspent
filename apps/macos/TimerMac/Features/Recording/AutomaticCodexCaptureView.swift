@@ -20,7 +20,7 @@ struct AutomaticCodexCaptureView: View {
                 )
                 .font(.caption).foregroundStyle(.secondary)
                 Text(
-                    "Only session and response identities, configured model and effort, individual response usage, timestamps and capture diagnostics are kept on this Mac. Mixed records are parsed transiently; prompts, answers and tool output are not retained or uploaded. Existing content and pause gaps are excluded; new sessions start at their enrollment EOF, so coverage is partial."
+                    "Only assigned chat names when available, session and response identities, configured model and effort, individual response usage, timestamps and capture diagnostics are kept on this Mac. Mixed records are parsed transiently; prompts, answers and tool output are not retained or uploaded. Existing content and pause gaps are excluded; new sessions start at their enrollment EOF, so coverage is partial."
                 )
                 .font(.caption).foregroundStyle(.secondary)
                 HStack {

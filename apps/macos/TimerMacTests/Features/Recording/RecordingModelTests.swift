@@ -28,6 +28,21 @@ struct RecordingModelTests {
         #expect(await repository.attempts.isEmpty)
     }
 
+    @Test func routineObservationSaveKeepsRecordingStatusStable() async {
+        let model = await loadedModel()
+        model.startRecording()
+        await model.waitForIdle()
+        let status = model.saveStatus
+        await repository.holdNextCommit()
+        model.addApplicationSample()
+        await repository.waitUntilCommitHeld()
+        #expect(model.isBusy)
+        #expect(model.saveStatus == status)
+        await repository.releaseCommit()
+        await model.waitForIdle()
+        #expect(model.saveStatus == status)
+    }
+
     @Test func failedPauseRetriesExactPendingBoundary() async throws {
         let model = await loadedModel()
         model.startRecording()

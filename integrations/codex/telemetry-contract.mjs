@@ -45,6 +45,15 @@ const label = (value) =>
 const optionalLabel = (value) => value === null || label(value);
 const amount = (value) => Number.isSafeInteger(value) && value >= 0;
 
+export const validThreadName = (value) =>
+  typeof value === "string" &&
+  value.trim().length > 0 &&
+  Buffer.byteLength(value) <= 500 &&
+  ![...value].some(
+    (character) =>
+      character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127,
+  );
+
 export function telemetryIdentity(value) {
   const parts = [
     "wellspent-codex-telemetry-v1",
@@ -61,8 +70,10 @@ export function telemetryIdentity(value) {
 }
 
 export function validateTelemetry(value) {
+  const hasThreadName = value != null && Object.hasOwn(value, "threadName");
   if (
-    !exactKeys(value, keys) ||
+    !exactKeys(value, hasThreadName ? [...keys, "threadName"] : keys) ||
+    (hasThreadName && !validThreadName(value.threadName)) ||
     value.version !== 1 ||
     value.source !== "codex-rollout" ||
     value.sourceVersion !== "0.157.1" ||
@@ -133,6 +144,7 @@ export function telemetryFromSynthetic(
   // Only callers holding an explicit native pairing bundle can enqueue; this never opens a source file.
   const value = {
     version: 1,
+    ...(input.threadName != null ? { threadName: input.threadName } : {}),
     observationID: "",
     senderID: binding.senderID,
     bindingID: binding.bindingID,

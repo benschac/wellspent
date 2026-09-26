@@ -168,6 +168,7 @@ export async function createAutomaticCapture({
   let status = "collecting";
   let loadedSessionCount = 0;
   let apiPaths = new Map();
+  let apiNames = new Map();
   const count = (code) => {
     counts[code] = (counts[code] ?? 0) + 1;
   };
@@ -378,6 +379,7 @@ export async function createAutomaticCapture({
       await gate();
       if (discoverSessions) {
         apiPaths = new Map();
+        apiNames = new Map();
         if (bytesRead >= AUTOMATIC_LIMITS.bytes) fail("overall_byte_limit");
         const discovery = await discoverSessions({
           maxBytes: AUTOMATIC_LIMITS.bytes - bytesRead,
@@ -392,6 +394,7 @@ export async function createAutomaticCapture({
           }
           if (!source.path.startsWith(`${directoryPath}/`)) continue;
           apiPaths.set(source.path, source.threadID);
+          apiNames.set(source.threadID, source.threadName);
           try {
             await examine(source.path, source.threadID);
           } catch (error) {
@@ -585,6 +588,7 @@ export async function createAutomaticCapture({
               clock(),
               undefined,
               () => sourceGate(entry),
+              apiNames.get(entry.threadID),
             );
             bytesRead -= Math.max(
               0,

@@ -50,6 +50,7 @@ enum CodexTelemetryContract {
         let usage: Usage?
         let counterMode: String
         let coverage: String
+        var threadName: String? = nil
 
         var stableID: UUID? {
             let fields = [
@@ -84,7 +85,7 @@ enum CodexTelemetryContract {
     static func parse(_ body: Data) throws -> Metadata {
         guard body.count <= 8192,
             let fields = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
-            Set(fields.keys)
+            Set(fields.keys).subtracting(["threadName"])
                 == Set([
                     "version", "observationID", "senderID", "bindingID", "localScopeID", "recordingID",
                     "intervalID", "source", "sourceVersion", "threadID", "sessionID", "rootTurnID", "turnID",
@@ -102,6 +103,12 @@ enum CodexTelemetryContract {
             !metadata.localScopeID.isEmpty, metadata.localScopeID.utf8.count <= 200,
             !metadata.localScopeID.unicodeScalars.contains(where: { $0.value < 32 || $0.value == 127 })
         else { throw Failure.invalidPacket }
+        if fields["threadName"] != nil {
+            guard let name = metadata.threadName,
+                !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, name.utf8.count <= 500,
+                !name.unicodeScalars.contains(where: { $0.value < 32 || $0.value == 127 })
+            else { throw Failure.invalidPacket }
+        }
         if metadata.kind == "turnConfiguration" {
             guard metadata.responseID == nil, metadata.usage == nil, metadata.counterMode == "none",
                 [metadata.configuredModel, metadata.configuredEffort].allSatisfy({ value in
