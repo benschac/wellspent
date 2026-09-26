@@ -26,18 +26,18 @@ const sourceDirectory = join(
   "RecordingDurabilityProbe",
 );
 const sources = [
-  "Features/Recording/RecordingEvent.swift",
-  "Features/Recording/RecordingError.swift",
-  "Features/Recording/RecordingSnapshot.swift",
-  "Features/Recording/RecordingTaskAttribution.swift",
-  "Features/Recording/RecordingTelemetryObservation.swift",
-  "Features/Recording/RecordingWorkNote.swift",
+  "Model/Recording/RecordingEvent.swift",
+  "Model/Recording/RecordingError.swift",
+  "Model/Recording/RecordingSnapshot.swift",
+  "Model/Recording/RecordingTaskAttribution.swift",
+  "Model/Recording/RecordingTelemetryObservation.swift",
+  "Model/Recording/RecordingWorkNote.swift",
   "Services/Recording/RecordingRepository.swift",
   "Services/Recording/RecordingDatabaseRecords.swift",
   "Services/Recording/SQLiteRecordingRepository.swift",
-  "Services/Recording/CodexIntakeContract.swift",
-  "Services/Recording/CodexTelemetryContract.swift",
-  "Services/Recording/LocalHarnessContract.swift",
+  "Model/Recording/CodexIntakeContract.swift",
+  "Model/Recording/CodexTelemetryContract.swift",
+  "Model/Recording/LocalHarnessContract.swift",
   "Services/Recording/LocalCodexTransport.swift",
 ].map((path) => resolve(root, "TimerMac", path));
 
