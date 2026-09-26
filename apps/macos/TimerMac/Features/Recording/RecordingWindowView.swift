@@ -11,6 +11,11 @@ struct RecordingWindowView: View {
 
         VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .top, spacing: 16) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Local Recordings").font(.title2.bold()).accessibilityAddTraits(.isHeader)
+                    Text(model.saveStatus).font(.callout).foregroundStyle(.secondary)
+                        .accessibilityIdentifier("recording-save-status")
+                }
                 RecordingControlsView()
                 Spacer(minLength: 0)
                 Button("Connections", systemImage: "link") { showingConnections = true }
@@ -20,19 +25,11 @@ struct RecordingWindowView: View {
             HStack(alignment: .top, spacing: 16) {
                 List(selection: $model.selectedID) {
                     ForEach(model.recordings) { recording in
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(recording.intention).font(.headline).lineLimit(2)
-                            if let started = recording.intervals.first?.start.wall {
-                                Text(started, format: .dateTime.month(.abbreviated).day().hour().minute())
-                                    .font(.caption).foregroundStyle(.secondary)
-                            }
-                            Text(recording.status.rawValue.capitalized).font(.caption).foregroundStyle(.secondary)
-                        }
-                        .padding(.vertical, 6)
-                        .tag(recording.id)
+                        RecordingListRow(recording: recording)
+                            .tag(recording.id)
                     }
                 }
-                .frame(minWidth: 180, idealWidth: 210, maxWidth: 230)
+                .frame(width: 210)
                 .listStyle(.inset)
                 .scrollContentBackground(.hidden)
                 .accessibilityLabel("Saved local recordings")
@@ -40,11 +37,14 @@ struct RecordingWindowView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         RecordingReviewView(recording: selected)
                         if selected.status != .recording {
-                            Button("Delete this local recording", role: .destructive) {
+                            Button("Delete recording…", systemImage: "trash", role: .destructive) {
                                 recordingPendingDeletion = selected
                                 showingDeletionConfirmation = true
                             }
                             .disabled(!model.canAct)
+                            .buttonStyle(.borderless)
+                            .font(.callout)
+                            .padding(.vertical, 4)
                         }
                     }
                 } else {
@@ -60,7 +60,7 @@ struct RecordingWindowView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             Label("Stored on this Mac · No upload · Local storage is unencrypted", systemImage: "internaldrive")
-                .font(.footnote).foregroundStyle(.secondary)
+                .font(.callout).foregroundStyle(.secondary)
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 20)
@@ -80,7 +80,7 @@ struct RecordingWindowView: View {
                     Text(
                         "Foreground capture stores app name, bundle ID and PID only. It never reads window contents, documents, input or your screen."
                     )
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.callout).foregroundStyle(.secondary)
                 }
                 .padding(24)
             }

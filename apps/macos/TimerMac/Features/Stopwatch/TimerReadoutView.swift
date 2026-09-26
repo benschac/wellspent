@@ -4,8 +4,8 @@ struct TimerReadoutView: View {
     @Environment(TimerModel.self) private var model
 
     var body: some View {
-        VStack {
-            Text("Focus elapsed")
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Timer")
                 .font(.headline)
                 .foregroundStyle(.secondary)
 

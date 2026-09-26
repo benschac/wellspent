@@ -28,11 +28,7 @@ struct SettingsView: View {
                 .padding(.top, 20)
                 .padding(.bottom, 12)
 
-                if windows.selectedSettingsCategory == .recordings {
-                    RecordingWindowView()
-                } else {
-                    SettingsDetailView(selectedCategory: windows.selectedSettingsCategory ?? .accounts)
-                }
+                SettingsDetailView(selectedCategory: windows.selectedSettingsCategory ?? .accounts)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }

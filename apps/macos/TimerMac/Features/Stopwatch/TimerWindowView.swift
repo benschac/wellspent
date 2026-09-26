@@ -7,63 +7,38 @@ struct TimerWindowView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            TimerWorkspaceNavigationView()
-                .padding()
-            Divider()
-            ScrollView {
-                VStack(spacing: 20) {
-                    HStack {
-                        Label("Timer", systemImage: "timer")
-                            .font(.title2)
-                            .bold()
-
-                        Spacer()
-
-                        ConnectionStatusView(state: model.syncStatus)
-                    }
-
-                    Text(model.backendProfileLabel)
-                        .foregroundStyle(model.isProductionAPI ? .orange : .secondary)
-                        .textSelection(.enabled)
-
-                    Divider()
-
-                    TimerReadoutView()
-                    TimerControlsView()
-                    if let controls = sidebar.recordingControls {
-                        Text(controls.status).font(.footnote)
-                        if let message = controls.errorMessage ?? controls.recording.errorMessage {
-                            ErrorBannerView(message: message)
-                        }
-                        Button("Review local recording", action: windows.showRecordingWindow)
-                        Text("Records foreground app names on this Mac. Codex activity requires a separate connection.")
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
-                    Text(model.saveStatus)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-
-                    if let errorMessage = model.errorMessage {
-                        ErrorBannerView(message: errorMessage)
-                    }
-
-                    if let shortcutError = windows.focusShortcutError {
-                        Label(shortcutError, systemImage: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.orange)
-                    }
-
-                    TimerWindowActionsView()
-
-                    if let revision = model.latestRevision {
-                        Text("Server revision \(revision)")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
+            HStack(spacing: 28) {
+                TimerReadoutView()
+                TimerControlsView()
+                Spacer(minLength: 16)
+                VStack(alignment: .trailing, spacing: 6) {
+                    ConnectionStatusView(state: model.syncStatus)
+                    Text(model.saveStatus).font(.callout).foregroundStyle(.secondary)
                 }
-                .padding()
+                TimerWindowActionsView()
             }
+            .padding(24)
+
+            if let controls = sidebar.recordingControls,
+                let message = controls.errorMessage
+            {
+                ErrorBannerView(message: message).padding(.horizontal, 24)
+            }
+            if let errorMessage = model.errorMessage {
+                ErrorBannerView(message: errorMessage).padding(.horizontal, 24)
+            }
+            if let shortcutError = windows.focusShortcutError {
+                Label(shortcutError, systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange).padding(.horizontal, 24)
+            }
+
+            Divider()
+            RecordingWindowView()
+                .padding(.top, 20)
         }
-        .frame(minWidth: 520, minHeight: 500)
+        .frame(minWidth: 980, minHeight: 700)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(nsColor: .windowBackgroundColor))
+        .preferredColorScheme(.dark)
     }
 }

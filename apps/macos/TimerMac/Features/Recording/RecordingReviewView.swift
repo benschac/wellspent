@@ -5,10 +5,13 @@ struct RecordingReviewView: View {
 
     var body: some View {
         ScrollView {
-            RecordingReviewContent(recording: recording).padding(20)
+            RecordingReviewContent(recording: recording).padding(24)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(.background.opacity(0.45), in: RoundedRectangle(cornerRadius: 12))
+        .background(Color(nsColor: .textBackgroundColor), in: RoundedRectangle(cornerRadius: 12))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12).strokeBorder(.separator.opacity(0.5))
+        }
         .id(recording.id)
     }
 }

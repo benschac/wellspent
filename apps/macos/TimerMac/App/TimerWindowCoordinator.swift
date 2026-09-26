@@ -57,8 +57,8 @@ final class TimerWindowCoordinator {
     func showMainWindow() {
         if mainWindow == nil {
             mainWindow = makeWindow(
-                title: "Timer", size: CGSize(width: 640, height: 600),
-                view: TimerWindowView().environment(model).environment(sidebar).environment(self)
+                title: "Timer", size: CGSize(width: 1200, height: 860),
+                view: TimerWindowView().environment(model).environment(sidebar).environment(self).environment(recording)
             )
         }
         NSApplication.shared.activate()
@@ -103,9 +103,7 @@ final class TimerWindowCoordinator {
     func quit() { NSApplication.shared.terminate(nil) }
 
     func showRecordingWindow() {
-        selectedSettingsCategory = .recordings
-        showSettings()
-        settingsWindow?.deminiaturize(nil)
+        showMainWindow()
     }
 
     func shutdown() {
