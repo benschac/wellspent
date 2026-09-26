@@ -20,6 +20,12 @@ struct LocalCodexTransport: Sendable {
         let status: Status
     }
 
+    struct TelemetryPoll: Sendable {
+        let packet: CodexIntakeContract.Packet?
+        let pending: Int
+        let unsupported: Int
+    }
+
     private struct FreshRequest: Encodable {
         let version = 1
         let bindingID: String
@@ -77,6 +83,45 @@ struct LocalCodexTransport: Sendable {
 
     func acknowledge(_ packet: CodexIntakeContract.Packet) async throws {
         try await accepted(send(packet, path: "/v1/ack"))
+    }
+
+    func telemetrySupported(bindingID: UUID, key: Data) async throws -> Bool {
+        let data = try await send(
+            signed(
+                FreshRequest(bindingID: bindingID.uuidString.lowercased()), key: key,
+                domain: "telemetry-capabilities"), path: "/v2/capabilities")
+        let fields = try object(data, keys: ["capabilities"])
+        guard let values = fields["capabilities"] as? [String], values.count <= 16,
+            Set(values).count == values.count,
+            values.allSatisfy({ $0.range(of: "^[a-zA-Z0-9_-]{1,80}$", options: .regularExpression) != nil })
+        else {
+            throw Failure.invalidResponse
+        }
+        return values.contains("codex-telemetry-v1")
+    }
+
+    func pollTelemetry(bindingID: UUID, key: Data) async throws -> TelemetryPoll {
+        let data = try await send(
+            signed(
+                FreshRequest(bindingID: bindingID.uuidString.lowercased()), key: key,
+                domain: "telemetry-poll"), path: "/v2/poll")
+        let fields = try object(data, keys: ["packet", "pending", "unsupported"])
+        guard let pending = fields["pending"] as? Int, let unsupported = fields["unsupported"] as? Int,
+            pending >= 0, unsupported >= 0, unsupported <= pending
+        else { throw Failure.invalidResponse }
+        guard !(fields["packet"] is NSNull) else {
+            return .init(packet: nil, pending: pending, unsupported: unsupported)
+        }
+        guard let raw = fields["packet"] as? [String: Any], Set(raw.keys) == ["body", "mac"],
+            let body = raw["body"] as? String, let mac = raw["mac"] as? String,
+            let bytes = Data(base64Encoded: body), bytes.count <= 8192, bytes.base64EncodedString() == body,
+            let code = Data(base64Encoded: mac), code.count == 32, code.base64EncodedString() == mac
+        else { throw Failure.invalidResponse }
+        return .init(packet: .init(body: bytes, mac: code), pending: pending, unsupported: unsupported)
+    }
+
+    func acknowledgeTelemetry(_ packet: CodexIntakeContract.Packet) async throws {
+        try await accepted(send(packet, path: "/v2/ack"))
     }
 
     func reject(bindingID: UUID, eventID: UUID, bodyDigest: String, reason: String, key: Data) async throws {

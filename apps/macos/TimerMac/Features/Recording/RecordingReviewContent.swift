@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// A read-only projection of committed records. Rendering never performs IO or uploads.
+/// Committed evidence with separate, explicit review actions. Rendering never writes or uploads.
 struct RecordingReviewContent: View {
     let recording: RecordingSnapshot
 
@@ -30,6 +30,7 @@ struct RecordingReviewContent: View {
                 }
                 .font(.body).foregroundStyle(.secondary)
             }
+            RecordingTaskHistoryView(recordingID: recording.id)
             Divider()
             RecordingTimelineView(timeline: RecordingTimeline(recording: recording))
         }

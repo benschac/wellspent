@@ -3,6 +3,10 @@ import Testing
 
 @testable import TimerMac
 
+extension Tag {
+    @Tag static var networking: Self
+}
+
 struct LocalCodexTransportTests {
     @Test(arguments: [
         "http://localhost:1234", "http://127.0.0.2:1234", "http://[::1]:1234", "https://127.0.0.1:1234",
@@ -26,6 +30,37 @@ struct LocalCodexTransportTests {
         #expect(first.status.pending == 1)
         #expect(second.status.pending == 2)
         #expect(try await transport.status(bindingID: bindingID, key: Self.key).pending == 3)
+    }
+
+    @Test(.tags(.networking))
+    func negotiatesTelemetryAndKeepsOldHelperOnV1() async throws {
+        let modern = try Server(mode: "telemetry")
+        defer { modern.stop() }
+        let transport = try LocalCodexTransport(endpoint: modern.endpoint)
+        let id = UUID()
+        #expect(try await transport.telemetrySupported(bindingID: id, key: Self.key))
+        let telemetry = try await transport.pollTelemetry(bindingID: id, key: Self.key)
+        #expect(telemetry.packet == nil)
+        #expect(telemetry.pending == 1)
+        #expect(telemetry.unsupported == 1)
+        #expect(try await transport.poll(bindingID: id, key: Self.key).packet == nil)
+        let future = try Server(mode: "telemetryMixed")
+        defer { future.stop() }
+        #expect(
+            try await LocalCodexTransport(endpoint: future.endpoint)
+                .telemetrySupported(bindingID: id, key: Self.key))
+        let noMatch = try Server(mode: "telemetryOther")
+        defer { noMatch.stop() }
+        #expect(
+            try await LocalCodexTransport(endpoint: noMatch.endpoint)
+                .telemetrySupported(bindingID: id, key: Self.key) == false)
+        let legacy = try Server(mode: "legacy")
+        defer { legacy.stop() }
+        let older = try LocalCodexTransport(endpoint: legacy.endpoint)
+        await #expect(throws: LocalCodexTransport.Failure.http(400)) {
+            try await older.telemetrySupported(bindingID: id, key: Self.key)
+        }
+        #expect(try await older.poll(bindingID: id, key: Self.key).packet == nil)
     }
 
     @Test(arguments: [
@@ -135,7 +170,12 @@ struct LocalCodexTransportTests {
                 try {
                   const packet = JSON.parse(bytes);
                   const body = Buffer.from(packet.body, 'base64');
-                  const domain = req.url.slice('/v1/'.length);
+                  const domain = req.url.startsWith('/v2/')
+                    ? 'telemetry-' + req.url.slice('/v2/'.length)
+                    : req.url.slice('/v1/'.length);
+                  if (mode === 'legacy' && req.url.startsWith('/v2/')) {
+                    res.writeHead(400); return res.end('{}');
+                  }
                   const expected = createHmac('sha256', Buffer.alloc(32, 7))
                     .update(`wellspent-c3a-${domain}\0`).update(body).digest('base64');
                   const value = JSON.parse(body);
@@ -146,6 +186,18 @@ struct LocalCodexTransportTests {
                   const status = {pending: nonces.size, quarantined: 0, unassociated: 0, reasons: {}};
                   res.setHeader('Content-Type', 'application/json');
                   if (mode === 'silent') return;
+                  if (mode === 'telemetry' && domain === 'telemetry-capabilities') {
+                    return res.end(JSON.stringify({capabilities: ['codex-telemetry-v1']}));
+                  }
+                  if (mode === 'telemetryMixed' && domain === 'telemetry-capabilities') {
+                    return res.end(JSON.stringify({capabilities: ['future-v2', 'codex-telemetry-v1']}));
+                  }
+                  if (mode === 'telemetryOther' && domain === 'telemetry-capabilities') {
+                    return res.end(JSON.stringify({capabilities: ['future-v2']}));
+                  }
+                  if (mode === 'telemetry' && domain === 'telemetry-poll') {
+                    return res.end(JSON.stringify({packet: null, pending: 1, unsupported: 1}));
+                  }
                   if (mode === 'redirect') {
                     res.writeHead(302, {Location: `http://127.0.0.1:${server.address().port}/target`});
                     return res.end('{}');

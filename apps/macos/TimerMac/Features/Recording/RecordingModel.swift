@@ -13,6 +13,139 @@ final class RecordingModel {
     private(set) var errorMessage: String?
     private(set) var pendingEvent: RecordingEvent?
     var selectedID: UUID?
+    private(set) var taskAttribution = RecordingTaskAttribution()
+    private(set) var taskErrorMessage: String?
+    private(set) var tasksLoaded = false
+    private var pendingTaskAction: TaskAction?
+
+    private enum TaskAction {
+        case create(LocalTask)
+        case select(RecordingTaskSelection)
+        case correct(RecordingAttributionCommand)
+    }
+
+    var hasPendingTaskAction: Bool { pendingTaskAction != nil }
+    var canEditTasks: Bool { canAct && tasksLoaded && pendingTaskAction == nil }
+    var canSelectRecordingTask: Bool { canEditTasks && acceptingEvents && current?.activeIntervalID != nil }
+    var activeTaskTitle: String {
+        guard let current, let intervalID = current.activeIntervalID else {
+            return "Unassigned · select while recording"
+        }
+        return titleForTask(taskAttribution.selectedTaskID(recordingID: current.id, intervalID: intervalID))
+    }
+
+    func titleForTask(_ id: UUID?) -> String {
+        taskAttribution.tasks.first(where: { $0.id == id })?.title ?? "Unassigned"
+    }
+
+    func taskTitle(for event: RecordingEvent) -> String {
+        titleForTask(taskAttribution.taskID(for: event))
+    }
+
+    func assignmentTitle(_ assignment: RecordingTaskAssignment) -> String {
+        switch assignment {
+        case .task(let id): titleForTask(id)
+        case .unassigned: "Unassigned"
+        case .automatic: "Original assignment"
+        }
+    }
+
+    func createRecordingTask(title: String) {
+        guard canEditTasks else { return }
+        let task = LocalTask(
+            localScopeID: localScopeID, title: title.trimmingCharacters(in: .whitespacesAndNewlines),
+            createdAt: stamp().wall)
+        pendingTaskAction = .create(task)
+        run { await self.commitTaskAction() }
+    }
+
+    func selectRecordingTask(_ taskID: UUID?) {
+        guard canSelectRecordingTask, let current, let intervalID = current.activeIntervalID else { return }
+        let selection = RecordingTaskSelection(
+            localScopeID: localScopeID, recordingID: current.id, intervalID: intervalID, taskID: taskID,
+            stamp: stamp(),
+            expectedHeadID: taskAttribution.selectionHead(recordingID: current.id, intervalID: intervalID)?.id)
+        pendingTaskAction = .select(selection)
+        run { await self.commitTaskAction() }
+    }
+
+    func correctRecordingTask(_ event: RecordingEvent, assignment: RecordingTaskAssignment) {
+        guard canEditTasks, event.localScopeID == localScopeID else { return }
+        let command = RecordingAttributionCommand(
+            localScopeID: localScopeID, recordingID: event.recordingID, eventID: event.id,
+            expectedHeadID: taskAttribution.head(eventID: event.id)?.id, assignment: assignment, createdAt: stamp().wall
+        )
+        pendingTaskAction = .correct(command)
+        run { await self.commitTaskAction() }
+    }
+
+    func undoRecordingTask(_ operation: RecordingAttributionOperation) {
+        guard canEditTasks else { return }
+        pendingTaskAction = .correct(taskAttribution.undoCommand(for: operation, at: stamp().wall))
+        run { await self.commitTaskAction() }
+    }
+
+    func retryTaskAction() {
+        guard canAct else { return }
+        run {
+            if self.pendingTaskAction != nil {
+                await self.commitTaskAction()
+            } else {
+                await self.reloadTaskAttribution()
+                await self.drainTaskCaptureQueue()
+            }
+        }
+    }
+
+    func discardTaskAction() {
+        guard canAct else { return }
+        pendingTaskAction = nil
+        run {
+            await self.reloadTaskAttribution()
+            await self.drainTaskCaptureQueue()
+        }
+    }
+
+    private func reloadTaskAttribution() async {
+        do {
+            taskAttribution = try await repository.loadTaskAttribution(localScopeID: localScopeID)
+            tasksLoaded = true
+            taskErrorMessage = nil
+        } catch {
+            tasksLoaded = false
+            taskErrorMessage = error.localizedDescription
+        }
+    }
+
+    private func commitTaskAction() async {
+        guard let action = pendingTaskAction else { return }
+        do {
+            switch action {
+            case .create(let task): _ = try await repository.createTask(task)
+            case .select(let selection): _ = try await repository.selectTask(selection)
+            case .correct(let command): _ = try await repository.correctTaskAttribution(command)
+            }
+            taskAttribution = try await repository.loadTaskAttribution(localScopeID: localScopeID)
+            tasksLoaded = true
+            pendingTaskAction = nil
+            taskErrorMessage = nil
+        } catch {
+            // Keep the exact command, including its expected head, for an idempotent retry.
+            // A refreshed head is never silently substituted into the user's failed command.
+            let message = error.localizedDescription
+            await reloadTaskAttribution()
+            taskErrorMessage = message
+        }
+        await drainTaskCaptureQueue()
+    }
+
+    private func drainTaskCaptureQueue() async {
+        // Capture can enqueue foreground events or pause while the repository is awaiting IO.
+        if !queuedEvents.isEmpty {
+            pendingEvent = queuedEvents.removeFirst()
+            await commitPending()
+        }
+    }
 
     @ObservationIgnored private let repository: any RecordingRepository
     @ObservationIgnored private let stamp: @MainActor () -> RecordingEvent.Stamp
@@ -159,6 +292,7 @@ final class RecordingModel {
             do {
                 try await self.repository.delete(recording.id, localScopeID: self.localScopeID)
                 self.recordings.removeAll { $0.id == recording.id }
+                await self.reloadTaskAttribution()
                 if self.selectedID == recording.id { self.selectedID = self.recordings.first?.id }
                 self.errorMessage = nil
             } catch {
@@ -238,6 +372,19 @@ final class RecordingModel {
         }
     }
 
+    func receiveLocalCodexTelemetry(
+        _ packet: CodexIntakeContract.Packet, bindingID: UUID,
+        acknowledge: (@MainActor (CodexIntakeContract.Packet) async throws -> Void)? = nil
+    ) async throws -> CodexIntakeContract.Packet {
+        try await codexAction {
+            let ack = try await self.repository.receiveCodexTelemetry(
+                packet, bindingID: bindingID, stamp: self.stamp())
+            try Task.checkCancellation()
+            try await acknowledge?(ack)
+            return ack
+        }
+    }
+
     var activeHarnessInterval: LocalHarnessContract.Active? {
         guard canAct, acceptingEvents, errorMessage == nil, let current,
             let intervalID = current.activeIntervalID
@@ -304,9 +451,14 @@ final class RecordingModel {
 
     /// Scope changes never retarget a queued action. Finish the old scope before switching.
     func switchScope(to scope: String) async -> Bool {
-        guard canAct, current == nil, !scope.isEmpty, scope.utf8.count <= 200 else { return false }
+        guard canAct, pendingTaskAction == nil, current == nil, !scope.isEmpty, scope.utf8.count <= 200 else {
+            return false
+        }
         localScopeID = scope
         recordings = []
+        taskAttribution = RecordingTaskAttribution()
+        tasksLoaded = false
+        taskErrorMessage = nil
         selectedID = nil
         isLoaded = false
         load()
@@ -317,6 +469,8 @@ final class RecordingModel {
     /// Ordinary Quit is refused if a pending boundary cannot be saved. Crash recovery is separate.
     func shutdown() async -> Bool {
         guard !isClosed else { return true }
+        // Resolve or explicitly dismiss an unconfirmed review action before stopping capture services.
+        guard pendingTaskAction == nil else { return false }
         isShuttingDown = true
         acceptingEvents = false
         await harness.stop()
@@ -394,6 +548,7 @@ final class RecordingModel {
                 pendingEvent = nil
             }
             recordings = try await repository.load().filter { $0.localScopeID == localScopeID }
+            await reloadTaskAttribution()
             isLoaded = true
             needsRecovery = false
             errorMessage = nil

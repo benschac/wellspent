@@ -21,6 +21,7 @@ struct RecordingWindowView: View {
                 Button("Connections", systemImage: "link") { showingConnections = true }
                     .help("Manage Codex notes and local activity pairing")
             }
+            RecordingTaskControlsView()
             Divider()
             HStack(alignment: .top, spacing: 16) {
                 List(selection: $model.selectedID) {

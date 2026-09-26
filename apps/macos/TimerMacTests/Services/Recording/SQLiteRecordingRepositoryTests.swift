@@ -211,7 +211,7 @@ struct SQLiteRecordingRepositoryTests {
         #expect(try await reopened.load().isEmpty)
         _ = try await reopened.commit(fixture.event(.start))
         await reopened.close()
-        #expect(try fixture.sql("PRAGMA user_version") == [["1"]])
+        #expect(try fixture.sql("PRAGMA user_version") == [["3"]])
     }
 
     @Test

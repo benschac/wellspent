@@ -139,6 +139,34 @@ final class LocalCodexIntakeModel {
                             }
                         }
                     }
+                    do {
+                        if try await transport.telemetrySupported(bindingID: grant.binding.bindingID, key: grant.key) {
+                            let telemetry = try await transport.pollTelemetry(
+                                bindingID: grant.binding.bindingID, key: grant.key)
+                            if telemetry.unsupported > 0 {
+                                message +=
+                                    " \(telemetry.unsupported) unsupported telemetry packet(s) retained by helper; update both apps or inspect the local queue."
+                            }
+                            if let packet = telemetry.packet {
+                                guard recording.canAct else { return true }
+                                do {
+                                    _ = try await recording.receiveLocalCodexTelemetry(
+                                        packet, bindingID: grant.binding.bindingID
+                                    ) { ack in try await transport.acknowledgeTelemetry(ack) }
+                                    message += " Telemetry saved locally and acknowledged."
+                                } catch let failure as CodexTelemetryContract.Failure {
+                                    message +=
+                                        failure == .awaitingIntervalEnd
+                                        ? " Telemetry waiting for Pause or Finish."
+                                        : " Telemetry retained; \(failure.rawValue). Inspect the binding or update the helper."
+                                }
+                            }
+                        } else {
+                            message += " Helper has no compatible telemetry capability; v1 reports continue."
+                        }
+                    } catch LocalCodexTransport.Failure.http(400) {
+                        message += " Helper does not support telemetry; update helper when ready. v1 reports continue."
+                    }
                     messages.append(message)
                 } catch is CancellationError {
                     throw CancellationError()

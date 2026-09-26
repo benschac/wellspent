@@ -78,6 +78,9 @@ struct RecordingTimelineEventView: View {
                     )
                     .font(.body).foregroundStyle(.secondary)
                 }
+                if event.kind.isObservation {
+                    RecordingAttributionView(event: event)
+                }
                 DisclosureGroup("Details") {
                     VStack(alignment: .leading, spacing: 5) {
                         Text(entry.timeSource.label)
@@ -91,6 +94,7 @@ struct RecordingTimelineEventView: View {
                         }
                         if let agent = event.agentMetadata {
                             Text("Thread \(agent.metadata.threadID) · \(agent.metadata.kind)")
+                            Text("Model, reasoning effort and token usage are unavailable from this capture source.")
                         }
                         if event.workNote != nil {
                             Text("Explicitly submitted note; completion and focused time are unverified.")
