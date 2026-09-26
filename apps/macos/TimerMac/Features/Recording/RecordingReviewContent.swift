@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Committed evidence with separate, explicit review actions. Rendering never writes or uploads.
 struct RecordingReviewContent: View {
+    @Environment(RecordingModel.self) private var model
     let recording: RecordingSnapshot
 
     private var observationCount: Int { recording.events.filter { $0.kind.isObservation }.count }
@@ -25,14 +26,28 @@ struct RecordingReviewContent: View {
                         "\(recording.intervals.count) \(recording.intervals.count == 1 ? "interval" : "intervals")",
                         systemImage: "waveform.path")
                     Label(
-                        "\(observationCount) \(observationCount == 1 ? "observation" : "observations")",
+                        "\(observationCount) \(observationCount == 1 ? "recording observation" : "recording observations")",
                         systemImage: "square.stack")
                 }
                 .font(.body).foregroundStyle(.secondary)
             }
             RecordingTaskHistoryView(recordingID: recording.id)
             Divider()
-            RecordingTimelineView(timeline: RecordingTimeline(recording: recording))
+            if recording.status != .recording {
+                RecordingTelemetryReviewView(recording: recording)
+                Divider()
+            }
+            if recording.status == .recording {
+                ForEach(Array(Set(model.liveTelemetryWarnings.values)).sorted(), id: \.self) { warning in
+                    Label(warning, systemImage: "exclamationmark.triangle")
+                        .font(.callout).foregroundStyle(.secondary)
+                }
+                Text(
+                    "Codex activity appears here as it arrives. Eligible pending metadata is saved after Pause or Finish; missing usage remains unknown."
+                )
+                .font(.callout).foregroundStyle(.secondary)
+            }
+            RecordingTimelineView(timeline: RecordingTimeline(recording: recording), recordingID: recording.id)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

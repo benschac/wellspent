@@ -272,6 +272,131 @@ final class LocalHarnessRuntime {
         let error: String?
     }
 
+    struct TelemetryReaderStatus: Decodable, Sendable {
+        let enabled: Bool
+        let status: String
+        let candidates: [TelemetryCandidate]?
+        let sources: [TelemetrySource]?
+        let counts: [String: Int]?
+        let discoveryMode: String?
+        let loadedSessionCount: Int?
+        let inScopeSessionCount: Int?
+    }
+
+    struct TelemetryCandidate: Decodable, Sendable {
+        let sourceID: String
+        let threadID: String
+        let sessionID: String
+        let sourceVersion: String
+    }
+
+    struct TelemetrySource: Decodable, Sendable {
+        let sourceID: String
+        let bindingID: UUID?
+        let status: String
+        let enabled: Bool
+    }
+
+    struct TelemetryFailure: Error, LocalizedError {
+        let code: String
+        var errorDescription: String? { "Selected source: \(code). Check the selection and authorize again." }
+    }
+
+    private struct TelemetryResult: Decodable {
+        let version: Int
+        let id: UUID
+        let status: String
+        let error: String?
+        let reader: TelemetryReaderStatus?
+    }
+
+    func telemetryRunnerID() throws -> UUID { try heartbeat().runnerID }
+
+    /// A process-bound renewable lease; persisted bytes alone cannot authorize a new helper process.
+    func setDirectoryTelemetryPermit(authorizationID: UUID, runnerID: UUID, enabled: Bool) throws {
+        let fields: [String: Any] = [
+            "authorizationID": authorizationID.uuidString.lowercased(),
+            "runnerID": runnerID.uuidString.lowercased(), "enabled": enabled,
+            "expiresAt": CodexIntakeContract.timestamp(Date().addingTimeInterval(enabled ? 15 : 0)),
+        ]
+        try publishPrivate(try JSONSerialization.data(withJSONObject: fields), name: "telemetry-permit.json")
+    }
+
+    /// Synchronous boundary fence: a queued mailbox read must observe revocation before opening a source.
+    func setTelemetryPermit(authorizationID: UUID, bindingID: UUID, enabled: Bool) throws {
+        let fields: [String: Any] = [
+            "authorizationID": authorizationID.uuidString.lowercased(),
+            "bindingID": bindingID.uuidString.lowercased(), "enabled": enabled,
+        ]
+        try publishPrivate(try JSONSerialization.data(withJSONObject: fields), name: "telemetry-permit.json")
+    }
+
+    /// The terminal supervisor owns source access even in unsigned development builds.
+    /// This mailbox never launches a reader from the app's sandbox.
+    func telemetryCommand(id: UUID, action: String, payload: Data) async throws -> TelemetryReaderStatus {
+        try Task.checkCancellation()
+        let runner = try heartbeat()
+        if let existing = try? privateData("telemetry-request.json"),
+            let request = try? JSONSerialization.jsonObject(with: existing) as? [String: Any],
+            request["runnerID"] as? String == runner.runnerID.uuidString.lowercased(),
+            let issued = request["requestedAt"] as? String,
+            let requestedAt = try? CodexIntakeContract.date(issued),
+            Date().timeIntervalSince(requestedAt) < 15
+        {
+            throw Failure.devRequestBusy
+        }
+        let fields: [String: Any] = [
+            "version": 1, "id": id.uuidString.lowercased(), "runnerID": runner.runnerID.uuidString.lowercased(),
+            "action": action, "payload": try JSONSerialization.jsonObject(with: payload, options: .fragmentsAllowed),
+            "requestedAt": CodexIntakeContract.timestamp(Date()),
+        ]
+        try publishPrivate(try JSONSerialization.data(withJSONObject: fields), name: "telemetry-request.json")
+        defer {
+            // Only remove our request; never disturb another client's pending command.
+            if let data = try? privateData("telemetry-request.json"),
+                let value = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                value["id"] as? String == id.uuidString.lowercased(),
+                let directory = try? privateDirectory()
+            {
+                _ = unlinkat(directory, "telemetry-request.json", 0)
+                close(directory)
+            }
+        }
+        let started = ContinuousClock.now
+        while started.duration(to: .now) < .seconds(15) {
+            try Task.checkCancellation()
+            guard try heartbeat().runnerID == runner.runnerID else { throw Failure.devServerUnavailable }
+            if let result: TelemetryResult = try optionalPrivateValue(
+                "telemetry-result.json", keys: ["version", "id", "status", "error", "reader"]), result.id == id
+            {
+                let reasons: Set<String> = [
+                    "api_unavailable", "api_timeout", "api_protocol", "api_session_limit",
+                    "api_response_limit", "api_source_missing",
+                    "invalid_request", "authorization_required", "binding_mismatch", "invalid_byte_limit",
+                    "unsupported_source_version", "invalid_session", "invalid_eof", "invalid_window",
+                    "eof_changed", "eof_partial_line", "pause_or_recover_first", "fresh_binding_required",
+                    "source_path", "source_permission", "source_replaced", "source_unavailable",
+                    "binding_conflict", "sender_mismatch", "endpoint_mismatch", "pairing_unavailable",
+                    "storage_busy", "invalid_binding", "reader_unavailable",
+                    "directory_path", "directory_permission", "directory_unavailable", "directory_replaced",
+                    "discovery_limit", "source_limit", "byte_limit", "lease_expired", "window_ended",
+                    "unknown_source", "identity_unavailable", "unsupported_version", "source_identity",
+                    "invalid_source_header", "header_limit", "directory_limit", "overall_byte_limit",
+                    "fresh_authorization_required", "source_not_found", "source_changed", "expired",
+                ]
+                if result.version == 1, result.status == "error", let code = result.error, reasons.contains(code) {
+                    throw TelemetryFailure(code: code)
+                }
+                guard result.version == 1, result.status == "ok", result.error == nil,
+                    let reader = result.reader
+                else { throw Failure.commandFailed }
+                return reader
+            }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        throw Failure.timedOut
+    }
+
     private func validScope(_ scope: String) -> Bool {
         !scope.isEmpty && scope.utf8.count <= 200
             && !scope.unicodeScalars.contains { $0.value < 32 || $0.value == 127 }

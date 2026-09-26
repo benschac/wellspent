@@ -24,6 +24,7 @@ import {
   remove,
   sync,
 } from "./local-helper.mjs";
+import { createTelemetrySupervisor } from "./telemetry-supervisor.mjs";
 
 export function defaultDevRoot(platform = process.platform, home = homedir()) {
   return platform === "darwin"
@@ -237,6 +238,12 @@ export async function startDevRunner({
     );
   }
   const lifetime = lock(guard, async () => {
+    const telemetry = await createTelemetrySupervisor(
+      root,
+      runnerID,
+      clock,
+      resolveCodex,
+    );
     await heartbeat();
     // This task never takes the connection lock, so Connect cannot starve native
     // availability checks while Codex is installing the MCP entry.
@@ -256,6 +263,7 @@ export async function startDevRunner({
       while (!stopped) {
         try {
           await processRequest();
+          await telemetry.processRequest();
           await reconcile();
         } catch (error) {
           report(safeError(error));
@@ -268,7 +276,11 @@ export async function startDevRunner({
         await heartbeatTask;
       } finally {
         try {
-          await closeOwned(ownedServer);
+          try {
+            await telemetry.stop();
+          } finally {
+            await closeOwned(ownedServer);
+          }
         } finally {
           // Remove only our availability marker. A killed process instead ages
           // out after the native five-second heartbeat freshness window.

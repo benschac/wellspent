@@ -344,3 +344,69 @@ test("actual CLI starts privately without registration and SIGTERM removes its h
   assert.match(stdout, /AI Harness dev runner ready/);
   assert.equal(stderr, "");
 });
+test("existing development runner owns telemetry mailbox without registration or source reads", async (t) => {
+  const f = await fixture(t);
+  const runner = await f.start();
+  const id = randomUUID();
+  await publish(
+    join(f.root, "telemetry-request.json"),
+    {
+      version: 1,
+      id,
+      runnerID: runner.runnerID,
+      action: "status",
+      payload: null,
+      requestedAt: new Date().toISOString(),
+    },
+    true,
+  );
+  const result = await eventually(async () => {
+    const value = await optional(join(f.root, "telemetry-result.json"));
+    return value?.id === id ? value : null;
+  });
+  assert.equal(result.status, "ok");
+  assert.deepEqual(result.reader, { enabled: false, status: "not_selected" });
+  assert.equal(f.calls.length, 0);
+});
+test("telemetry recovery failure cannot prevent existing harness registration and service", async (t) => {
+  const f = await fixture(t);
+  const selected = join(f.root, "telemetry", "selected-reader");
+  await mkdir(selected, { recursive: true, mode: 0o700 });
+  await publish(join(selected, "state.json"), {
+    version: 1,
+    active: true,
+    status: "selected",
+    cursor: 0,
+    gaps: 0,
+    counts: {},
+    journal: { key: "retained", signature: "synthetic" },
+  });
+  const runner = await f.start();
+  const connected = await f.request(runner);
+  assert.equal((await f.result(connected.id)).status, "ok");
+  assert.equal(f.servers.length, 1);
+  const id = randomUUID();
+  await publish(
+    join(f.root, "telemetry-request.json"),
+    {
+      version: 1,
+      id,
+      runnerID: runner.runnerID,
+      action: "status",
+      payload: null,
+      requestedAt: new Date().toISOString(),
+    },
+    true,
+  );
+  const result = await eventually(async () => {
+    const value = await optional(join(f.root, "telemetry-result.json"));
+    return value?.id === id ? value : null;
+  });
+  assert.equal(result.status, "error");
+  assert.equal(result.reader.enabled, false);
+  assert.equal(result.reader.pendingPublication, true);
+  assert.equal(
+    (await read(join(selected, "state.json"))).journal.key,
+    "retained",
+  );
+});

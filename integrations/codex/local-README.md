@@ -72,19 +72,20 @@ Explicit cleanup deletes the selected local category:
 ```sh
 node integrations/codex/local-helper.mjs cleanup quarantine
 node integrations/codex/local-helper.mjs cleanup receipts
+node integrations/codex/local-helper.mjs cleanup telemetry-receipts
 node integrations/codex/local-helper.mjs cleanup counts
 node integrations/codex/local-helper.mjs cleanup temporary
 ```
 
-Receipt cleanup permits a repeated hook to be queued again; the native immutable event identity still prevents duplicate recording evidence. Temporary cleanup removes unpublished temporary files and dead-process lock candidates, never published pending packets. Before retiring a binding, let pending reports finish delivery and review/clean up its quarantine. Then **revoke that binding in the native app** and explicitly run:
+Receipt cleanup permits a repeated hook or telemetry observation to be queued again; the native immutable event identity still prevents duplicate recording evidence. Telemetry receipt cleanup leaves pending observations intact and can free the 10,000-receipt limit after delivery. Temporary cleanup removes unpublished temporary files and dead-process lock candidates, never published pending packets. Before retiring a binding, let pending reports finish delivery and review/clean up its quarantine. Then **revoke that binding in the native app** and explicitly run:
 
 ```sh
 node integrations/codex/local-helper.mjs retire BINDING_UUID
 ```
 
-Retirement refuses a binding with any pending or quarantined packet. It never deletes pending reports; revoking a binding that still has pending reports intentionally leaves those reports retained for explicit owner handling. It removes only the selected key bundle, preserving the sender identity, other bindings and content-free receipts. Retire unused bindings to stay below the 128-binding limit. After all bindings are retired, a subsequent pairing can select a new endpoint while retaining the sender ID. Retirement does not itself revoke the native grant. Immutable setup rejects attempts to change an existing binding's key, scope or association.
+Retirement refuses a binding with any pending or quarantined packet. It never deletes pending reports; revoking a binding that still has pending reports intentionally leaves those reports retained for explicit owner handling. It removes only the selected key bundle, preserving the sender identity, other bindings and content-free receipts. Retire unused manual bindings to stay below the 128-binding limit. Automatic capture retires stopped bindings after their queues drain, including on a later enrollment if delivery finishes after Stop. After all bindings are retired, a subsequent pairing can select a new endpoint while retaining the sender ID. Retirement does not itself revoke the native grant. Immutable setup rejects attempts to change an existing binding's key, scope or association.
 
-Binding keys remain private in the helper root until explicitly retired by its owner. Native revocation/deletion stops acceptance independently of helper retention. Retention has bounded counts, not automatic expiry; removing the entire root is a separate explicit destructive action.
+Manual binding keys remain private in the helper root until explicitly retired by their owner; stopped automatic binding keys remain until their queues drain. Native revocation/deletion stops acceptance independently of helper retention. Retention has bounded counts; removing the entire root is a separate explicit destructive action.
 
 Allowed metadata is opaque IDs, hook/tool names, reported result, hook receipt time and an explicit unknown occurrence time. Prompts, prose, arguments, output, cwd, transcript paths, URLs and tokens are excluded. “Reported success” does not establish human focused time or verified completion. Local privileged access or stolen pairing keys are outside this trust boundary.
 
@@ -95,3 +96,92 @@ node --test integrations/codex/local-helper.test.mjs
 ```
 
 Tests use synthetic input and disposable private directories, real loopback HTTP and helper subprocess kills. They do not install hooks, launch a signed app, read private transcripts, or submit remote data. Live selected-session acceptance is tracked in `docs/design/2026-09-13-c3b-local-codex-intake.md`.
+
+## Explicitly selected telemetry source (disabled by default)
+
+The separate `selected-telemetry-reader.mjs` command can read one explicitly
+selected Codex 0.157.1 file from an exact EOF. `serve`, hooks and native launch do
+not enable it. Obtain a fresh file/window/output/retention authorization before
+using a real session; prior live checks grant no continuing access.
+
+Commands take an explicit private helper root (with an imported native pairing):
+
+```sh
+node integrations/codex/selected-telemetry-reader.mjs /absolute/private/helper-root select < selection.json
+node integrations/codex/selected-telemetry-reader.mjs /absolute/private/helper-root read
+node integrations/codex/selected-telemetry-reader.mjs /absolute/private/helper-root status
+node integrations/codex/selected-telemetry-reader.mjs /absolute/private/helper-root pause
+node integrations/codex/selected-telemetry-reader.mjs /absolute/private/helper-root resume < new-selection.json
+```
+
+Selection JSON requires `filePath`, `eofOffset`, `bindingID`, `sessionID`,
+`sourceVersion` (`0.157.1`) and `endsAt` (canonical UTC ISO, at most five minutes
+away). Supply values explicitly; never search history or derive a filename from
+an ID. Version/session are declared by the selection; no historical header is
+read. EOF must still match and end at a newline. Resume needs a fresh EOF and the
+appropriate explicit interval binding; excluded pause bytes appear as a gap.
+
+Each `read` does at most 256 KiB / 64 complete records, with a 64 KiB line limit.
+Partial lines wait. Status reports bounded-read/partial/error states, counters,
+gaps and publication recovery. A new command process records a restart gap;
+there is no background watcher. Expiry/pause prevents new source reads, while
+already-journaled metadata can finish durable publication. The native app still
+controls grant/interval admission and ACKs. The reader never writes SQLite.
+
+State and allowlisted observations persist privately under `selected-reader`;
+normal v1 cleanup does not delete them. Do not manually delete a pending journal
+or receipt to clear an error: that discards recovery/deduplication evidence.
+Conflicts, source changes and limits require inspection and explicit reselection
+or retention decisions. See the [reader contract, synthetic checks and pending
+live proposal](../../docs/design/2026-09-26-c4-selected-source-reader.md).
+
+### Native opt-in selected telemetry
+
+The existing `bun run dev:harness` terminal supervisor now accepts explicit native
+telemetry requests through its private mailbox. In Timer, start recording, open
+**Connections → Advanced diagnostics — selected Codex source**, enter one exact path/session/thread,
+version-compatible current EOF and helper port, then **Authorize selected source**.
+The fixed native window is three minutes and 2 MiB, including boundary and anchor
+reads. No hook or MCP installation is needed. The supervisor imports the native
+binding into its private `telemetry` subdirectory and runs the original local
+helper HTTP server for queued delivery. Only explicit active native requests call
+the original reader; there is no background source watcher.
+
+Pause/Finish immediately revokes the private read permit. Queued observations can
+still drain through v2 and native commit-before-ACK. A restarted supervisor serves
+saved queues but has no source authorization. Explicit activation always requires
+a fresh native binding and current EOF. A source switch retains the original
+observation ledger and pending packet bytes. No telemetry gap is imported as a
+native observation. Existing v1 and MCP delivery stay independent.
+
+### Automatic capture inside an opted-in recording
+
+Root `bun run dev` already runs the same harness supervisor. In **Connections →
+Codex activity**, authorize a narrow session directory through the system picker.
+Enable **Include Codex activity**, then Start recording. No hook, per-instance path,
+ID, EOF, or pairing entry is needed. The native app issues a fresh grant for each
+discovered source and interval; the helper establishes its EOF after that grant.
+New-session startup, enrollment and pause gaps are excluded, not backfilled.
+
+`automatic-telemetry-reader.mjs` enumerates only the selected root and numeric date
+subdirectories to depth three: at most 512 entries per pass and 16 enrolled
+sources. It reads the first header in 256-byte chunks to a 64 KiB ceiling, retaining
+only identity/version plus a header integrity hash. Sources have independent
+`automatic-readers/<physical-identity-hash>` state, journals and observation
+ledgers. They share the original `telemetry-pending`, receipts, bindings and HTTP
+server. Each source has a 2 MiB read budget; an authorization has a 64 MiB overall
+budget and eight-hour ceiling. Existing queue/binding limits remain authoritative.
+
+Native renews a process-bound 15-second lease only during active opted-in consent.
+Expiry cannot be reversed by rewriting the old permit. Pause/Finish/Stop/revoke
+fence discovery and reads; eligible queued metadata may still commit afterward.
+Explicit Resume or Restart creates fresh bindings and EOF baselines. A helper
+restart requires fresh native authorization; app reopen stays inactive. Directory
+revoke removes setup, while the separate pairing revoke controls native admission.
+
+Unsupported headers, permission loss, replacement and exhausted limits are
+visible. A changed file is not silently enrolled as a replacement during the same
+authorization. No linked-session traversal, raw content retention, totals or task
+inference is added. Metadata and receipts persist locally until explicitly cleaned
+up; only drained automatic binding keys are retired. See the [automatic capture evidence](../../docs/design/2026-09-26-c4-automatic-session-capture.md)
+for synthetic HTTP/native results and remaining input/live acceptance.

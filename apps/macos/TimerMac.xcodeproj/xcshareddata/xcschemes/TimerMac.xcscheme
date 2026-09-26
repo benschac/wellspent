@@ -16,7 +16,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "A00000000000000000000007"
-               BuildableName = "TimerMac.app"
+               BuildableName = "WellSpent.app"
                BlueprintName = "TimerMac"
                ReferencedContainer = "container:TimerMac.xcodeproj">
             </BuildableReference>
@@ -58,7 +58,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "A00000000000000000000007"
-            BuildableName = "TimerMac.app"
+            BuildableName = "WellSpent.app"
             BlueprintName = "TimerMac"
             ReferencedContainer = "container:TimerMac.xcodeproj">
          </BuildableReference>
@@ -75,7 +75,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "A00000000000000000000007"
-            BuildableName = "TimerMac.app"
+            BuildableName = "WellSpent.app"
             BlueprintName = "TimerMac"
             ReferencedContainer = "container:TimerMac.xcodeproj">
          </BuildableReference>

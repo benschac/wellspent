@@ -102,18 +102,18 @@ actor SQLiteRecordingRepository: RecordingRepository {
         let result = try await access { db in
             try task.validate()
             let payload = try Self.reviewPayload(task)
-            if let row = try Row.fetchOne(
-                db, sql: "SELECT payload FROM local_tasks WHERE creation_command_id = ? OR id = ?",
-                arguments: [task.creationCommandID.uuidString, task.id.uuidString])
-            {
-                let original: String = row["payload"]
-                guard original == payload else { throw RecordingAttributionError.conflictingIdentity }
+            if let original = try LocalTaskRecord.where({
+                $0.creationCommandID.eq(task.creationCommandID.uuidString) || $0.id.eq(task.id.uuidString)
+            }).fetchOne(db) {
+                guard original.payload == payload else { throw RecordingAttributionError.conflictingIdentity }
                 return task
             }
             try checkpoint(.beforeWrite)
-            try db.execute(
-                sql: "INSERT INTO local_tasks (id, scope, creation_command_id, payload) VALUES (?, ?, ?, ?)",
-                arguments: [task.id.uuidString, task.localScopeID, task.creationCommandID.uuidString, payload])
+            try LocalTaskRecord.insert {
+                LocalTaskRecord(
+                    id: task.id.uuidString, scope: task.localScopeID,
+                    creationCommandID: task.creationCommandID.uuidString, payload: payload)
+            }.execute(db)
             try checkpoint(.taskWritten)
             return task
         }
@@ -211,26 +211,23 @@ actor SQLiteRecordingRepository: RecordingRepository {
     }
 
     private static func reviewRetry(_ db: Database, id: UUID, kind: String, payload: String) throws -> Int64? {
-        guard
-            let row = try Row.fetchOne(
-                db, sql: "SELECT sequence, kind, payload FROM task_review_operations WHERE command_id = ?",
-                arguments: [id.uuidString])
+        guard let original = try TaskReviewRecord.where({ $0.commandID.eq(id.uuidString) }).fetchOne(db)
         else { return nil }
-        let original: String = row["payload"]
-        let originalKind: String = row["kind"]
-        guard original == payload, originalKind == kind else { throw RecordingAttributionError.conflictingIdentity }
-        return row["sequence"]
+        guard original.payload == payload, original.kind == kind else {
+            throw RecordingAttributionError.conflictingIdentity
+        }
+        return original.sequence
     }
 
     private static func appendReview(
         _ db: Database, id: UUID, scope: String, recordingID: UUID,
         kind: String, payload: String
     ) throws -> Int64 {
-        try db.execute(
-            sql: """
-                INSERT INTO task_review_operations (command_id, scope, recording_id, kind, schema_version, payload)
-                VALUES (?, ?, ?, ?, 1, ?)
-                """, arguments: [id.uuidString, scope, recordingID.uuidString, kind, payload])
+        try TaskReviewRecord.insert {
+            ($0.commandID, $0.scope, $0.recordingID, $0.kind, $0.schemaVersion, $0.payload)
+        } values: {
+            (id.uuidString, scope, recordingID.uuidString, kind, 1, payload)
+        }.execute(db)
         return db.lastInsertedRowID
     }
 
@@ -242,15 +239,9 @@ actor SQLiteRecordingRepository: RecordingRepository {
 
     private static func taskAttribution(_ db: Database, scope: String) throws -> RecordingTaskAttribution {
         let decoder = JSONDecoder()
-        let tasks = try Row.fetchAll(
-            db, sql: "SELECT id, creation_command_id, payload FROM local_tasks WHERE scope = ? ORDER BY rowid",
-            arguments: [scope]
-        ).map { row in
-            let payload: String = row["payload"]
-            let task = try decoder.decode(LocalTask.self, from: Data(payload.utf8))
-            let id: String = row["id"]
-            let commandID: String = row["creation_command_id"]
-            guard task.id.uuidString == id, task.creationCommandID.uuidString == commandID,
+        let tasks = try LocalTaskRecord.where({ $0.scope.eq(scope) }).order(by: { $0.rowid }).fetchAll(db).map { row in
+            let task = try decoder.decode(LocalTask.self, from: Data(row.payload.utf8))
+            guard task.id.uuidString == row.id, task.creationCommandID.uuidString == row.creationCommandID,
                 task.localScopeID == scope
             else { throw RecordingError.invalidStore }
             try task.validate()
@@ -258,22 +249,13 @@ actor SQLiteRecordingRepository: RecordingRepository {
         }
         var selections: [RecordingTaskSelection] = []
         var operations: [RecordingAttributionOperation] = []
-        for row in try Row.fetchAll(
-            db, sql: "SELECT * FROM task_review_operations WHERE scope = ? ORDER BY sequence",
-            arguments: [scope])
-        {
-            let payload: String = row["payload"]
-            let kind: String = row["kind"]
-            let id: String = row["command_id"]
-            let recordingID: String = row["recording_id"]
-            let sequence: Int64 = row["sequence"]
-            let schemaVersion: Int = row["schema_version"]
-            guard schemaVersion == 1, sequence > 0,
-                let snapshot = try snapshot(db, id: recordingID), snapshot.localScopeID == scope
+        for row in try TaskReviewRecord.where({ $0.scope.eq(scope) }).order(by: { $0.sequence }).fetchAll(db) {
+            guard row.schemaVersion == 1, row.sequence > 0,
+                let snapshot = try snapshot(db, id: row.recordingID), snapshot.localScopeID == scope
             else { throw RecordingError.invalidStore }
-            if kind == "selection" {
-                var selection = try decoder.decode(RecordingTaskSelection.self, from: Data(payload.utf8))
-                guard selection.id.uuidString == id, selection.recordingID.uuidString == recordingID,
+            if row.kind == "selection" {
+                var selection = try decoder.decode(RecordingTaskSelection.self, from: Data(row.payload.utf8))
+                guard selection.id.uuidString == row.commandID, selection.recordingID.uuidString == row.recordingID,
                     selection.localScopeID == scope, selection.commitOrder == 0,
                     let interval = snapshot.intervals.first(where: { $0.id == selection.intervalID }),
                     selection.taskID == nil || tasks.contains(where: { $0.id == selection.taskID }),
@@ -289,11 +271,11 @@ actor SQLiteRecordingRepository: RecordingRepository {
                 guard head?.id == selection.expectedHeadID,
                     head.map({ selection.stamp.uptime > $0.stamp.uptime }) ?? true
                 else { throw RecordingError.invalidStore }
-                selection.commitOrder = sequence
+                selection.commitOrder = row.sequence
                 selections.append(selection)
-            } else if kind == "attribution" {
-                let command = try decoder.decode(RecordingAttributionCommand.self, from: Data(payload.utf8))
-                guard command.id.uuidString == id, command.recordingID.uuidString == recordingID,
+            } else if row.kind == "attribution" {
+                let command = try decoder.decode(RecordingAttributionCommand.self, from: Data(row.payload.utf8))
+                guard command.id.uuidString == row.commandID, command.recordingID.uuidString == row.recordingID,
                     command.localScopeID == scope, command.schemaVersion == 1,
                     let event = snapshot.events.first(where: { $0.id == command.eventID && $0.kind.isObservation }),
                     command.assignment.taskID == nil || tasks.contains(where: { $0.id == command.assignment.taskID }),
@@ -310,7 +292,7 @@ actor SQLiteRecordingRepository: RecordingRepository {
                 } else if command.assignment == .automatic && event.kind != .application {
                     throw RecordingError.invalidStore
                 }
-                operations.append(.init(command: command, commitOrder: sequence))
+                operations.append(.init(command: command, commitOrder: row.sequence))
             } else {
                 throw RecordingError.invalidStore
             }
@@ -337,12 +319,10 @@ actor SQLiteRecordingRepository: RecordingRepository {
             guard let record = try RecordingRecord.where({ $0.id.eq(recordingID.uuidString) }).fetchOne(db),
                 record.scope == localScopeID
             else { throw RecordingError.invalidStore }
-            try db.execute(
-                sql: "UPDATE codex_grants SET revoked = 1 WHERE recording_id = ?", arguments: [recordingID.uuidString])
-            try db.execute(
-                sql: "DELETE FROM task_review_operations WHERE recording_id = ?", arguments: [recordingID.uuidString])
-            try db.execute(
-                sql: "DELETE FROM codex_telemetry WHERE recording_id = ?", arguments: [recordingID.uuidString])
+            try CodexGrantRecord.where { $0.recordingID.eq(recordingID.uuidString) }
+                .update { $0.revoked = 1 }.execute(db)
+            try TaskReviewRecord.where { $0.recordingID.eq(recordingID.uuidString) }.delete().execute(db)
+            try CodexTelemetryRecord.where { $0.recordingID.eq(recordingID.uuidString) }.delete().execute(db)
             try RecordingEventRecord.where { $0.recordingID.eq(recordingID.uuidString) }.delete().execute(db)
             try RecordingRecord.where { $0.id.eq(recordingID.uuidString) }.delete().execute(db)
         }
@@ -374,19 +354,20 @@ actor SQLiteRecordingRepository: RecordingRepository {
             guard let snapshot = try Self.snapshot(db, id: recordingID.uuidString),
                 snapshot.localScopeID == localScopeID, snapshot.activeIntervalID == intervalID,
                 let interval = snapshot.intervals.last, issuedAt >= interval.start.wall,
-                try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM codex_grants WHERE revoked = 0") ?? 0 < 256
+                (try CodexGrantRecord.where({ $0.revoked.eq(0) }).count().fetchOne(db) ?? 0) < 256
             else { throw CodexIntakeContract.Failure.invalidAssociation }
-            try db.execute(
-                sql: "INSERT INTO codex_grants (id, recording_id, payload, revoked) VALUES (?, ?, ?, 0)",
-                arguments: [grant.binding.bindingID.uuidString, recordingID.uuidString, payload])
+            try CodexGrantRecord.insert {
+                CodexGrantRecord(
+                    id: grant.binding.bindingID.uuidString, recordingID: recordingID.uuidString,
+                    payload: payload, revoked: 0)
+            }.execute(db)
         }
         return CodexIntakeContract.PairingBundle(grant: grant)
     }
 
     func codexGrants() async throws -> [CodexIntakeContract.Grant] {
         try await access { db in
-            try Row.fetchAll(db, sql: "SELECT id, recording_id, payload, revoked FROM codex_grants")
-                .map { try Self.codexGrant($0) }
+            try CodexGrantRecord.fetchAll(db).map { try Self.codexGrant($0) }
         }
     }
 
@@ -395,7 +376,8 @@ actor SQLiteRecordingRepository: RecordingRepository {
             guard try Self.codexGrant(db, id: bindingID) != nil else {
                 throw CodexIntakeContract.Failure.untrustedSender
             }
-            try db.execute(sql: "UPDATE codex_grants SET revoked = 1 WHERE id = ?", arguments: [bindingID.uuidString])
+            try CodexGrantRecord.where { $0.id.eq(bindingID.uuidString) }
+                .update { $0.revoked = 1 }.execute(db)
         }
     }
 
@@ -460,14 +442,11 @@ actor SQLiteRecordingRepository: RecordingRepository {
                 throw CodexTelemetryContract.Failure.untrustedSender
             }
             let metadata = try CodexTelemetryContract.decode(packet, grant: grant)
-            if let row = try Row.fetchOne(
-                db, sql: "SELECT body, receipt FROM codex_telemetry WHERE id = ?",
-                arguments: [metadata.observationID.uuidString])
+            if let original = try CodexTelemetryRecord.where({ $0.id.eq(metadata.observationID.uuidString) })
+                .fetchOne(db)
             {
-                let original: Data = row["body"]
-                guard original == packet.body else { throw CodexTelemetryContract.Failure.identityConflict }
-                let saved: Data = row["receipt"]
-                return (saved, grant.key)
+                guard original.body == packet.body else { throw CodexTelemetryContract.Failure.identityConflict }
+                return (original.receipt, grant.key)
             }
             let source = try CodexIntakeContract.date(metadata.sourceWrittenAt)
             let helper = try CodexIntakeContract.date(metadata.helperReceivedAt)
@@ -491,14 +470,12 @@ actor SQLiteRecordingRepository: RecordingRepository {
             encoder.outputFormatting = [.sortedKeys]
             let body = try encoder.encode(receipt)
             try checkpoint(.beforeWrite)
-            try db.execute(
-                sql:
-                    "INSERT INTO codex_telemetry (id, binding_id, recording_id, scope, kind, body, receipt) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                arguments: [
-                    metadata.observationID.uuidString, bindingID.uuidString,
-                    metadata.recordingID.uuidString, metadata.localScopeID, metadata.kind,
-                    packet.body, body,
-                ])
+            try CodexTelemetryRecord.insert {
+                CodexTelemetryRecord(
+                    id: metadata.observationID.uuidString, bindingID: bindingID.uuidString,
+                    recordingID: metadata.recordingID.uuidString, scope: metadata.localScopeID,
+                    kind: metadata.kind, body: packet.body, receipt: body)
+            }.execute(db)
             try checkpoint(.telemetryWritten)
             return (body, grant.key)
         }
@@ -508,44 +485,53 @@ actor SQLiteRecordingRepository: RecordingRepository {
 
     func loadCodexTelemetry(localScopeID: String) async throws -> [CodexTelemetryContract.Metadata] {
         try await access { db in
-            try Row.fetchAll(
-                db, sql: "SELECT id, body FROM codex_telemetry WHERE scope = ? ORDER BY rowid",
-                arguments: [localScopeID]
-            )
-            .map { row in
-                let id: String = row["id"]
-                let body: Data = row["body"]
-                let metadata = try CodexTelemetryContract.parse(body)
-                guard metadata.observationID.uuidString == id else { throw RecordingError.invalidStore }
-                return metadata
-            }
+            try CodexTelemetryRecord.where({ $0.scope.eq(localScopeID) }).order(by: { $0.rowid }).fetchAll(db)
+                .map { row in
+                    let metadata = try CodexTelemetryContract.parse(row.body)
+                    guard metadata.observationID.uuidString == row.id else { throw RecordingError.invalidStore }
+                    return metadata
+                }
+        }
+    }
+
+    func loadCodexTelemetryReview(localScopeID: String, recordingID: UUID, intervalID: UUID) async throws
+        -> [RecordingTelemetryObservation]
+    {
+        try await access { db in
+            let rows = try CodexTelemetryRecord.where {
+                $0.scope.eq(localScopeID) && $0.recordingID.eq(recordingID.uuidString)
+            }.fetchAll(db)
+            return try rows.map { row in
+                let observation = try RecordingTelemetryObservation(body: row.body, receipt: row.receipt)
+                guard observation.id.uuidString == row.id,
+                    observation.metadata.localScopeID == localScopeID,
+                    observation.metadata.recordingID == recordingID
+                else { throw RecordingError.invalidStore }
+                return observation
+            }.filter { $0.metadata.intervalID == intervalID }
+                .sorted {
+                    if $0.sourceWrittenAt != $1.sourceWrittenAt { return $0.sourceWrittenAt < $1.sourceWrittenAt }
+                    return $0.id.uuidString < $1.id.uuidString
+                }
         }
     }
 
     private static func codexGrant(_ db: Database, id: UUID) throws -> CodexIntakeContract.Grant? {
-        guard
-            let row = try Row.fetchOne(
-                db,
-                sql: "SELECT id, recording_id, payload, revoked FROM codex_grants WHERE id = ?",
-                arguments: [id.uuidString])
+        guard let row = try CodexGrantRecord.where({ $0.id.eq(id.uuidString) }).fetchOne(db)
         else { return nil }
         return try codexGrant(row)
     }
 
-    private static func codexGrant(_ row: Row) throws -> CodexIntakeContract.Grant {
-        let payload: Data = row["payload"]
-        let id: String = row["id"]
-        let recordingID: String = row["recording_id"]
-        let revoked: Int = row["revoked"]
-        var grant = try JSONDecoder().decode(CodexIntakeContract.Grant.self, from: payload)
-        guard grant.binding.bindingID.uuidString == id, grant.binding.recordingID.uuidString == recordingID,
-            grant.key.count == 32, grant.revoked == false, revoked == 0 || revoked == 1,
+    private static func codexGrant(_ row: CodexGrantRecord) throws -> CodexIntakeContract.Grant {
+        var grant = try JSONDecoder().decode(CodexIntakeContract.Grant.self, from: row.payload)
+        guard grant.binding.bindingID.uuidString == row.id, grant.binding.recordingID.uuidString == row.recordingID,
+            grant.key.count == 32, grant.revoked == false, row.revoked == 0 || row.revoked == 1,
             !grant.binding.localScopeID.isEmpty, grant.binding.localScopeID.utf8.count <= 200,
             CodexIntakeContract.validEndpoint(grant.endpoint),
             CodexIntakeContract.validID(grant.binding.senderID), CodexIntakeContract.validID(grant.binding.threadID),
             grant.acceptUntil.timeIntervalSince(grant.issuedAt) == 7 * 24 * 60 * 60
         else { throw RecordingError.invalidStore }
-        grant.revoked = revoked == 1
+        grant.revoked = row.revoked == 1
         return grant
     }
 
@@ -681,44 +667,39 @@ actor SQLiteRecordingRepository: RecordingRepository {
             }
         }
         migrator.registerMigration("local-task-attribution-v2") { db in
-            try db.execute(
-                sql: """
-                    CREATE TABLE local_tasks (
-                        id TEXT PRIMARY KEY NOT NULL,
-                        scope TEXT NOT NULL,
-                        creation_command_id TEXT UNIQUE NOT NULL,
-                        payload TEXT NOT NULL
-                    ) STRICT;
-                    CREATE TABLE task_review_operations (
-                        sequence INTEGER PRIMARY KEY AUTOINCREMENT,
-                        command_id TEXT UNIQUE NOT NULL,
-                        scope TEXT NOT NULL,
-                        recording_id TEXT NOT NULL REFERENCES recordings(id),
-                        kind TEXT NOT NULL CHECK(kind IN ('selection', 'attribution')),
-                        schema_version INTEGER NOT NULL CHECK(schema_version = 1),
-                        payload TEXT NOT NULL
-                    ) STRICT;
-                    CREATE INDEX task_review_recording ON task_review_operations(recording_id, sequence);
-                    CREATE INDEX task_review_scope ON task_review_operations(scope, sequence);
-                    PRAGMA user_version = 2;
-                    """)
+            try db.create(table: "local_tasks", options: .strict) { table in
+                table.column("id", .text).primaryKey().notNull()
+                table.column("scope", .text).notNull()
+                table.column("creation_command_id", .text).unique().notNull()
+                table.column("payload", .text).notNull()
+            }
+            try db.create(table: "task_review_operations", options: .strict) { table in
+                table.autoIncrementedPrimaryKey("sequence")
+                table.column("command_id", .text).unique().notNull()
+                table.column("scope", .text).notNull()
+                table.column("recording_id", .text).notNull().references("recordings", column: "id")
+                table.column("kind", .text).notNull().check { $0 == "selection" || $0 == "attribution" }
+                table.column("schema_version", .integer).notNull().check { $0 == 1 }
+                table.column("payload", .text).notNull()
+            }
+            try db.create(
+                index: "task_review_recording", on: "task_review_operations", columns: ["recording_id", "sequence"])
+            try db.create(index: "task_review_scope", on: "task_review_operations", columns: ["scope", "sequence"])
+            try db.execute(sql: "PRAGMA user_version = 2")
             try checkpoint(.taskMigrationWritten)
         }
         migrator.registerMigration("codex-telemetry-v3") { db in
-            try db.execute(
-                sql: """
-                    CREATE TABLE codex_telemetry (
-                        id TEXT PRIMARY KEY NOT NULL,
-                        binding_id TEXT NOT NULL REFERENCES codex_grants(id),
-                        recording_id TEXT NOT NULL REFERENCES recordings(id),
-                        scope TEXT NOT NULL,
-                        kind TEXT NOT NULL CHECK(kind IN ('turnConfiguration', 'responseUsage')),
-                        body BLOB NOT NULL,
-                        receipt BLOB NOT NULL
-                    ) STRICT;
-                    CREATE INDEX codex_telemetry_scope ON codex_telemetry(scope, recording_id);
-                    PRAGMA user_version = 3;
-                    """)
+            try db.create(table: "codex_telemetry", options: .strict) { table in
+                table.column("id", .text).primaryKey().notNull()
+                table.column("binding_id", .text).notNull().references("codex_grants", column: "id")
+                table.column("recording_id", .text).notNull().references("recordings", column: "id")
+                table.column("scope", .text).notNull()
+                table.column("kind", .text).notNull().check { $0 == "turnConfiguration" || $0 == "responseUsage" }
+                table.column("body", .blob).notNull()
+                table.column("receipt", .blob).notNull()
+            }
+            try db.create(index: "codex_telemetry_scope", on: "codex_telemetry", columns: ["scope", "recording_id"])
+            try db.execute(sql: "PRAGMA user_version = 3")
             try checkpoint(.telemetryMigrationWritten)
         }
         try FileManager.default.setAttributes(
@@ -736,23 +717,16 @@ actor SQLiteRecordingRepository: RecordingRepository {
             }
             let recordings = try snapshots(db)
             let scopes = Set(recordings.map(\.localScopeID))
-                .union(try String.fetchAll(db, sql: "SELECT DISTINCT scope FROM local_tasks"))
+                .union(try LocalTaskRecord.fetchAll(db).map(\.scope))
             for scope in scopes { _ = try taskAttribution(db, scope: scope) }
-            let telemetry = try Row.fetchAll(
-                db, sql: "SELECT id, scope, recording_id, kind, body, receipt FROM codex_telemetry")
+            let telemetry = try CodexTelemetryRecord.fetchAll(db)
             for row in telemetry {
-                let body: Data = row["body"]
-                let receipt: Data = row["receipt"]
-                let metadata = try CodexTelemetryContract.parse(body)
-                let saved = try JSONDecoder().decode(CodexTelemetryContract.Receipt.self, from: receipt)
-                let id: String = row["id"]
-                let scope: String = row["scope"]
-                let recording: String = row["recording_id"]
-                let kind: String = row["kind"]
-                guard metadata.observationID.uuidString == id, metadata.localScopeID == scope,
-                    metadata.recordingID.uuidString == recording, metadata.kind == kind,
+                let metadata = try CodexTelemetryContract.parse(row.body)
+                let saved = try JSONDecoder().decode(CodexTelemetryContract.Receipt.self, from: row.receipt)
+                guard metadata.observationID.uuidString == row.id, metadata.localScopeID == row.scope,
+                    metadata.recordingID.uuidString == row.recordingID, metadata.kind == row.kind,
                     saved.observationID == metadata.observationID,
-                    saved.bodyDigest == CodexIntakeContract.digest(body)
+                    saved.bodyDigest == CodexIntakeContract.digest(row.body)
                 else { throw RecordingError.invalidStore }
             }
         }

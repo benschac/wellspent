@@ -1,4 +1,4 @@
-# Timer for macOS
+# WellSpent for macOS
 
 A native SwiftUI/AppKit floating sidebar and menu-bar projection of the repository's
 authoritative timer state. The existing Tauri desktop app remains available in
@@ -12,7 +12,7 @@ authoritative timer state. The existing Tauri desktop app remains available in
    display. It appears in the Dock and app switcher. Its icon-only menu-bar item
    reopens the main window without duplicating the running time. The main window
    retains Focus, Local Recordings, settings, and floating-widget controls. You can also run
-   `.derivedData/Build/Products/Debug/TimerMac.app` after a package build.
+   `.derivedData/Build/Products/Debug/WellSpent.app` after a package build.
 3. Open Settings from the sidebar gear or the app's Settings menu to change the API
    URL. The default is `http://localhost:3001`.
 
@@ -126,7 +126,7 @@ are separate acceptance checks.
   while paused, and uses a one-second cadence with Reduce Motion enabled.
 - Settings contains reset, an explicit Open Timer Window button,
   magnetic-edge and position-lock toggles, and connection configuration.
-  The icon-only menu-bar item opens the normal Timer app window; the running time
+  The icon-only menu-bar item opens the normal WellSpent app window; the running time
   remains on the floating widget instead of being duplicated in the menu bar.
 - Placement and visibility are remembered across launches. Position is stored
   relative to the display's usable area so resolution changes remain safe.

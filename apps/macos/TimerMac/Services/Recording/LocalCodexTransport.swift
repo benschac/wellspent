@@ -26,6 +26,30 @@ struct LocalCodexTransport: Sendable {
         let unsupported: Int
     }
 
+    struct TelemetryPreview: Sendable {
+        let packets: [CodexIntakeContract.Packet]
+        let nextCursor: String?
+    }
+
+    private struct PreviewRequest: Encodable {
+        let version = 1
+        let bindingID: String
+        let nonce = UUID().uuidString.lowercased()
+        let issuedAt = CodexIntakeContract.timestamp(Date())
+        let cursor: String?
+
+        enum CodingKeys: String, CodingKey { case version, bindingID, nonce, issuedAt, cursor }
+
+        func encode(to encoder: Encoder) throws {
+            var values = encoder.container(keyedBy: CodingKeys.self)
+            try values.encode(version, forKey: .version)
+            try values.encode(bindingID, forKey: .bindingID)
+            try values.encode(nonce, forKey: .nonce)
+            try values.encode(issuedAt, forKey: .issuedAt)
+            try values.encode(cursor, forKey: .cursor)
+        }
+    }
+
     private struct FreshRequest: Encodable {
         let version = 1
         let bindingID: String
@@ -45,6 +69,7 @@ struct LocalCodexTransport: Sendable {
 
     private let endpoint: URL
     static let responseLimit = 32 * 1024
+    static let previewResponseLimit = 128 * 1024
 
     init(endpoint: String) throws {
         guard endpoint.range(of: #"\Ahttp://127\.0\.0\.1:[1-9][0-9]{0,4}\z"#, options: .regularExpression) != nil,
@@ -86,6 +111,14 @@ struct LocalCodexTransport: Sendable {
     }
 
     func telemetrySupported(bindingID: UUID, key: Data) async throws -> Bool {
+        try await telemetryCapabilities(bindingID: bindingID, key: key).contains("codex-telemetry-v1")
+    }
+
+    func telemetryPreviewSupported(bindingID: UUID, key: Data) async throws -> Bool {
+        try await telemetryCapabilities(bindingID: bindingID, key: key).contains("codex-telemetry-preview-v1")
+    }
+
+    private func telemetryCapabilities(bindingID: UUID, key: Data) async throws -> [String] {
         let data = try await send(
             signed(
                 FreshRequest(bindingID: bindingID.uuidString.lowercased()), key: key,
@@ -97,7 +130,40 @@ struct LocalCodexTransport: Sendable {
         else {
             throw Failure.invalidResponse
         }
-        return values.contains("codex-telemetry-v1")
+        return values
+    }
+
+    func previewTelemetry(bindingID: UUID, key: Data, cursor: String? = nil) async throws -> TelemetryPreview {
+        if let cursor {
+            guard UUID(uuidString: cursor)?.uuidString.lowercased() == cursor else { throw Failure.invalidResponse }
+        }
+        let data = try await send(
+            signed(
+                PreviewRequest(bindingID: bindingID.uuidString.lowercased(), cursor: cursor), key: key,
+                domain: "telemetry-preview"), path: "/v2/preview", responseLimit: Self.previewResponseLimit)
+        let fields = try object(data, keys: ["packets", "nextCursor"])
+        guard let rawPackets = fields["packets"] as? [[String: Any]], rawPackets.count <= 16 else {
+            throw Failure.invalidResponse
+        }
+        let nextCursor: String?
+        if fields["nextCursor"] is NSNull {
+            nextCursor = nil
+        } else {
+            guard let value = fields["nextCursor"] as? String,
+                UUID(uuidString: value)?.uuidString.lowercased() == value,
+                cursor.map({ value > $0 }) ?? true, !rawPackets.isEmpty
+            else { throw Failure.invalidResponse }
+            nextCursor = value
+        }
+        let packets = try rawPackets.map { raw -> CodexIntakeContract.Packet in
+            guard Set(raw.keys) == ["body", "mac"],
+                let body = raw["body"] as? String, let mac = raw["mac"] as? String,
+                let bytes = Data(base64Encoded: body), bytes.count <= 8192, bytes.base64EncodedString() == body,
+                let code = Data(base64Encoded: mac), code.count == 32, code.base64EncodedString() == mac
+            else { throw Failure.invalidResponse }
+            return .init(body: bytes, mac: code)
+        }
+        return .init(packets: packets, nextCursor: nextCursor)
     }
 
     func pollTelemetry(bindingID: UUID, key: Data) async throws -> TelemetryPoll {
@@ -172,7 +238,9 @@ struct LocalCodexTransport: Sendable {
         }
     }
 
-    func send(_ packet: CodexIntakeContract.Packet, path: String) async throws -> Data {
+    func send(
+        _ packet: CodexIntakeContract.Packet, path: String, responseLimit: Int = Self.responseLimit
+    ) async throws -> Data {
         try Task.checkCancellation()
         let configuration = URLSessionConfiguration.ephemeral
         configuration.connectionProxyDictionary = [:]
@@ -198,11 +266,11 @@ struct LocalCodexTransport: Sendable {
         guard let response = response as? HTTPURLResponse, response.url == url else { throw Failure.invalidResponse }
         guard response.statusCode == 200 else { throw Failure.http(response.statusCode) }
         guard response.mimeType == "application/json" else { throw Failure.invalidResponse }
-        guard response.expectedContentLength <= Int64(Self.responseLimit) else { throw Failure.oversizedResponse }
+        guard response.expectedContentLength <= Int64(responseLimit) else { throw Failure.oversizedResponse }
         var data = Data()
         for try await byte in bytes {
             try Task.checkCancellation()
-            guard data.count < Self.responseLimit else { throw Failure.oversizedResponse }
+            guard data.count < responseLimit else { throw Failure.oversizedResponse }
             data.append(byte)
         }
         return data

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct RecordingTimelineIntervalView: View {
     let interval: RecordingTimeline.Interval
+    var recordingID: UUID? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -47,13 +48,17 @@ struct RecordingTimelineIntervalView: View {
             }
             .padding(.bottom, 12)
 
-            ForEach(interval.entries) { entry in
-                RecordingTimelineEventView(entry: entry, isLast: entry.id == interval.entries.last?.id)
-            }
-            if !interval.hasObservations {
-                Text("No app activity or notes in this interval.")
-                    .font(.callout).foregroundStyle(.secondary)
-                    .padding(.leading, 180)
+            if let recordingID {
+                RecordingTimelineCodexEventsView(interval: interval, recordingID: recordingID)
+            } else {
+                ForEach(interval.entries) { entry in
+                    RecordingTimelineEventView(entry: entry, isLast: entry.id == interval.entries.last?.id)
+                }
+                if !interval.hasObservations {
+                    Text("No app activity or notes in this interval.")
+                        .font(.callout).foregroundStyle(.secondary)
+                        .padding(.leading, 180)
+                }
             }
         }
         .accessibilityElement(children: .contain)

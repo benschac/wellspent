@@ -9,10 +9,67 @@ final class RecordingModel {
     private(set) var localScopeID: String
     private(set) var isLoaded = false
     private(set) var isBusy = false
-    private(set) var acceptingEvents = false
+    private(set) var acceptingEvents = false {
+        didSet {
+            if !acceptingEvents {
+                telemetry.stopReading()
+                liveTelemetryWarnings.removeAll()
+            }
+        }
+    }
     private(set) var errorMessage: String?
     private(set) var pendingEvent: RecordingEvent?
     var selectedID: UUID?
+    private(set) var telemetryRevision = 0
+    private(set) var liveTelemetryObservations: [UUID: PendingCodexTelemetryObservation] = [:]
+
+    private(set) var liveTelemetryWarnings: [UUID: String] = [:]
+
+    func setLiveTelemetryWarning(_ message: String?, bindingID: UUID) {
+        liveTelemetryWarnings[bindingID] = message
+    }
+
+    func discardLiveTelemetry(bindingIDs: Set<UUID>) {
+        liveTelemetryObservations = liveTelemetryObservations.filter {
+            !bindingIDs.contains($0.value.metadata.bindingID)
+        }
+        liveTelemetryWarnings = liveTelemetryWarnings.filter { !bindingIDs.contains($0.key) }
+    }
+
+    func canPreviewTelemetry(_ grant: CodexIntakeContract.Grant) -> Bool {
+        canAct && acceptingEvents && !grant.revoked && stamp().wall <= grant.acceptUntil
+            && grant.binding.localScopeID == localScopeID
+            && grant.binding.recordingID == current?.id
+            && grant.binding.intervalID == current?.activeIntervalID
+            && telemetry.canPreview(bindingID: grant.binding.bindingID)
+    }
+
+    /// Bounds apply across every session and interval in this process. The helper retains
+    /// the original queue when previews are full; ordinary durable delivery is unaffected.
+    func previewLocalCodexTelemetry(
+        _ packet: CodexIntakeContract.Packet,
+        grant: CodexIntakeContract.Grant
+    ) throws -> Bool {
+        guard canPreviewTelemetry(grant), let interval = current?.intervals.last,
+            interval.end == nil, !interval.interrupted
+        else { throw CodexTelemetryContract.Failure.invalidAssociation }
+        let observation = try PendingCodexTelemetryObservation(
+            packet: packet, grant: grant, intervalStart: interval.start.wall, now: stamp().wall)
+        if let existing = liveTelemetryObservations[observation.id] {
+            guard existing.exactBody == observation.exactBody else {
+                throw CodexTelemetryContract.Failure.identityConflict
+            }
+            return true
+        }
+        guard liveTelemetryObservations.count < 1000 else { return false }
+        liveTelemetryObservations[observation.id] = observation
+        return true
+    }
+
+    func loadTelemetryReview(recordingID: UUID, intervalID: UUID) async throws -> [RecordingTelemetryObservation] {
+        try await repository.loadCodexTelemetryReview(
+            localScopeID: localScopeID, recordingID: recordingID, intervalID: intervalID)
+    }
     private(set) var taskAttribution = RecordingTaskAttribution()
     private(set) var taskErrorMessage: String?
     private(set) var tasksLoaded = false
@@ -156,14 +213,21 @@ final class RecordingModel {
     @ObservationIgnored private var needsRecovery = true
     @ObservationIgnored var captureStateDidChange: (@MainActor () -> Void)?
     @ObservationIgnored lazy var codex = LocalCodexIntakeModel(recording: self)
+    @ObservationIgnored private let telemetryRuntime: LocalHarnessRuntime?
+    @ObservationIgnored private let telemetryPreferences: UserDefaults
+    @ObservationIgnored lazy var telemetry = LocalCodexTelemetryModel(
+        recording: self, runtime: telemetryRuntime ?? LocalHarnessRuntime(), preferences: telemetryPreferences)
     @ObservationIgnored lazy var harness = LocalHarnessModel(recording: self)
 
     init(
         repository: any RecordingRepository = SQLiteRecordingRepository(), localScopeID: String = "synthetic-default",
-        stamp: (@MainActor () -> RecordingEvent.Stamp)? = nil
+        stamp: (@MainActor () -> RecordingEvent.Stamp)? = nil,
+        telemetryRuntime: LocalHarnessRuntime? = nil, telemetryPreferences: UserDefaults = .standard
     ) {
         self.repository = repository
         self.localScopeID = localScopeID
+        self.telemetryRuntime = telemetryRuntime
+        self.telemetryPreferences = telemetryPreferences
         let processID = UUID()
         self.stamp = stamp ?? { .init(wall: .now, uptime: ProcessInfo.processInfo.systemUptime, processID: processID) }
     }
@@ -204,7 +268,36 @@ final class RecordingModel {
                 text: "Foreground application recording", captureConfiguration: .foregroundApplicationOnly))
     }
 
-    func pause() { transition(.pause, text: "Manual pause — explicit Resume required") }
+    /// A source boundary must not wait for a prior interval's delivery acknowledgement.
+    /// It is still committed by the existing operation queue, after the in-flight native write.
+    var canPauseRecording: Bool {
+        isLoaded && !isClosed && !isShuttingDown && !needsRecovery && errorMessage == nil
+            && pendingTaskAction == nil && acceptingEvents && current?.activeIntervalID != nil
+    }
+    var canFinishRecording: Bool {
+        canPauseRecording || (canAct && pendingTaskAction == nil && current != nil && !acceptingEvents)
+    }
+
+    func pause() {
+        if acceptingEvents {
+            closeActiveInterval(.pause, text: "Manual pause — explicit Resume required")
+        } else if canAct, pendingTaskAction == nil, current?.status == .suspended {
+            // Preserve the existing explicit suspended-to-paused transition without reopening coverage.
+            transition(.pause, text: "Manual pause — explicit Resume required")
+        }
+    }
+
+    private func closeActiveInterval(_ kind: RecordingEvent.Kind, text: String) {
+        guard canPauseRecording, let current, let intervalID = current.activeIntervalID else { return }
+        // This synchronous assignment publishes the helper fence before waiting for SQLite or ACK.
+        // It also disables another boundary while this exact event waits in the existing queue.
+        acceptingEvents = false
+        submit(
+            RecordingEvent(
+                localScopeID: localScopeID, recordingID: current.id, intervalID: intervalID,
+                kind: kind, stamp: stamp(), text: text))
+        captureStateDidChange?()
+    }
 
     /// Revoke intake at the click, retaining a boundary behind any in-flight start or observation.
     func pauseFromTimer() {
@@ -248,7 +341,14 @@ final class RecordingModel {
     }
 
     func resume() { transition(.resume, text: "Explicit resume — new interval") }
-    func finish() { transition(.finish, text: "Recording finished") }
+    func finish() {
+        guard canFinishRecording else { return }
+        if acceptingEvents {
+            closeActiveInterval(.finish, text: "Recording finished")
+        } else {
+            transition(.finish, text: "Recording finished")
+        }
+    }
     func simulateGap() { transition(.suspend, text: "Synthetic sleep / unavailable session — coverage gap") }
 
     func addApplicationSample() { addSample(.application, text: "Sample Editor became foreground") }
@@ -292,6 +392,9 @@ final class RecordingModel {
             do {
                 try await self.repository.delete(recording.id, localScopeID: self.localScopeID)
                 self.recordings.removeAll { $0.id == recording.id }
+                self.liveTelemetryObservations = self.liveTelemetryObservations.filter {
+                    $0.value.metadata.recordingID != recording.id
+                }
                 await self.reloadTaskAttribution()
                 if self.selectedID == recording.id { self.selectedID = self.recordings.first?.id }
                 self.errorMessage = nil
@@ -352,6 +455,8 @@ final class RecordingModel {
     }
 
     func revokeLocalCodex(bindingID: UUID) async throws {
+        telemetry.revoke(bindingID: bindingID)
+        liveTelemetryObservations = liveTelemetryObservations.filter { $0.value.metadata.bindingID != bindingID }
         try await codexAction { try await self.repository.revokeCodexGrant(bindingID: bindingID) }
     }
 
@@ -379,6 +484,9 @@ final class RecordingModel {
         try await codexAction {
             let ack = try await self.repository.receiveCodexTelemetry(
                 packet, bindingID: bindingID, stamp: self.stamp())
+            let metadata = try CodexTelemetryContract.parse(packet.body)
+            self.liveTelemetryObservations.removeValue(forKey: metadata.observationID)
+            self.telemetryRevision += 1
             try Task.checkCancellation()
             try await acknowledge?(ack)
             return ack
@@ -454,6 +562,7 @@ final class RecordingModel {
         guard canAct, pendingTaskAction == nil, current == nil, !scope.isEmpty, scope.utf8.count <= 200 else {
             return false
         }
+        liveTelemetryObservations.removeAll()
         localScopeID = scope
         recordings = []
         taskAttribution = RecordingTaskAttribution()
@@ -473,6 +582,7 @@ final class RecordingModel {
         guard pendingTaskAction == nil else { return false }
         isShuttingDown = true
         acceptingEvents = false
+        await telemetry.waitForIdle()
         await harness.stop()
         await codex.stop()
         await operation?.value
@@ -493,6 +603,7 @@ final class RecordingModel {
             }
         }
         await repository.close()
+        liveTelemetryObservations.removeAll()
         isClosed = true
         return true
     }
@@ -587,6 +698,10 @@ final class RecordingModel {
                         text: "Storage failure — coverage unknown; explicit Resume required")
                 } else {
                     acceptingEvents = saved.status == .recording && !isShuttingDown
+                    if saved.status == .finished { telemetry.automatic.recordingDidFinish() }
+                    if acceptingEvents && (event.kind == .start || event.kind == .resume) {
+                        telemetry.automatic.recordingDidActivate()
+                    }
                 }
             } catch {
                 acceptingEvents = false

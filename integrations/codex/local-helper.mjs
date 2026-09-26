@@ -33,6 +33,13 @@ import {
   validateBundle,
   verify,
 } from "./local-contract.mjs";
+import {
+  TELEMETRY_CAPABILITY,
+  TELEMETRY_PREVIEW_CAPABILITY,
+  TELEMETRY_PREVIEW_LIMITS,
+  telemetryFromSynthetic,
+  validateTelemetry,
+} from "./telemetry-contract.mjs";
 
 export const DEFAULT_ROOT = join(homedir(), ".config/wellspent/codex-local");
 export const LIMITS = Object.freeze({
@@ -52,7 +59,15 @@ const reasons = new Set([
   "queue_full",
   "pairing_unavailable",
 ]);
-const directories = ["bindings", "pending", "quarantine", "receipts", "nonces"];
+const directories = [
+  "bindings",
+  "pending",
+  "quarantine",
+  "receipts",
+  "nonces",
+  "telemetry-pending",
+  "telemetry-receipts",
+];
 export async function sync(directory) {
   const handle = await open(
     directory,
@@ -321,6 +336,39 @@ export async function capture(root, input, receivedAt = new Date()) {
     return { queued: true, eventID: id };
   });
 }
+// Metadata-only publication. The opt-in selected reader journals before invoking this; native admission remains authoritative.
+export async function enqueueTelemetry(
+  root,
+  bindingID,
+  input,
+  receivedAt = new Date(),
+) {
+  return lock(root, async () => {
+    const bundle = validateBundle(
+      await read(idPath(root, "bindings", bindingID)),
+    );
+    const value = telemetryFromSynthetic(input, bundle.binding, receivedAt);
+    if (Date.parse(value.sourceWrittenAt) > receivedAt.getTime())
+      throw new Error("invalidPacket");
+    const id = value.observationID;
+    const packet = sign(value, base64(bundle.key, 32), "telemetry");
+    const pendingPath = idPath(root, "telemetry-pending", id);
+    const prior = await optional(pendingPath);
+    const receipt = await optional(idPath(root, "telemetry-receipts", id));
+    if (prior || receipt) {
+      if (
+        (prior && bodyDigest(prior) !== bodyDigest(packet)) ||
+        (receipt && receipt.bodyDigest !== bodyDigest(packet))
+      )
+        throw new Error("identityConflict");
+      return { queued: !!prior, duplicate: true, observationID: id };
+    }
+    if ((await names(join(root, "telemetry-pending"))).length >= LIMITS.pending)
+      throw new Error("queue_full");
+    await publish(pendingPath, packet);
+    return { queued: true, observationID: id };
+  });
+}
 export async function status(root) {
   const counts = (await optional(join(root, "counts.json"))) ?? {};
   const safeCounts = {};
@@ -367,7 +415,9 @@ async function authenticateRequest(root, packet, domain, now) {
           "nonce",
           "issuedAt",
         ]
-      : ["version", "bindingID", "nonce", "issuedAt"];
+      : domain === "telemetry-preview"
+        ? ["version", "bindingID", "nonce", "issuedAt", "cursor"]
+        : ["version", "bindingID", "nonce", "issuedAt"];
   if (
     !exactKeys(value, keys) ||
     value.version !== 1 ||
@@ -376,6 +426,14 @@ async function authenticateRequest(root, packet, domain, now) {
     Math.abs(now.getTime() - Date.parse(value.issuedAt)) > 30000
   )
     throw new Error("stale_request");
+  if (
+    domain === "telemetry-preview" &&
+    value.cursor !== null &&
+    (typeof value.cursor !== "string" ||
+      !uuid.test(value.cursor) ||
+      value.cursor !== value.cursor.toLowerCase())
+  )
+    throw new Error("invalid_cursor");
   const noncePath = idPath(root, "nonces", value.nonce);
   if (await optional(noncePath)) throw new Error("replayed_request");
   for (const file of await names(join(root, "nonces"))) {
@@ -394,6 +452,146 @@ async function authenticateRequest(root, packet, domain, now) {
 }
 export async function dispatch(root, path, packet, now = new Date()) {
   return lock(root, async () => {
+    if (path === "/v2/ack") {
+      const receipt = decode(packet).value;
+      if (
+        !exactKeys(receipt, [
+          "observationID",
+          "bodyDigest",
+          "nativeReceivedAt",
+        ]) ||
+        !uuid.test(receipt.observationID) ||
+        !/^[0-9a-f]{64}$/.test(receipt.bodyDigest) ||
+        !canonicalTime(receipt.nativeReceivedAt)
+      )
+        throw new Error("invalidPacket");
+      const pendingPath = idPath(
+        root,
+        "telemetry-pending",
+        receipt.observationID,
+      );
+      const pending = await optional(pendingPath);
+      const prior = await optional(
+        idPath(root, "telemetry-receipts", receipt.observationID),
+      );
+      if (!pending && !prior) throw new Error("unknown_event");
+      const bindingID = pending
+        ? decode(pending).value.bindingID
+        : prior.bindingID;
+      const bundle = validateBundle(
+        await read(idPath(root, "bindings", bindingID)),
+      );
+      verify(packet, base64(bundle.key, 32), "telemetry-ack");
+      if (
+        (pending && bodyDigest(pending) !== receipt.bodyDigest) ||
+        (prior && prior.bodyDigest !== receipt.bodyDigest)
+      )
+        throw new Error("mismatched_ack");
+      if (!prior) {
+        if (
+          (await names(join(root, "telemetry-receipts"))).length >=
+          LIMITS.receipts
+        )
+          throw new Error("receipt_limit");
+        await publish(
+          idPath(root, "telemetry-receipts", receipt.observationID),
+          { bindingID, bodyDigest: receipt.bodyDigest },
+        );
+      }
+      if (pending) {
+        await remove(pendingPath);
+        await sync(join(root, "telemetry-pending"));
+      }
+      return { ok: true };
+    }
+    if (path === "/v2/preview") {
+      const { value, bundle } = await authenticateRequest(
+        root,
+        packet,
+        "telemetry-preview",
+        now,
+      );
+      const packets = [];
+      let lastID = null;
+      for (const name of (
+        await names(join(root, "telemetry-pending"))
+      ).sort()) {
+        const id = name.endsWith(".json") ? name.slice(0, -5) : null;
+        if (!id || !uuid.test(id) || id !== id.toLowerCase()) continue;
+        if (value.cursor !== null && id <= value.cursor) continue;
+        const candidate = await read(join(root, "telemetry-pending", name));
+        const decoded = decode(candidate).value;
+        if (
+          typeof decoded?.bindingID !== "string" ||
+          decoded.bindingID.toLowerCase() !==
+            bundle.binding.bindingID.toLowerCase()
+        )
+          continue;
+        verify(candidate, base64(bundle.key, 32), "telemetry");
+        try {
+          validateTelemetry(decoded);
+        } catch {
+          continue;
+        }
+        if (decoded.observationID.toLowerCase() !== id)
+          throw new Error("invalid_identity");
+        // Preview never consumes, rewrites, or acknowledges a pending packet.
+        // Reserve the largest cursor before adding the next original packet.
+        if (
+          packets.length >= TELEMETRY_PREVIEW_LIMITS.packets ||
+          Buffer.byteLength(
+            JSON.stringify({
+              packets: [...packets, candidate],
+              nextCursor: id,
+            }),
+          ) > TELEMETRY_PREVIEW_LIMITS.bytes
+        ) {
+          return { packets, nextCursor: lastID };
+        }
+        packets.push(candidate);
+        lastID = id;
+      }
+      return { packets, nextCursor: null };
+    }
+    if (path === "/v2/capabilities" || path === "/v2/poll") {
+      const domain =
+        path === "/v2/poll" ? "telemetry-poll" : "telemetry-capabilities";
+      const { bundle } = await authenticateRequest(root, packet, domain, now);
+      if (path === "/v2/capabilities")
+        return {
+          capabilities: [TELEMETRY_CAPABILITY, TELEMETRY_PREVIEW_CAPABILITY],
+        };
+      let next = null;
+      let unsupported = 0;
+      for (const name of (
+        await names(join(root, "telemetry-pending"))
+      ).sort()) {
+        const candidate = await read(join(root, "telemetry-pending", name));
+        const decoded = decode(candidate).value;
+        if (typeof decoded?.bindingID !== "string") {
+          unsupported++;
+          continue;
+        }
+        if (
+          decoded.bindingID.toLowerCase() !==
+          bundle.binding.bindingID.toLowerCase()
+        )
+          continue;
+        verify(candidate, base64(bundle.key, 32), "telemetry");
+        try {
+          validateTelemetry(decoded);
+        } catch {
+          unsupported++;
+          continue;
+        }
+        if (!next) next = candidate;
+      }
+      return {
+        packet: next,
+        pending: (await names(join(root, "telemetry-pending"))).length,
+        unsupported,
+      };
+    }
     if (path === "/v1/ack") {
       const receipt = decode(packet).value;
       if (
@@ -526,7 +724,7 @@ export async function retire(root, bindingID) {
     const bundle = await optional(path);
     if (!bundle) throw new Error("unknown_binding");
     validateBundle(bundle);
-    for (const category of ["pending", "quarantine"]) {
+    for (const category of ["pending", "quarantine", "telemetry-pending"]) {
       for (const name of await names(join(root, category))) {
         const entry = await read(join(root, category, name));
         const packet = category === "quarantine" ? entry.packet : entry;
@@ -543,7 +741,15 @@ export async function retire(root, bindingID) {
   });
 }
 export async function cleanup(root, kind) {
-  if (!["quarantine", "receipts", "temporary", "counts"].includes(kind))
+  if (
+    ![
+      "quarantine",
+      "receipts",
+      "telemetry-receipts",
+      "temporary",
+      "counts",
+    ].includes(kind)
+  )
     throw new Error("invalid_cleanup");
   return lock(root, async () => {
     let removed = 0;
@@ -608,9 +814,16 @@ export async function serve(root) {
           request.socket.remoteAddress !== "127.0.0.1" ||
           request.headers.host !== url.host ||
           request.method !== "POST" ||
-          !["/v1/poll", "/v1/ack", "/v1/reject", "/v1/status"].includes(
-            request.url,
-          ) ||
+          ![
+            "/v1/poll",
+            "/v1/ack",
+            "/v1/reject",
+            "/v1/status",
+            "/v2/capabilities",
+            "/v2/poll",
+            "/v2/preview",
+            "/v2/ack",
+          ].includes(request.url) ||
           request.headers.origin ||
           request.headers["content-encoding"] ||
           request.headers["content-type"] !== "application/json"

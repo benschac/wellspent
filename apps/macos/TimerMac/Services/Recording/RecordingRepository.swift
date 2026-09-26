@@ -19,6 +19,8 @@ protocol RecordingRepository: Sendable {
         stamp: RecordingEvent.Stamp
     ) async throws -> CodexIntakeContract.Packet
     func loadCodexTelemetry(localScopeID: String) async throws -> [CodexTelemetryContract.Metadata]
+    func loadCodexTelemetryReview(localScopeID: String, recordingID: UUID, intervalID: UUID) async throws
+        -> [RecordingTelemetryObservation]
     func loadTaskAttribution(localScopeID: String) async throws -> RecordingTaskAttribution
     func createTask(_ task: LocalTask) async throws -> LocalTask
     func selectTask(_ selection: RecordingTaskSelection) async throws -> RecordingTaskSelection
@@ -55,4 +57,7 @@ extension RecordingRepository {
         stamp: RecordingEvent.Stamp
     ) async throws -> CodexIntakeContract.Packet { throw RecordingError.invalidStore }
     func loadCodexTelemetry(localScopeID: String) async throws -> [CodexTelemetryContract.Metadata] { [] }
+    func loadCodexTelemetryReview(localScopeID: String, recordingID: UUID, intervalID: UUID) async throws
+        -> [RecordingTelemetryObservation]
+    { throw RecordingError.invalidStore }
 }

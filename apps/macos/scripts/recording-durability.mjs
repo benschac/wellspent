@@ -29,10 +29,15 @@ const sources = [
   "Features/Recording/RecordingEvent.swift",
   "Features/Recording/RecordingError.swift",
   "Features/Recording/RecordingSnapshot.swift",
+  "Features/Recording/RecordingTaskAttribution.swift",
+  "Features/Recording/RecordingTelemetryObservation.swift",
+  "Features/Recording/RecordingWorkNote.swift",
   "Services/Recording/RecordingRepository.swift",
   "Services/Recording/RecordingDatabaseRecords.swift",
   "Services/Recording/SQLiteRecordingRepository.swift",
   "Services/Recording/CodexIntakeContract.swift",
+  "Services/Recording/CodexTelemetryContract.swift",
+  "Services/Recording/LocalHarnessContract.swift",
   "Services/Recording/LocalCodexTransport.swift",
 ].map((path) => resolve(root, "TimerMac", path));
 

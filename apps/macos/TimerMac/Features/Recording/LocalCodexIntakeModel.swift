@@ -16,6 +16,9 @@ final class LocalCodexIntakeModel {
     @ObservationIgnored private weak var recording: RecordingModel?
     @ObservationIgnored private var task: Task<Void, Never>?
     @ObservationIgnored private var action: Task<Void, Never>?
+    @ObservationIgnored private var retries: [UUID: (failures: Int, after: ContinuousClock.Instant)] = [:]
+
+    @ObservationIgnored private var previewCursors: [UUID: String] = [:]
 
     init(recording: RecordingModel) { self.recording = recording }
 
@@ -27,12 +30,11 @@ final class LocalCodexIntakeModel {
     func start() {
         guard task == nil else { return }
         task = Task { [weak self] in
-            var delay = 2
             while !Task.isCancelled {
                 guard let self else { return }
-                let succeeded = await self.pollOnce()
-                delay = succeeded ? 2 : min(delay * 2, 30)
-                do { try await Task.sleep(for: .seconds(delay)) } catch { return }
+                _ = await self.pollOnce()
+                // Each failed binding backs off independently. Healthy queues keep draining.
+                do { try await Task.sleep(for: .seconds(2)) } catch { return }
             }
         }
     }
@@ -45,6 +47,7 @@ final class LocalCodexIntakeModel {
         task = nil
         action = nil
         pairingBundle = nil
+        previewCursors.removeAll()
     }
 
     func dismissBundle() { pairingBundle = nil }
@@ -92,18 +95,27 @@ final class LocalCodexIntakeModel {
     @discardableResult
     func pollOnce() async -> Bool {
         guard let recording, recording.canAct, action == nil else { return true }
+        await recording.telemetry.readIfAuthorized()
         do {
             grants = try await recording.localCodexGrants()
             let active = grants.filter { !$0.revoked && $0.binding.localScopeID == recording.localScopeID }
+            let activeIDs = Set(active.map { $0.binding.bindingID })
+            retries = retries.filter { activeIDs.contains($0.key) }
+            previewCursors = previewCursors.filter { activeIDs.contains($0.key) }
             if active.isEmpty {
                 status = "No active local Codex pairing"
                 return true
             }
             var messages: [String] = []
             var allAvailable = true
-            for grant in active {
+            for grant in active.sorted(by: { $0.issuedAt > $1.issuedAt }) {
                 try Task.checkCancellation()
                 guard recording.canAct else { return true }
+                let bindingID = grant.binding.bindingID
+                if let retry = retries[bindingID], ContinuousClock.now < retry.after {
+                    messages.append("Thread \(grant.binding.threadID): retry scheduled; other connections continue.")
+                    continue
+                }
                 do {
                     let transport = try LocalCodexTransport(endpoint: grant.endpoint)
                     let response = try await transport.poll(bindingID: grant.binding.bindingID, key: grant.key)
@@ -167,12 +179,53 @@ final class LocalCodexIntakeModel {
                     } catch LocalCodexTransport.Failure.http(400) {
                         message += " Helper does not support telemetry; update helper when ready. v1 reports continue."
                     }
+                    // Preview failure never delays either durable delivery channel.
+                    if recording.canPreviewTelemetry(grant) {
+                        recording.setLiveTelemetryWarning(nil, bindingID: bindingID)
+                        do {
+                            if try await transport.telemetryPreviewSupported(bindingID: bindingID, key: grant.key) {
+                                let page = try await transport.previewTelemetry(
+                                    bindingID: bindingID, key: grant.key, cursor: previewCursors[bindingID])
+                                try Task.checkCancellation()
+                                for packet in page.packets {
+                                    guard recording.canPreviewTelemetry(grant) else { break }
+                                    if try !recording.previewLocalCodexTelemetry(packet, grant: grant) {
+                                        recording.setLiveTelemetryWarning(
+                                            "Live preview limit reached (1,000). Eligible queued metadata saves after Pause or Finish.",
+                                            bindingID: bindingID)
+                                        message +=
+                                            " Live preview limit reached (1,000); eligible queued metadata saves after Pause or Finish."
+                                        break
+                                    }
+                                }
+                                previewCursors[bindingID] = page.nextCursor
+                            } else {
+                                recording.setLiveTelemetryWarning(
+                                    "Restart bun run dev to enable the live Codex timeline with the updated helper.",
+                                    bindingID: bindingID)
+                                message +=
+                                    " Live timeline requires a helper update; queued metadata remains available after Pause or Finish."
+                            }
+                        } catch is CancellationError { throw CancellationError() } catch {
+                            if recording.canPreviewTelemetry(grant) {
+                                recording.setLiveTelemetryWarning(
+                                    "Live Codex preview unavailable. Queued telemetry is retained; retrying automatically.",
+                                    bindingID: bindingID)
+                            }
+                            message += " Live preview unavailable; queued telemetry retained for ordinary delivery."
+                        }
+                    } else {
+                        previewCursors.removeValue(forKey: bindingID)
+                    }
                     messages.append(message)
+                    retries.removeValue(forKey: bindingID)
                 } catch is CancellationError {
                     throw CancellationError()
                 } catch {
                     if Task.isCancelled { throw CancellationError() }
                     allAvailable = false
+                    let failures = min((retries[bindingID]?.failures ?? 0) + 1, 4)
+                    retries[bindingID] = (failures, .now.advanced(by: .seconds(min(2 << failures, 30))))
                     messages.append(
                         "Thread \(grant.binding.threadID): helper or storage unavailable; pending reports retained for retry."
                     )

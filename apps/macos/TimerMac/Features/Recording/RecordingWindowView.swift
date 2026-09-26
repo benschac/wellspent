@@ -15,6 +15,7 @@ struct RecordingWindowView: View {
                     Text("Local Recordings").font(.title2.bold()).accessibilityAddTraits(.isHeader)
                     Text(model.saveStatus).font(.callout).foregroundStyle(.secondary)
                         .accessibilityIdentifier("recording-save-status")
+                    Text(model.telemetry.status).font(.caption).foregroundStyle(.secondary)
                 }
                 RecordingControlsView()
                 Spacer(minLength: 0)
@@ -75,9 +76,12 @@ struct RecordingWindowView: View {
                         Button("Done") { showingConnections = false }
                             .keyboardShortcut(.cancelAction)
                     }
+                    AutomaticCodexCaptureView()
+                    Divider()
                     LocalHarnessView()
                     Divider()
                     LocalCodexPairingView()
+                    LocalCodexTelemetryView()
                     Text(
                         "Foreground capture stores app name, bundle ID and PID only. It never reads window contents, documents, input or your screen."
                     )

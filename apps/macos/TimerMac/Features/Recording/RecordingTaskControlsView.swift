@@ -5,6 +5,12 @@ struct RecordingTaskControlsView: View {
     @State private var showingNewTask = false
     @State private var title = ""
 
+    private var trimmedTitle: String {
+        title.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var titleIsTooLong: Bool { trimmedTitle.utf8.count > 500 }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
@@ -44,6 +50,10 @@ struct RecordingTaskControlsView: View {
                 TextField("Task title", text: $title)
                     .textFieldStyle(.roundedBorder)
                     .onSubmit(create)
+                if titleIsTooLong {
+                    Text("Task title exceeds the 500-byte limit.")
+                        .font(.callout).foregroundStyle(.orange)
+                }
                 Text("Saved on this Mac. Select this task in any recording.")
                     .font(.callout).foregroundStyle(.secondary)
                 HStack {
@@ -52,7 +62,7 @@ struct RecordingTaskControlsView: View {
                     Spacer()
                     Button("Create task", action: create)
                         .keyboardShortcut(.defaultAction)
-                        .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !model.canEditTasks)
+                        .disabled(trimmedTitle.isEmpty || titleIsTooLong || !model.canEditTasks)
                 }
             }
             .padding(24).frame(width: 420)
@@ -60,8 +70,8 @@ struct RecordingTaskControlsView: View {
     }
 
     private func create() {
-        guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, model.canEditTasks else { return }
-        model.createRecordingTask(title: title)
+        guard !trimmedTitle.isEmpty, !titleIsTooLong, model.canEditTasks else { return }
+        model.createRecordingTask(title: trimmedTitle)
         title = ""
         showingNewTask = false
     }

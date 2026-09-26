@@ -215,13 +215,13 @@ async function main() {
     if (process.platform !== "darwin")
       throw new Error("macOS launch requires macOS and Xcode");
     // Never silently reuse an already-running app with the previous profile.
-    const running = await run("pgrep", ["-x", "TimerMac"], options);
+    const running = await run("pgrep", ["-x", "WellSpent"], options);
     if (running === 0)
       throw new Error(
-        "Quit the running TimerMac app before changing launch profiles",
+        "Quit the running WellSpent app before changing launch profiles",
       );
     if (running !== 1)
-      throw new Error("Could not check for an existing TimerMac process");
+      throw new Error("Could not check for an existing WellSpent process");
     const build = await run("bun", ["run", "build"], options);
     if (build !== 0) {
       process.exitCode = build;
@@ -230,7 +230,7 @@ async function main() {
     process.exitCode = await run(
       resolve(
         appDir,
-        ".derivedData/Build/Products/Debug/TimerMac.app/Contents/MacOS/TimerMac",
+        ".derivedData/Build/Products/Debug/WellSpent.app/Contents/MacOS/WellSpent",
       ),
       [],
       options,

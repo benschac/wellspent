@@ -2,6 +2,7 @@ import SwiftUI
 
 struct RecordingTimelineView: View {
     let timeline: RecordingTimeline
+    var recordingID: UUID? = nil
 
     var body: some View {
         LazyVStack(alignment: .leading, spacing: 16) {
@@ -16,7 +17,7 @@ struct RecordingTimelineView: View {
                     .font(.body).foregroundStyle(.secondary)
             }
             ForEach(timeline.intervals) { interval in
-                RecordingTimelineIntervalView(interval: interval)
+                RecordingTimelineIntervalView(interval: interval, recordingID: recordingID)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
