@@ -1,5 +1,7 @@
 # Verification workflows
 
+For macOS user-facing entry paths, prerequisites, and observable outcomes, start with the [feature map](feature-map/README.md), then choose the smallest relevant check below.
+
 Run commands from the repository root after `bun install --frozen-lockfile`. Package scripts own the checks; root commands delegate through Turbo. Test tasks are uncached so a reported pass is a fresh execution. They have no Turbo build prerequisite; the macOS test command still compiles its Xcode test target.
 
 ## Fast focus checks

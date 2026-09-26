@@ -47,6 +47,7 @@ guide doesn't cover, search through the source code in `node_modules/effect/src`
 
 ## Verification
 
+- For macOS user-facing verification, read the [feature map](docs/feature-map/README.md) to find the current entry path, prerequisites, and observable state before driving the UI.
 - Use [the verification guide](docs/verification.md) and the owning package's scripts to select the smallest relevant checks. Expand verification when failures, cross-package effects, or acceptance criteria require it.
 - `bun run test:fast` covers focus and capture without app builds or database access. `bun run test` also includes macOS Xcode tests; do not treat it as a lightweight default.
 - Database verification requires the existing, migrated local stack. Keep setup separate from checks; never silently substitute a hosted database or reset an existing database to make tests pass.
