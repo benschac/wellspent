@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/wellspent-readme-mark.svg" width="112" height="112" alt="Wellspent logo" />
+</p>
+
 # Wellspent monorepo
 
 ## License
@@ -63,7 +67,7 @@ boundaries.
 - Node.js 22+
 - Docker Desktop or another Docker-compatible container runtime
 - Supabase CLI 2.116 (the scripts fetch the pinned CLI through `bunx`)
-- Expo Go for the quickest mobile development loop
+- An Expo development build for mobile development
 
 ## Setup
 
