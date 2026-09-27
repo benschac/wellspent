@@ -28,6 +28,13 @@ final class RecordingModel {
     }
     private(set) var liveTelemetryObservations: [UUID: PendingCodexTelemetryObservation] = [:]
 
+    // Bridge the committed receipt into the existing timeline row before its database reload.
+    private(set) var committedTelemetryPreviews: [UUID: RecordingTelemetryObservation] = [:]
+
+    func didLoadTelemetry(_ observations: [RecordingTelemetryObservation]) {
+        for observation in observations { committedTelemetryPreviews.removeValue(forKey: observation.id) }
+    }
+
     private(set) var liveTelemetryWarnings: [UUID: String] = [:]
 
     func setLiveTelemetryWarning(_ message: String?, bindingID: UUID) {
@@ -326,6 +333,9 @@ final class RecordingModel {
             try await repository.delete(recording.id, localScopeID: localScopeID)
             recordings.removeAll { $0.id == recording.id }
             telemetryRevisions.removeValue(forKey: recording.id)
+            committedTelemetryPreviews = committedTelemetryPreviews.filter {
+                $0.value.metadata.recordingID != recording.id
+            }
             liveTelemetryObservations = liveTelemetryObservations.filter {
                 $0.value.metadata.recordingID != recording.id
             }
@@ -418,6 +428,18 @@ final class RecordingModel {
             let ack = try await self.repository.receiveCodexTelemetry(
                 packet, bindingID: bindingID, stamp: self.stamp())
             let metadata = try CodexTelemetryContract.parse(packet.body)
+            if self.liveTelemetryObservations[metadata.observationID] != nil {
+                // Bound offscreen handoffs; durable history remains available from SQLite.
+                if self.committedTelemetryPreviews.count >= 1000,
+                    let oldest = self.committedTelemetryPreviews.values.min(by: {
+                        $0.nativeReceivedAt < $1.nativeReceivedAt
+                    })
+                {
+                    self.committedTelemetryPreviews.removeValue(forKey: oldest.id)
+                }
+                self.committedTelemetryPreviews[metadata.observationID] = try RecordingTelemetryObservation(
+                    body: packet.body, receipt: ack.body)
+            }
             self.liveTelemetryObservations.removeValue(forKey: metadata.observationID)
             self.telemetryRevisions[metadata.recordingID, default: [:]][metadata.intervalID, default: 0] += 1
             try Task.checkCancellation()
@@ -493,6 +515,7 @@ final class RecordingModel {
             return false
         }
         liveTelemetryObservations.removeAll()
+        committedTelemetryPreviews.removeAll()
         localScopeID = scope
         telemetryRevisions.removeAll()
         recordings = []
@@ -533,6 +556,7 @@ final class RecordingModel {
         }
         await repository.close()
         liveTelemetryObservations.removeAll()
+        committedTelemetryPreviews.removeAll()
         isClosed = true
         return true
     }

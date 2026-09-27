@@ -120,6 +120,17 @@ struct RecordingTelemetryActivationTests {
             let ack = try await model.receiveLocalCodexTelemetry(queued, bindingID: grant.binding.bindingID)
             #expect(model.liveTelemetryObservations.count == 1)
             #expect(model.liveTelemetryObservations[try CodexTelemetryContract.parse(queued.body).observationID] == nil)
+            // Before the timeline's database reload, the same two identities remain visible.
+            let beforeCommit = RecordingTimelineItem.merged(
+                entries: [], saved: [], pending: previews,
+                recordingID: recording.id, intervalID: interval)
+            let duringReload = RecordingTimelineItem.merged(
+                entries: [], saved: Array(model.committedTelemetryPreviews.values),
+                pending: Array(model.liveTelemetryObservations.values),
+                recordingID: recording.id, intervalID: interval)
+            #expect(duringReload.map(\.id) == beforeCommit.map(\.id))
+            #expect(model.committedTelemetryPreviews.count == 1)
+            #expect(model.committedTelemetryPreviews.values.first?.receipt.nativeReceivedAt != nil)
             let retry = try #require(
                 try await transport.pollTelemetry(bindingID: grant.binding.bindingID, key: grant.key).packet)
             #expect(retry == queued)
@@ -132,6 +143,9 @@ struct RecordingTelemetryActivationTests {
             #expect(await model.codex.pollOnce())
             let firstReview = try await model.loadTelemetryReview(recordingID: recording.id, intervalID: interval)
             #expect(firstReview.count == 2)
+            #expect(model.committedTelemetryPreviews.count == 2)
+            model.didLoadTelemetry(firstReview)
+            #expect(model.committedTelemetryPreviews.isEmpty)
             // Saved previews clear even when this interval's timeline was never mounted.
             #expect(model.liveTelemetryObservations.isEmpty)
             let pendingItems = RecordingTimelineItem.merged(

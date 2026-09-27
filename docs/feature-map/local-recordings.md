@@ -8,7 +8,7 @@ Foreground application capture with start, pause, resume, finish, saved recordin
 
 1. Launch WellSpent. **Local Recordings** occupies the main Timer window below the timer. **Workspace → Local Recordings…** or `⌘⇧R` opens that main window.
 2. Choose **Start recording**, or use the main timer **Start/Resume** to start/resume foreground recording alongside the stopwatch. Use **Pause recording** / **Resume recording** / **Finish recording** in the Local Recordings header. The main timer **Pause** stops new capture.
-3. Select a row under **Saved local recordings**. The right pane shows status, interval/observation counts, task selection history, and **Timeline**. Expand an event's **Details** for its time basis and source. After finishing, **Delete recording…** is available below review.
+3. Select a row under **Saved local recordings**. The right pane shows status, interval/observation counts, task selection history, and **Timeline**. Expand an event's **Details** for its time basis and source. Codex configuration and response usage stay in the same Timeline after pause or finish; their rows change from **Pending — not yet saved** to **Saved**. Expand **Details** for usage subsets, source and receipt times, and identities. A failed saved-activity read offers **Retry** in the affected interval. After finishing, **Delete recording…** is available below review.
 
 ## Prerequisites
 
@@ -26,6 +26,8 @@ Run the macOS app with its local recording store available. No account or API is
 - Local recordings are stored on this Mac and are currently unencrypted. Codex notes and automatic metadata need separate [connections](recording-connections.md).
 - Source: [main window](../../apps/macos/TimerMac/Features/Stopwatch/TimerWindowView.swift), [recording window](../../apps/macos/TimerMac/Features/Recording/RecordingWindowView.swift), [controls](../../apps/macos/TimerMac/Features/Recording/RecordingControlsView.swift), [timeline](../../apps/macos/TimerMac/Features/Recording/RecordingTimelineView.swift).
 
-## Codex telemetry review
+## Codex activity in the timeline
 
-- Initial loading shows **Loading telemetry…**; refreshes of the same interval keep its committed rows visible to preserve scroll layout. Late delivery refreshes only the affected recording interval. A failed read shows **Telemetry unavailable** and points to **Refresh telemetry**. Changing recording/interval hides prior rows immediately. Late commits through native intake trigger refresh even after interval closure or an ACK failure. The separate review panel is hidden for an actively recording selection; Codex rows now appear directly in its Timeline.
+- The selected recording's Timeline includes Codex activity in each interval alongside app observations. Configuration rows show configured model/effort; response rows show individual input/output counts. Execution model and task allocation remain unavailable; no model/task totals are added.
+- Expand **Details** for source/version, source-write and original native-receipt times in UTC, identities, partial coverage, total tokens, and separately labelled cached-input, cache-write-input and reasoning-output subsets. Subsets are not added again. Missing usage remains unknown. Helper reader-gap details are not persisted here.
+- Pending and saved Codex activity share the same timeline rows and identities. Committing an observation replaces its pending state with the original native receipt before the database reload completes. Pause/Finish does not add a separate telemetry panel. Late delivery refreshes only the affected interval; existing rows remain visible while it loads. A failed read shows **Saved Codex activity could not be loaded** and **Retry**.

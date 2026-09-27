@@ -33,10 +33,6 @@ struct RecordingReviewContent: View {
             }
             RecordingTaskHistoryView(recordingID: recording.id)
             Divider()
-            if recording.status != .recording {
-                RecordingTelemetryReviewView(recording: recording)
-                Divider()
-            }
             if recording.status == .recording {
                 ForEach(Array(Set(model.liveTelemetryWarnings.values)).sorted(), id: \.self) { warning in
                     Label(warning, systemImage: "exclamationmark.triangle")

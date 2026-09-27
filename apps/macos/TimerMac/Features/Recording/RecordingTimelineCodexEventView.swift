@@ -81,7 +81,8 @@ struct RecordingTimelineCodexEventsView: View {
     private var items: [RecordingTimelineItem] {
         RecordingTimelineItem.merged(
             entries: interval.entries,
-            saved: loadedRecordingID == recordingID && loadedIntervalID == interval.id ? saved : [],
+            saved: Array(model.committedTelemetryPreviews.values)
+                + (loadedRecordingID == recordingID && loadedIntervalID == interval.id ? saved : []),
             pending: Array(model.liveTelemetryObservations.values), recordingID: recordingID, intervalID: interval.id)
     }
 
@@ -126,6 +127,8 @@ struct RecordingTimelineCodexEventsView: View {
             loadedRecordingID = selection.recordingID
             loadedIntervalID = selection.intervalID
             failed = false
+            // Retire the bridge only after these rows are installed in this view's state.
+            model.didLoadTelemetry(observations)
         } catch {
             guard !Task.isCancelled, self.selection == selection else { return }
             failed = true
@@ -201,6 +204,9 @@ struct RecordingTimelineCodexEventView: View {
                         if let usage = metadata.usage {
                             Text("Individual response total: \(usage.totalTokens.formatted()) tokens")
                             Text("Cached input subset: \(usage.cachedInputTokens.formatted())")
+                            Text(
+                                "Cache-write input subset: \(usage.cacheWriteInputTokens.map { $0.formatted() } ?? "Unavailable")"
+                            )
                             Text("Reasoning output subset: \(usage.reasoningOutputTokens.formatted())")
                             Text("Subsets are already included in input/output counts.")
                         }
