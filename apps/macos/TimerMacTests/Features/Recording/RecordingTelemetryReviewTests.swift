@@ -75,13 +75,19 @@ struct RecordingTelemetryReviewTests {
             })
         model.load()
         await model.waitForIdle()
-        let originalRevision = model.telemetryRevision
+        let originalRevision = model.telemetryRevision(
+            recordingID: fixture.recordingID, intervalID: fixture.firstIntervalID)
         await #expect(throws: RecordingInjectedFailure.self) {
             try await model.receiveLocalCodexTelemetry(packet, bindingID: grant.binding.bindingID) { _ in
                 throw RecordingInjectedFailure.checkpoint
             }
         }
-        #expect(model.telemetryRevision == originalRevision + 1)
+        #expect(
+            model.telemetryRevision(recordingID: fixture.recordingID, intervalID: fixture.firstIntervalID)
+                == originalRevision + 1)
+        #expect(model.telemetryRevision(recordingID: fixture.recordingID, intervalID: fixture.secondIntervalID) == 0)
+        #expect(
+            model.telemetryRevision(recordingID: fixture.otherRecordingID, intervalID: fixture.otherIntervalID) == 0)
         let rows = try await model.loadTelemetryReview(
             recordingID: fixture.recordingID, intervalID: fixture.firstIntervalID)
         #expect(rows.count == 6)
@@ -108,14 +114,17 @@ struct RecordingTelemetryReviewTests {
         #expect(review.state == .loaded(observations))
         var release: CheckedContinuation<[RecordingTelemetryObservation], Never>?
         let pending = Task {
-            await review.load(first) {
+            await review.load(.init(recordingID: first.recordingID, intervalID: first.intervalID, revision: 1)) {
                 await withCheckedContinuation { release = $0 }
             }
         }
         // A continuation supplies a deterministic pending request without a timing sleep.
         while release == nil { await Task.yield() }
-        #expect(review.state == .loading)
-        await review.load(second) { throw RecordingInjectedFailure.checkpoint }
+        #expect(review.state == .loaded(observations))
+        await review.load(second) {
+            #expect(review.state == .loading)
+            throw RecordingInjectedFailure.checkpoint
+        }
         #expect(review.state == .failed)
         release?.resume(returning: observations)
         await pending.value

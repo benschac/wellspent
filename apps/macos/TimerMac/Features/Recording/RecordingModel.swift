@@ -21,7 +21,11 @@ final class RecordingModel {
     private(set) var errorMessage: String?
     private(set) var pendingEvent: RecordingEvent?
     var selectedID: UUID?
-    private(set) var telemetryRevision = 0
+    private var telemetryRevisions: [UUID: [UUID: Int]] = [:]
+
+    func telemetryRevision(recordingID: UUID, intervalID: UUID) -> Int {
+        telemetryRevisions[recordingID]?[intervalID] ?? 0
+    }
     private(set) var liveTelemetryObservations: [UUID: PendingCodexTelemetryObservation] = [:]
 
     private(set) var liveTelemetryWarnings: [UUID: String] = [:]
@@ -152,6 +156,7 @@ final class RecordingModel {
     var canConfigureRecording: Bool {
         isLoaded && !isPerformingUserAction && errorMessage == nil && !isClosed && !isShuttingDown && !needsRecovery
     }
+    var canDeleteRecording: Bool { isBusy ? canConfigureRecording : canAct }
     var canCaptureForegroundApplications: Bool {
         isLoaded && !isClosed && !isShuttingDown && !needsRecovery && errorMessage == nil
             && acceptingEvents && current?.capturesForegroundApplications == true
@@ -161,7 +166,7 @@ final class RecordingModel {
         if errorMessage != nil { return "Local history unavailable" }
         if !isLoaded { return "Local history not loaded" }
         if acceptingEvents && current?.status == .recording { return "Recording on this Mac · No upload" }
-        if isBusy { return "Saving or loading local history…" }
+        if isPerformingUserAction { return "Saving or loading local history…" }
         return "Saved on this Mac · No upload"
     }
 
@@ -171,7 +176,7 @@ final class RecordingModel {
     }
 
     func startRecording() {
-        guard canAct, current == nil else { return }
+        guard canConfigureRecording, current == nil else { return }
         submit(
             RecordingEvent(
                 localScopeID: localScopeID, recordingID: UUID(), intervalID: UUID(), kind: .start, stamp: stamp(),
@@ -179,7 +184,7 @@ final class RecordingModel {
     }
 
     func startForegroundApplicationRecording() {
-        guard canAct, current == nil else { return }
+        guard canConfigureRecording, current == nil else { return }
         submit(
             RecordingEvent(
                 localScopeID: localScopeID, recordingID: UUID(), intervalID: UUID(), kind: .start, stamp: stamp(),
@@ -193,7 +198,8 @@ final class RecordingModel {
             && !tasks.hasPendingTaskAction && acceptingEvents && current?.activeIntervalID != nil
     }
     var canFinishRecording: Bool {
-        canPauseRecording || (canAct && !tasks.hasPendingTaskAction && current != nil && !acceptingEvents)
+        canPauseRecording
+            || (canConfigureRecording && !tasks.hasPendingTaskAction && current != nil && !acceptingEvents)
     }
 
     func pause() {
@@ -304,41 +310,50 @@ final class RecordingModel {
     }
 
     func delete(_ recording: RecordingSnapshot) {
-        guard canAct, recording.localScopeID == localScopeID, recording.status != .recording else { return }
-        run {
-            var deletionError: String?
-            do {
-                try await self.repository.delete(recording.id, localScopeID: self.localScopeID)
-                self.recordings.removeAll { $0.id == recording.id }
-                self.liveTelemetryObservations = self.liveTelemetryObservations.filter {
-                    $0.value.metadata.recordingID != recording.id
-                }
-                await self.tasks.reloadTaskAttribution()
-                if self.selectedID == recording.id { self.selectedID = self.recordings.first?.id }
-                self.errorMessage = nil
-            } catch {
-                deletionError = error.localizedDescription
-                self.errorMessage = deletionError
-                self.acceptingEvents = false
-                self.captureStateDidChange?()
-            }
-            // Capture may enqueue observations and lifecycle boundaries during the deletion await.
-            // Drain them before allowing a later user action to overtake their receipt order.
-            if !self.queuedEvents.isEmpty {
-                self.pendingEvent = self.queuedEvents.removeFirst()
-                await self.commitPending()
-            } else if deletionError != nil, let current = self.current, current.status == .recording {
-                // With no queued event, commitPending has nothing to trigger its failure-gap policy.
-                self.pendingEvent = RecordingEvent(
-                    localScopeID: current.localScopeID, recordingID: current.id, intervalID: current.activeIntervalID,
-                    kind: .interrupt, stamp: self.stamp(),
-                    text: "Storage failure — coverage unknown; explicit Resume required")
-                await self.commitPending()
-            }
-            // Successful coverage repair must not hide the failed deletion. A pending write error
-            // takes priority so Retry continues to refer to that exact unsaved event.
-            if self.pendingEvent == nil, let deletionError { self.errorMessage = deletionError }
+        guard recording.localScopeID == localScopeID, recording.status != .recording else { return }
+        if isBusy {
+            guard canConfigureRecording else { return }
+            runTaskAction { await self.performDelete(recording) }
+        } else {
+            guard canAct else { return }
+            run { await self.performDelete(recording) }
         }
+    }
+
+    private func performDelete(_ recording: RecordingSnapshot) async {
+        var deletionError: String?
+        do {
+            try await repository.delete(recording.id, localScopeID: localScopeID)
+            recordings.removeAll { $0.id == recording.id }
+            telemetryRevisions.removeValue(forKey: recording.id)
+            liveTelemetryObservations = liveTelemetryObservations.filter {
+                $0.value.metadata.recordingID != recording.id
+            }
+            await tasks.reloadTaskAttribution()
+            if selectedID == recording.id { selectedID = recordings.first?.id }
+            errorMessage = nil
+        } catch {
+            deletionError = error.localizedDescription
+            errorMessage = deletionError
+            acceptingEvents = false
+            captureStateDidChange?()
+        }
+        // Capture may enqueue observations and lifecycle boundaries during the deletion await.
+        // Drain them before allowing a later user action to overtake their receipt order.
+        if !queuedEvents.isEmpty {
+            pendingEvent = queuedEvents.removeFirst()
+            await commitPending()
+        } else if deletionError != nil, let current, current.status == .recording {
+            // With no queued event, commitPending has nothing to trigger its failure-gap policy.
+            pendingEvent = RecordingEvent(
+                localScopeID: current.localScopeID, recordingID: current.id, intervalID: current.activeIntervalID,
+                kind: .interrupt, stamp: stamp(),
+                text: "Storage failure — coverage unknown; explicit Resume required")
+            await commitPending()
+        }
+        // Successful coverage repair must not hide the failed deletion. A pending write error
+        // takes priority so Retry continues to refer to that exact unsaved event.
+        if pendingEvent == nil, let deletionError { errorMessage = deletionError }
     }
 
     func retry() {
@@ -404,7 +419,7 @@ final class RecordingModel {
                 packet, bindingID: bindingID, stamp: self.stamp())
             let metadata = try CodexTelemetryContract.parse(packet.body)
             self.liveTelemetryObservations.removeValue(forKey: metadata.observationID)
-            self.telemetryRevision += 1
+            self.telemetryRevisions[metadata.recordingID, default: [:]][metadata.intervalID, default: 0] += 1
             try Task.checkCancellation()
             try await acknowledge?(ack)
             return ack
@@ -479,6 +494,7 @@ final class RecordingModel {
         }
         liveTelemetryObservations.removeAll()
         localScopeID = scope
+        telemetryRevisions.removeAll()
         recordings = []
         tasks.resetForScopeChange()
         selectedID = nil
@@ -522,7 +538,7 @@ final class RecordingModel {
     }
 
     private func transition(_ kind: RecordingEvent.Kind, text: String) {
-        guard canAct, let current else { return }
+        guard canConfigureRecording, let current else { return }
         acceptingEvents = false
         submit(
             RecordingEvent(
@@ -532,7 +548,9 @@ final class RecordingModel {
     }
 
     private func addSample(_ kind: RecordingEvent.Kind, text: String) {
-        guard canAct, acceptingEvents, let current, let intervalID = current.activeIntervalID else { return }
+        guard canConfigureRecording, acceptingEvents, let current, let intervalID = current.activeIntervalID else {
+            return
+        }
         submit(
             RecordingEvent(
                 localScopeID: localScopeID, recordingID: current.id, intervalID: intervalID, kind: kind, stamp: stamp(),
@@ -596,7 +614,7 @@ final class RecordingModel {
                     } else {
                         recordings.insert(saved, at: 0)
                     }
-                    selectedID = saved.id
+                    if event.kind == .start { selectedID = saved.id }
                 }
                 pendingEvent = nil
                 errorMessage = nil

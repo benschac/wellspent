@@ -9,6 +9,10 @@ final class RecordingTelemetryReviewModel {
         let intervalID: UUID
         let revision: Int
         var refresh: Int = 0
+
+        func hasSameInterval(as other: Self) -> Bool {
+            recordingID == other.recordingID && intervalID == other.intervalID
+        }
     }
 
     enum State: Equatable {
@@ -27,8 +31,11 @@ final class RecordingTelemetryReviewModel {
     ) async {
         let requestID = UUID()
         self.requestID = requestID
+        // A revision/refresh reloads the same data scope. Keep committed rows visible
+        // until replacement data arrives, but never carry them across interval changes.
+        let preservesRows = self.selection?.hasSameInterval(as: selection) == true
         self.selection = selection
-        state = .loading
+        if !preservesRows || state == .failed { state = .loading }
         do {
             let observations = try await fetch()
             guard self.requestID == requestID, !Task.isCancelled else { return }

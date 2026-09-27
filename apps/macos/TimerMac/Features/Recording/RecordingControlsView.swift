@@ -25,7 +25,7 @@ struct RecordingControlsView: View {
                             .disabled(!model.canPauseRecording)
                     } else {
                         Button("Resume recording", systemImage: "play.fill", action: model.resume)
-                            .disabled(!model.canAct)
+                            .disabled(!model.canConfigureRecording)
                             .buttonStyle(.borderedProminent)
                     }
                     Button("Finish recording", systemImage: "stop", action: model.finish)
@@ -36,20 +36,20 @@ struct RecordingControlsView: View {
                         action: model.startForegroundApplicationRecording
                     )
                     .buttonStyle(.borderedProminent)
-                    .disabled(!model.canAct)
+                    .disabled(!model.canConfigureRecording)
                 }
                 Menu("Developer samples", systemImage: "hammer") {
                     Button("Start sample recording", action: model.startRecording)
-                        .disabled(!model.canAct || model.current != nil)
+                        .disabled(!model.canConfigureRecording || model.current != nil)
                     Button("Simulate coverage gap", action: model.simulateGap)
-                        .disabled(!model.canAct || !model.acceptingEvents)
+                        .disabled(!model.canConfigureRecording || !model.acceptingEvents)
                     Divider()
                     Button("Add sample app event", action: model.addApplicationSample)
-                        .disabled(!model.canAct || !model.acceptingEvents)
+                        .disabled(!model.canConfigureRecording || !model.acceptingEvents)
                     Button("Add sample agent report", action: model.addAgentSample)
-                        .disabled(!model.canAct || !model.acceptingEvents)
+                        .disabled(!model.canConfigureRecording || !model.acceptingEvents)
                     Button("Add sample note", action: model.addNoteSample)
-                        .disabled(!model.canAct || !model.acceptingEvents)
+                        .disabled(!model.canConfigureRecording || !model.acceptingEvents)
                 }
                 .menuStyle(.borderlessButton)
                 .fixedSize()

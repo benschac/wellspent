@@ -25,3 +25,7 @@ Run the macOS app with its local recording store available. No account or API is
 - **Delete recording…** removes local evidence; use only in an explicitly disposable verification recording. **Reset** on the stopwatch preserves recording history.
 - Local recordings are stored on this Mac and are currently unencrypted. Codex notes and automatic metadata need separate [connections](recording-connections.md).
 - Source: [main window](../../apps/macos/TimerMac/Features/Stopwatch/TimerWindowView.swift), [recording window](../../apps/macos/TimerMac/Features/Recording/RecordingWindowView.swift), [controls](../../apps/macos/TimerMac/Features/Recording/RecordingControlsView.swift), [timeline](../../apps/macos/TimerMac/Features/Recording/RecordingTimelineView.swift).
+
+## Codex telemetry review
+
+- Initial loading shows **Loading telemetry…**; refreshes of the same interval keep its committed rows visible to preserve scroll layout. Late delivery refreshes only the affected recording interval. A failed read shows **Telemetry unavailable** and points to **Refresh telemetry**. Changing recording/interval hides prior rows immediately. Late commits through native intake trigger refresh even after interval closure or an ACK failure. The separate review panel is hidden for an actively recording selection; Codex rows now appear directly in its Timeline.

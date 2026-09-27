@@ -15,8 +15,10 @@ struct RecordingWindowView: View {
                     Text("Local Recordings").font(.title2.bold()).accessibilityAddTraits(.isHeader)
                     RecordingHeaderStatusView()
                 }
+                .frame(width: 300, alignment: .leading)
+                Spacer(minLength: 16)
                 RecordingControlsView()
-                Spacer(minLength: 0)
+                Spacer(minLength: 16)
                 Button("Connections", systemImage: "link") { showingConnections = true }
                     .help("Manage Codex notes and local activity pairing")
             }
@@ -108,8 +110,11 @@ private struct RecordingHeaderStatusView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(model.saveStatus).font(.callout).foregroundStyle(.secondary)
+                .lineLimit(1)
                 .accessibilityIdentifier("recording-save-status")
             Text(model.telemetry.status).font(.caption).foregroundStyle(.secondary)
+                .lineLimit(1)
+                .help(model.telemetry.status)
         }
     }
 }
@@ -120,7 +125,7 @@ private struct RecordingDeleteButton: View {
 
     var body: some View {
         Button("Delete recording…", systemImage: "trash", role: .destructive, action: action)
-            .disabled(!model.canAct)
+            .disabled(!model.canDeleteRecording)
             .buttonStyle(.borderless)
             .font(.callout)
             .padding(.vertical, 4)

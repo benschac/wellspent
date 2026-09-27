@@ -43,6 +43,108 @@ struct RecordingModelTests {
         #expect(model.saveStatus == status)
     }
 
+    @Test(arguments: ["start", "resume", "finish"])
+    func recordingActionsQueueBehindCodexAcknowledgement(action: String) async throws {
+        let fixture = try await RecordingTelemetryFixture.make()
+        defer { fixture.store.remove() }
+        let model = RecordingModel(
+            repository: fixture.repository, localScopeID: "local",
+            stamp: { fixture.store.event(.start, at: 100).stamp })
+        model.load()
+        await model.waitForIdle()
+        if action != "start" {
+            model.startForegroundApplicationRecording()
+            await model.waitForIdle()
+            model.pause()
+            await model.waitForIdle()
+        }
+        let status = model.saveStatus
+        let currentID = model.current?.id
+        let packet = try #require(fixture.packets.first)
+        var release: CheckedContinuation<Void, Never>?
+        let delivery = Task {
+            try await model.receiveLocalCodexTelemetry(packet.packet, bindingID: packet.bindingID) { _ in
+                await withCheckedContinuation { release = $0 }
+            }
+        }
+        while release == nil { await Task.yield() }
+        #expect(model.isBusy)
+        #expect(model.saveStatus == status)
+        #expect(model.canConfigureRecording)
+        switch action {
+        case "start": model.startForegroundApplicationRecording()
+        case "resume": model.resume()
+        default: model.finish()
+        }
+        #expect(model.isPerformingUserAction)
+        #expect(!model.canConfigureRecording)
+        #expect(model.current?.id == currentID)
+        #expect(!model.acceptingEvents)
+        // A second click cannot enqueue a duplicate boundary.
+        model.startForegroundApplicationRecording()
+        model.resume()
+        release?.resume()
+        _ = try await delivery.value
+        if action == "finish" {
+            #expect(model.current == nil)
+        } else {
+            #expect(model.current?.status == .recording)
+            #expect(model.current?.intervals.count == (action == "start" ? 1 : 2))
+            #expect(model.acceptingEvents)
+        }
+        #expect(model.errorMessage == nil)
+        #expect(await model.shutdown())
+    }
+
+    @Test func backgroundSaveKeepsSelectedHistoryVisible() async throws {
+        let model = await loadedModel()
+        model.startRecording()
+        await model.waitForIdle()
+        let finishedID = try #require(model.selected?.id)
+        model.finish()
+        await model.waitForIdle()
+        model.startForegroundApplicationRecording()
+        await model.waitForIdle()
+        let activeID = try #require(model.current?.id)
+        #expect(model.selectedID == activeID)
+
+        model.selectedID = finishedID
+        await repository.holdNextCommit()
+        model.recordForegroundApplication(nil)
+        await repository.waitUntilCommitHeld()
+        #expect(model.selected?.id == finishedID)
+        await repository.releaseCommit()
+        await model.waitForIdle()
+        #expect(model.selectedID == finishedID)
+        #expect(model.selected?.id == finishedID)
+        #expect(model.current?.id == activeID)
+    }
+
+    @Test func deletingHistoryDuringBackgroundSaveWaitsForTheSave() async throws {
+        let model = await loadedModel()
+        model.startRecording()
+        await model.waitForIdle()
+        model.finish()
+        await model.waitForIdle()
+        let finished = try #require(model.selected)
+        model.startForegroundApplicationRecording()
+        await model.waitForIdle()
+        let activeID = try #require(model.current?.id)
+
+        await repository.holdNextCommit()
+        model.recordForegroundApplication(nil)
+        await repository.waitUntilCommitHeld()
+        #expect(model.canDeleteRecording)
+        model.delete(finished)
+        #expect(model.recordings.contains { $0.id == finished.id })
+        await repository.releaseCommit()
+        await model.waitForIdle()
+        #expect(!model.recordings.contains { $0.id == finished.id })
+        #expect(model.current?.id == activeID)
+        #expect(model.current?.events.map(\.kind) == [.start, .application])
+        #expect(model.errorMessage == nil)
+    }
+
     @Test func failedPauseRetriesExactPendingBoundary() async throws {
         let model = await loadedModel()
         model.startRecording()

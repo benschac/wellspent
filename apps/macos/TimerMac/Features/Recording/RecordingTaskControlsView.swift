@@ -21,9 +21,12 @@ struct RecordingTaskControlsView: View {
                     }
                 } label: {
                     Label(model.tasks.activeTaskTitle, systemImage: "tag")
+                        .lineLimit(1)
                 }
+                .frame(width: 280, alignment: .leading)
                 .disabled(!model.tasks.canSelectRecordingTask)
                 .accessibilityLabel("Current recording task")
+                Spacer(minLength: 16)
                 Button("New task…", systemImage: "plus") { showingNewTask = true }
                     .disabled(!model.tasks.canEditTasks)
                 Spacer()

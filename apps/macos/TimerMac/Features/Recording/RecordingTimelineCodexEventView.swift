@@ -73,7 +73,9 @@ struct RecordingTimelineCodexEventsView: View {
     @State private var refresh = 0
 
     private var selection: RecordingTelemetryReviewModel.Selection {
-        .init(recordingID: recordingID, intervalID: interval.id, revision: model.telemetryRevision, refresh: refresh)
+        .init(
+            recordingID: recordingID, intervalID: interval.id,
+            revision: model.telemetryRevision(recordingID: recordingID, intervalID: interval.id), refresh: refresh)
     }
 
     private var items: [RecordingTimelineItem] {

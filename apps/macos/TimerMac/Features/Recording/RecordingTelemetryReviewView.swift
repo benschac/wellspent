@@ -35,7 +35,8 @@ struct RecordingTelemetryReviewView: View {
             return nil
         }
         return .init(
-            recordingID: recording.id, intervalID: interval.id, revision: recordingModel.telemetryRevision,
+            recordingID: recording.id, intervalID: interval.id,
+            revision: recordingModel.telemetryRevision(recordingID: recording.id, intervalID: interval.id),
             refresh: refresh)
     }
 
@@ -61,7 +62,7 @@ struct RecordingTelemetryReviewView: View {
                 }
                 Text("Oldest source write first · UTC").font(.callout).foregroundStyle(.secondary)
                 Group {
-                    if review.selection != selection {
+                    if review.selection?.hasSameInterval(as: selection) != true {
                         ProgressView("Loading telemetry…")
                     } else {
                         switch review.state {
