@@ -5,7 +5,7 @@
 For local recording notes (C4a), run `bun run dev` from the repository root, or
 `bun run dev:harness` for only this integration. With a `b` alias for Bun, these
 are `b dev` and `b dev:harness`. Node 22+ and the Codex CLI must already be
-installed. Run `bun install --frozen-lockfile` to install Execa, the MCP SDK and Zod;
+installed. Run `bun install --frozen-lockfile` to install Execa, the MCP SDK and Effect;
 no API server, cloud token, or database is required.
 
 1. Keep the dev command running and rebuild/run the current macOS app.
@@ -46,16 +46,18 @@ For that development build only, the supervisor can target its private root with
 `harness-dev.ts`, `harness-helper.ts`, and `harness-mcp.ts` are the checked
 TypeScript sources. The helper uses Execa for bounded Codex CLI execution, while
 the MCP server uses the official `@modelcontextprotocol/server` 2.0.0
-`McpServer` and `StdioServerTransport`, with a strict Zod input schema. The
+`McpServer` and `StdioServerTransport`. Effect Schema supplies strict input
+validation and JSON Schema through the SDK's Standard Schema interface. The
 4096-byte limit uses UTF-8 byte length; whitespace-only text, malformed Unicode,
 extra properties and malformed UUIDs are rejected before calling the helper.
 The existing helper still owns connection checks, durable admission, receipts,
 UUID conflicts and retries. Only a native acknowledged receipt is success.
-Every non-success result also explains how to retain the original ID/text.
+Every returned non-success tool result also explains how to retain the original ID/text.
 
-Initialization binds once to the local connection; discovery and tool calls
-cannot adopt a replacement connection. A small SDK `Server` subclass uses the protected `_wrapHandler` extension point
-for initialization/discovery guards, and the `McpServer` subclass installs it
+The first successful SDK factory invocation binds once to the local connection;
+discovery and tool calls cannot adopt a replacement connection, including after
+SDK probe/fallback. A small SDK `Server` subclass uses the protected `_wrapHandler` extension point
+for discovery guards, and the `McpServer` subclass installs it
 before registering tools. There is no external protected-member access or type
 suppression. Keep the SDK pinned and rerun the wire tests before upgrading this
 integration seam.
@@ -70,17 +72,36 @@ limit remains 4096 UTF-8 bytes. Requests can run concurrently; durable helper
 operations retain their existing locks and idempotency rules. Revoked
 connections now fail initialization immediately as well as later operations.
 
+`harness-policy.ts` owns the three-second HTTP budget, ten-second native ACK
+budget and 50 ms polling interval. SDK cancellation interrupts HTTP and polling;
+short filesystem operations and durable rejection bookkeeping finish first.
+The SDK suppresses replies to cancelled requests. Cancellation and timeouts do
+not mean rollback: retry with the original ID and identical text to inspect the
+existing receipt. There are no automatic write retries. Explicit close, stream
+failure and SIGINT/SIGTERM wait for bookkeeping; EOF allows one second for
+buffered SDK messages before interrupting remaining work. Filesystem operations
+are not forcibly timed out.
+
+Tracing is off by default. Set `WELLSPENT_HARNESS_TRACE=1` on the MCP process to
+write local JSON diagnostics to stderr. They contain only fixed span names,
+duration, status and allowlisted failure tags. Notes, credentials, paths,
+identifiers, receipts, arbitrary errors and cancellation reasons are excluded.
+Effect's general-purpose loggers are disabled; stdout remains MCP-only. No
+external trace exporter is configured.
+
 The tiny `.mjs` launchers preserve stable Node command paths. `bun run --cwd
 integrations/codex build:harness` compiles self-contained Node bundles beside
-them; generated output is ignored by Git. Execa, the MCP SDK, Zod, and the local
+them; generated output is ignored by Git. Execa, the MCP SDK (including its
+internal Zod dependency), Effect, and the local
 storage/contract modules are bundled, so the installed commands do not resolve
 workspace `node_modules` or source modules at runtime. Development and test
 scripts build first. Restart development after editing the TypeScript source.
-`bun run --cwd integrations/codex typecheck` checks all three TypeScript sources
-in strict mode.
+`bun run --cwd integrations/codex typecheck` checks the harness TypeScript sources
+and tests in strict mode.
 
 Run `bun run --cwd integrations/codex test:harness` for real SDK stdio,
-loopback-helper, retry, byte-limit, CLI and bundle tests using temporary roots.
+loopback-helper, cancellation, retry, privacy, byte-limit, CLI and bundle tests
+using temporary roots. It also runs the injected Effect domain/adapter tests.
 The macOS resource script bundles both the native helper and MCP entry point with
 Bun (targeting Node), so building those resources requires Bun and installed
 workspace dependencies; running either bundled command requires only Node.

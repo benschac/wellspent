@@ -4,7 +4,11 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { main } from "./harness-mcp.generated.mjs";
 
-export { createMcpServer, stdio } from "./harness-mcp.generated.mjs";
+export {
+  createConnectionBinding,
+  createMcpServer,
+  stdio,
+} from "./harness-mcp.generated.mjs";
 
 if (
   process.argv[1] &&

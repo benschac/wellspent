@@ -5,16 +5,17 @@
   "type": "module",
   "scripts": {
     "dev": "bun run build:harness && node harness-dev.mjs",
-    "test": "bun run build:harness && bun test timer-capture.test.mjs && node --test local-helper.test.mjs harness-helper.test.mjs harness-dev.test.mjs telemetry-feasibility.test.mjs telemetry-intake.test.mjs telemetry-preview.test.mjs selected-telemetry-reader.test.mjs telemetry-supervisor.test.mjs automatic-telemetry-reader.test.mjs",
-    "test:capture": "bun run build:harness && bun test timer-capture.test.mjs && node --test local-helper.test.mjs harness-helper.test.mjs harness-dev.test.mjs telemetry-feasibility.test.mjs telemetry-intake.test.mjs telemetry-preview.test.mjs selected-telemetry-reader.test.mjs telemetry-supervisor.test.mjs automatic-telemetry-reader.test.mjs",
+    "test": "bun run test:harness-domain && bun run build:harness && bun test timer-capture.test.mjs && node --test local-helper.test.mjs harness-helper.test.mjs harness-dev.test.mjs telemetry-feasibility.test.mjs telemetry-intake.test.mjs telemetry-preview.test.mjs selected-telemetry-reader.test.mjs telemetry-supervisor.test.mjs automatic-telemetry-reader.test.mjs",
+    "test:capture": "bun run test:harness-domain && bun run build:harness && bun test timer-capture.test.mjs && node --test local-helper.test.mjs harness-helper.test.mjs harness-dev.test.mjs telemetry-feasibility.test.mjs telemetry-intake.test.mjs telemetry-preview.test.mjs selected-telemetry-reader.test.mjs telemetry-supervisor.test.mjs automatic-telemetry-reader.test.mjs",
     "test:telemetry": "node --test telemetry-feasibility.test.mjs telemetry-intake.test.mjs telemetry-preview.test.mjs selected-telemetry-reader.test.mjs telemetry-supervisor.test.mjs automatic-telemetry-reader.test.mjs",
-    "test:harness": "bun run build:harness && node --test harness-helper.test.mjs harness-dev.test.mjs",
+    "test:harness": "bun run test:harness-domain && bun run build:harness && node --test harness-helper.test.mjs harness-dev.test.mjs",
+    "test:harness-domain": "node --test harness-domain.test.ts harness-native.test.ts harness-tool-result.test.ts harness-execution.test.ts",
     "build:harness": "bun run build.ts",
     "typecheck": "tsc --project tsconfig.json"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "2.0.0",
-    "execa": "10.0.1",
-    "zod": "^4.2.0"
+    "effect": "4.0.0-rc.112",
+    "execa": "10.0.1"
   }
 }

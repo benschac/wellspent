@@ -5,8 +5,10 @@ import { readdir, realpath } from "node:fs/promises";
 import { createServer } from "node:http";
 import { homedir } from "node:os";
 import { delimiter, dirname, isAbsolute, join, resolve } from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { execa, type Options } from "execa";
+import { HARNESS_TIMEOUTS } from "./harness-policy.ts";
 import {
   base64,
   bodyDigest,
@@ -605,9 +607,14 @@ export async function logWork(
   root: string,
   raw: NoteInput,
   {
-    waitMs = 10000,
+    waitMs = HARNESS_TIMEOUTS.acknowledgementMs,
     expectedConnectionID,
-  }: { waitMs?: number; expectedConnectionID?: string } = {},
+    signal,
+  }: {
+    waitMs?: number;
+    expectedConnectionID?: string;
+    signal?: AbortSignal;
+  } = {},
 ) {
   const input = validateInput(raw);
   const reportedAt = new Date().toISOString();
@@ -637,6 +644,9 @@ export async function logWork(
   let result = await optional(pathFor(root, "receipts", input.id));
   if (result) return result;
   try {
+    // Enter the catch bookkeeping even when already cancelled. A later retry
+    // must not turn an unadmitted attempt into a newly admitted note.
+    signal?.throwIfAborted();
     const nonce = randomUUID();
     const packet = sign(
       {
@@ -654,7 +664,10 @@ export async function logWork(
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(packet),
-      signal: AbortSignal.timeout(3000),
+      signal: AbortSignal.any([
+        AbortSignal.timeout(HARNESS_TIMEOUTS.fetchMs),
+        ...(signal ? [signal] : []),
+      ]),
       redirect: "error",
     });
     if (!response.ok) throw new Error("helper_unavailable");
@@ -702,8 +715,12 @@ export async function logWork(
       }
     });
   }
+  // Admission/rejection bookkeeping above is deliberately non-cancellable.
+  // Aborting a fetch does not prove that the helper did not persist the note.
+  signal?.throwIfAborted();
   const deadline = performance.now() + waitMs;
   do {
+    signal?.throwIfAborted();
     const latest = await connection(root);
     if (latest.revoked || latest.connectionID !== current.connectionID)
       return terminal(
@@ -712,7 +729,7 @@ export async function logWork(
       );
     result = await optional(pathFor(root, "receipts", input.id));
     if (result) return result;
-    await new Promise((done) => setTimeout(done, 50));
+    await delay(HARNESS_TIMEOUTS.pollMs, undefined, { signal });
   } while (performance.now() < deadline);
   return terminal("unconfirmed", "native_commit_unconfirmed");
 }

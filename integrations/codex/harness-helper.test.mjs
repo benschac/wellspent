@@ -10,6 +10,7 @@ import {
   stat,
   writeFile,
 } from "node:fs/promises";
+import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
@@ -28,7 +29,7 @@ import {
   serve,
   validateInput,
 } from "./harness-helper.mjs";
-import { stdio } from "./harness-mcp.mjs";
+import { createConnectionBinding, stdio } from "./harness-mcp.mjs";
 import { base64, bodyDigest, decode, sign, verify } from "./local-contract.mjs";
 import { optional, publish, read } from "./local-helper.mjs";
 
@@ -37,9 +38,13 @@ async function mcpSession(t, root) {
   const input = new PassThrough();
   const output = new PassThrough();
   const lines = createInterface({ input: output });
+  lines.on("error", () => {}); // Failure fixtures also reach the SDK listener.
+  const clientErrorListeners = output.listenerCount("error");
   const pending = new Map();
+  const replies = new Map();
   lines.on("line", (line) => {
     const reply = JSON.parse(line);
+    replies.set(reply.id, reply);
     pending.get(reply.id)?.(reply);
   });
   const server = await stdio(root, input, output);
@@ -49,7 +54,7 @@ async function mcpSession(t, root) {
     input.destroy();
     output.destroy();
   });
-  return async (message) => {
+  const handle = async (message) => {
     if (!Object.hasOwn(message, "id")) {
       input.write(`${JSON.stringify(message)}\n`);
       await new Promise(setImmediate);
@@ -69,6 +74,14 @@ async function mcpSession(t, root) {
     input.write(`${JSON.stringify(message)}\n`);
     return response;
   };
+  return Object.assign(handle, {
+    send: (message) => input.write(`${JSON.stringify(message)}\n`),
+    replies,
+    input,
+    output,
+    clientErrorListeners,
+    close: server.close,
+  });
 }
 
 async function setup(t) {
@@ -689,12 +702,64 @@ const toolCall = (id, input) => ({
   method: "tools/call",
   params: { name: "log_work", arguments: input },
 });
+const modern = (message, protocolVersion = "2026-07-28") => ({
+  ...message,
+  params: {
+    ...message.params,
+    _meta: {
+      "io.modelcontextprotocol/protocolVersion": protocolVersion,
+      "io.modelcontextprotocol/clientInfo": { name: "fixture", version: "1" },
+      "io.modelcontextprotocol/clientCapabilities": {},
+    },
+  },
+});
+const discoverMessage = (id = 1) =>
+  modern({ jsonrpc: "2.0", id, method: "server/discover" });
 
-test("SDK discovery retains strict schema, annotations, protocol negotiation and binding gates", async (t) => {
+test("binding shares pending resolution, retries failures, and never resets success", async () => {
+  let attempts = 0;
+  let current = { connectionID: randomUUID(), revoked: true };
+  const gate = Promise.withResolvers();
+  const bind = createConnectionBinding(async () => {
+    attempts++;
+    await gate.promise;
+    if (attempts === 1) throw new Error("private connection details");
+    if (current.revoked) throw new Error("connection_revoked");
+    return current.connectionID;
+  });
+  const first = bind();
+  assert.equal(bind(), first);
+  const failed = assert.rejects(first, (error) => {
+    assert.match(error.message, /AI Harness in Wellspent/);
+    assert.equal(error.message.includes("private connection details"), false);
+    return true;
+  });
+  gate.resolve();
+  await failed;
+  assert.equal(attempts, 1);
+  await assert.rejects(bind(), /AI Harness in Wellspent/);
+  assert.equal(attempts, 2);
+  current = { connectionID: randomUUID(), revoked: false };
+  const expected = current.connectionID;
+  const successful = bind();
+  assert.equal(bind(), successful);
+  assert.equal(await successful, expected);
+  current = { connectionID: randomUUID(), revoked: false };
+  assert.equal(await bind(), expected);
+  current.revoked = true;
+  assert.equal(await bind(), expected);
+  assert.equal(attempts, 3);
+});
+
+test("SDK owns legacy ordering while discovery retains strict schema, annotations and native binding", async (t) => {
   const f = await setup(t);
   const handle = await mcpSession(t, f.root);
-  assert.ok(
-    (await handle({ jsonrpc: "2.0", id: 0, method: "tools/list" })).error,
+  // The SDK accepts claim-less openings and does not require an initialized
+  // notification. Native authorization is required independently of that order.
+  assert.equal(
+    (await handle({ jsonrpc: "2.0", id: 0, method: "tools/list" })).result
+      .tools[0].name,
+    "log_work",
   );
   assert.equal(
     (
@@ -704,14 +769,14 @@ test("SDK discovery retains strict schema, annotations, protocol negotiation and
     ).result.isError,
     true,
   );
-  assert.deepEqual(await readdir(join(f.root, "requests")), []);
+  assert.equal((await readdir(join(f.root, "requests"))).length, 1);
   const malformed = initializeMessage(99);
   malformed.params.clientInfo = {};
   assert.ok((await handle(malformed)).error);
   const init = await handle(initializeMessage(2, "unknown-version"));
   assert.equal(init.result.protocolVersion, "2025-11-25");
   assert.ok(
-    (await handle({ jsonrpc: "2.0", id: 3, method: "tools/list" })).error,
+    (await handle({ jsonrpc: "2.0", id: 3, method: "tools/list" })).result,
   );
   await handle({ jsonrpc: "2.0", method: "notifications/initialized" });
   const { result } = await handle({
@@ -730,7 +795,179 @@ test("SDK discovery retains strict schema, annotations, protocol negotiation and
     idempotentHint: true,
     openWorldHint: false,
   });
-  assert.ok((await handle(initializeMessage(5))).error);
+  assert.ok((await handle(initializeMessage(5))).result);
+});
+
+test("SDK modern negotiation and direct opening preserve the native tools/list gate", async (t) => {
+  for (const probe of [true, false]) {
+    const f = await setup(t);
+    const handle = await mcpSession(t, f.root);
+    if (probe) {
+      const discovery = await handle(discoverMessage());
+      assert.deepEqual(discovery.result.supportedVersions, ["2026-07-28"]);
+      assert.equal(
+        discovery.result._meta["io.modelcontextprotocol/serverInfo"].name,
+        "wellspent-local",
+      );
+      // Protocol discovery must not publish the native tool-discovery marker.
+      assert.equal(await optional(join(f.root, "discovered.json")), null);
+    }
+    const list = modern({ jsonrpc: "2.0", id: 2, method: "tools/list" });
+    const listed = await handle(list);
+    assert.equal(listed.result.tools[0].name, "log_work");
+    assert.equal(
+      (await read(join(f.root, "discovered.json"))).connectionID,
+      f.saved.connectionID,
+    );
+    const input = { id: randomUUID(), text: "Modern explicit note" };
+    const reply = await handle(modern(toolCall(3, input)));
+    assert.equal(reply.result.isError, true);
+    assert.equal(
+      JSON.parse(reply.result.content[0].text).reason,
+      "helper_unavailable",
+    );
+    assert.ok((await handle(initializeMessage(4))).error);
+    await revoke(f.root);
+    assert.ok((await handle({ ...list, id: 5 })).error);
+    await connect(f.root, f.options, f.execute);
+    assert.ok((await handle({ ...list, id: 6 })).error);
+    const replaced = await handle(modern(toolCall(7, input)));
+    assert.equal(
+      JSON.parse(replaced.result.content[0].text).reason,
+      "connection_changed",
+    );
+  }
+});
+
+test("SDK probe fallback retains the first native identity and cannot follow reconnection", async (t) => {
+  const f = await setup(t);
+  const handle = await mcpSession(t, f.root);
+  assert.ok((await handle(discoverMessage())).result);
+  assert.ok((await handle(discoverMessage(2))).result);
+  await revoke(f.root);
+  const replacement = await connect(f.root, f.options, f.execute);
+  assert.notEqual(replacement.connectionID, f.saved.connectionID);
+  // serveStdio discards the modern probe and calls our factory again here.
+  assert.ok((await handle(initializeMessage(3))).result);
+  await handle({ jsonrpc: "2.0", method: "notifications/initialized" });
+  assert.ok(
+    (await handle({ jsonrpc: "2.0", id: 4, method: "tools/list" })).error,
+  );
+  assert.equal(await optional(join(f.root, "discovered.json")), null);
+  const reply = await handle(
+    toolCall(5, { id: randomUUID(), text: "Old session" }),
+  );
+  assert.equal(reply.result.isError, true);
+  assert.equal(
+    JSON.parse(reply.result.content[0].text).reason,
+    "connection_changed",
+  );
+  assert.deepEqual(await readdir(join(f.root, "requests")), []);
+  const fresh = await readySession(t, f.root);
+  assert.ok(
+    (await fresh({ jsonrpc: "2.0", id: 2, method: "tools/list" })).result,
+  );
+});
+
+test("SDK probe fallback and concurrent opening requests share a usable binding", async (t) => {
+  const f = await setup(t);
+  const handle = await mcpSession(t, f.root);
+  const replies = await Promise.all([
+    handle(discoverMessage()),
+    handle(initializeMessage(2)),
+    handle({ jsonrpc: "2.0", id: 3, method: "tools/list" }),
+  ]);
+  assert.deepEqual(replies[0].result.supportedVersions, ["2026-07-28"]);
+  assert.equal(replies[1].result.serverInfo.name, "wellspent-local");
+  assert.equal(replies[2].result.tools[0].name, "log_work");
+  assert.equal(
+    (await read(join(f.root, "discovered.json"))).connectionID,
+    f.saved.connectionID,
+  );
+});
+
+test("SDK failed discovery can recover before binding, including a legacy fallback", async (t) => {
+  const f = await setup(t);
+  const handle = await mcpSession(t, f.root);
+  await revoke(f.root);
+  const failed = await handle(discoverMessage());
+  assert.deepEqual(failed.error, {
+    code: -32603,
+    message: "Internal server error",
+  });
+  await connect(f.root, f.options, f.execute);
+  assert.ok((await handle(initializeMessage(2))).result);
+  assert.ok(
+    (await handle({ jsonrpc: "2.0", id: 3, method: "tools/list" })).result,
+  );
+});
+
+test("SDK modern calls preserve durable success and cannot return old ACKs after replacement", async (t) => {
+  const f = await setup(t);
+  const handle = await mcpSession(t, f.root);
+  assert.ok((await handle(discoverMessage())).result);
+  await f.dispatch("/v1/harness/poll", f.poll());
+  const input = { id: randomUUID(), text: "Committed modern note" };
+  await f.dispatch("/v1/harness/log", f.note(input));
+  const original = await read(requestPath(f, input.id));
+  await f.dispatch("/v1/harness/result", f.result(original.packet));
+  const saved = await receipt(f, input.id);
+  const acknowledged = await handle(modern(toolCall(2, input)));
+  assert.equal(acknowledged.result.isError, false);
+  assert.deepEqual(acknowledged.result.content, [
+    {
+      type: "text",
+      text: JSON.stringify({
+        id: input.id,
+        status: saved.status,
+        reason: saved.reason,
+        nativeReceivedAt: saved.nativeReceivedAt,
+      }),
+    },
+  ]);
+  await revoke(f.root);
+  assert.equal((await handle(modern(toolCall(3, input)))).result.isError, true);
+  await connect(f.root, f.options, f.execute);
+  const replaced = await handle(modern(toolCall(4, input)));
+  assert.equal(replaced.result.isError, true);
+  assert.equal(
+    JSON.parse(replaced.result.content[0].text).reason,
+    "connection_changed",
+  );
+  assert.deepEqual(await receipt(f, input.id), saved);
+});
+
+test("SDK lifecycle handle closes opening, probe and pinned transports idempotently", async (t) => {
+  const f = await setup(t);
+  for (const opening of [
+    null,
+    discoverMessage(),
+    initializeMessage(),
+    modern(toolCall(1, { id: randomUUID(), text: "Close fixture" })),
+  ]) {
+    const input = new PassThrough();
+    const output = new PassThrough();
+    const lines = createInterface({ input: output });
+    const clientErrorListeners = output.listenerCount("error");
+    const server = stdio(f.root, input, output);
+    try {
+      if (opening) {
+        const response = new Promise((resolve) => lines.once("line", resolve));
+        input.write(`${JSON.stringify(opening)}\n`);
+        assert.ok(JSON.parse(await response).result);
+      }
+      await server.close();
+      await server.close();
+      assert.equal(input.listenerCount("data"), 0);
+      assert.equal(input.listenerCount("error"), 0);
+      assert.equal(output.listenerCount("error"), clientErrorListeners);
+    } finally {
+      await server.close();
+      lines.close();
+      input.destroy();
+      output.destroy();
+    }
+  }
 });
 
 test("SDK input validation rejects malformed notes before persistence and preserves UTF-8 byte boundaries", async (t) => {
@@ -774,13 +1011,13 @@ test("SDK input validation rejects malformed notes before persistence and preser
   }
 });
 
-test("SDK binds at initialize and rejects missing, revoked and replaced connections without returning old ACKs", async (t) => {
+test("SDK factory binds once and rejects missing, revoked and replaced connections without returning old ACKs", async (t) => {
   const f = await setup(t);
   const beforeBinding = await mcpSession(t, f.root);
   await revoke(f.root);
   assert.match(
     (await beforeBinding(initializeMessage())).error.message,
-    /AI Harness in Wellspent/,
+    /Internal server error/,
   );
   const replacement = await connect(f.root, f.options, f.execute);
   // A failed initialization is repairable; a successful one cannot rebind.
@@ -806,7 +1043,8 @@ test("SDK binds at initialize and rejects missing, revoked and replaced connecti
     JSON.parse(replaced.result.content[0].text).reason,
     "connection_changed",
   );
-  assert.ok((await beforeBinding(initializeMessage(6))).error);
+  // Reinitialization belongs to the SDK and cannot change the native binding.
+  assert.ok((await beforeBinding(initializeMessage(6))).result);
   assert.ok(
     (await beforeBinding({ jsonrpc: "2.0", id: 7, method: "tools/list" }))
       .error,
@@ -815,9 +1053,29 @@ test("SDK binds at initialize and rejects missing, revoked and replaced connecti
   const missing = await mcpSession(t, f.root);
   assert.match(
     (await missing(initializeMessage())).error.message,
-    /AI Harness in Wellspent/,
+    /Internal server error/,
   );
   assert.equal((await beforeBinding(toolCall(8, input))).result.isError, true);
+});
+
+test("Effect input validation hides submitted values and unknown property names before persistence", async (t) => {
+  const f = await setup(t);
+  const handle = await readySession(t, f.root);
+  const secret = "private-fixture-marker";
+  let rpcID = 2;
+  for (const input of [
+    { id: secret, text: secret },
+    { id: randomUUID(), text: secret.repeat(300) },
+    { id: randomUUID(), text: { [secret]: secret } },
+    { id: randomUUID(), text: secret, [secret]: secret },
+    { id: randomUUID(), text: `${secret}\ud800` },
+  ]) {
+    const reply = await handle(toolCall(rpcID++, input));
+    assert.equal(reply.result.isError, true);
+    assert.match(reply.result.content[0].text, /Input validation error/);
+    assert.equal(JSON.stringify(reply).includes(secret), false);
+  }
+  assert.deepEqual(await readdir(join(f.root, "requests")), []);
 });
 
 test("SDK unconfirmed write stays an error; same-ID retry waits for native ACK and conflicting text fails", async (t) => {
@@ -884,6 +1142,218 @@ test("SDK unconfirmed write stays an error; same-ID retry waits for native ACK a
   assert.equal((await handle(toolCall(7, input))).result.isError, true);
 });
 
+async function eventually(readValue) {
+  const deadline = performance.now() + 3000;
+  do {
+    const value = await readValue();
+    if (value) return value;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  } while (performance.now() < deadline);
+  assert.fail("Fixture operation did not complete");
+}
+
+async function stalledAdmission(t, f, admit) {
+  const received = Promise.withResolvers();
+  const server = createServer(async (request, response) => {
+    try {
+      const chunks = [];
+      for await (const chunk of request) chunks.push(chunk);
+      const packet = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+      if (admit) await f.dispatch("/v1/harness/log", packet);
+      received.resolve(packet);
+      // Intentionally never send the response: admission can outlive the caller.
+    } catch (error) {
+      received.reject(error);
+      response.destroy();
+    }
+  });
+  t.after(() => {
+    server.close();
+    server.closeAllConnections();
+  });
+  await new Promise((resolve) =>
+    server.listen(Number(new URL(f.saved.endpoint).port), "127.0.0.1", resolve),
+  );
+  return { received: received.promise };
+}
+
+test("pre-aborted native attempt preserves a terminal identity before cancellation completes", async (t) => {
+  const f = await setup(t);
+  const input = { id: randomUUID(), text: "Cancelled before fetch" };
+  await assert.rejects(
+    logWork(f.root, input, { signal: AbortSignal.abort() }),
+    { name: "AbortError" },
+  );
+  const original = await read(requestPath(f, input.id));
+  assert.equal(original.packet, null);
+  assert.equal((await receipt(f, input.id)).reason, "helper_unavailable");
+  await f.dispatch("/v1/harness/poll", f.poll());
+  await f.dispatch("/v1/harness/log", f.note(input));
+  assert.deepEqual(await read(requestPath(f, input.id)), original);
+  assert.equal((await logWork(f.root, input)).status, "rejected");
+  await assert.rejects(
+    logWork(f.root, { ...input, text: "Changed" }),
+    /identity_conflict/,
+  );
+  assert.deepEqual(await readdir(join(f.root, "pending")), []);
+});
+
+test("HTTP cancellation preserves both unadmitted and admitted identities across a lost response", async (t) => {
+  for (const admit of [false, true]) {
+    await t.test(admit ? "admitted" : "before admission", async (t) => {
+      const f = await setup(t);
+      await f.dispatch("/v1/harness/poll", f.poll());
+      const { received } = await stalledAdmission(t, f, admit);
+      const input = { id: randomUUID(), text: "Private cancellation fixture" };
+      const controller = new AbortController();
+      const cancelled = assert.rejects(
+        logWork(f.root, input, { signal: controller.signal }),
+        { name: "AbortError" },
+      );
+      const packet = await received;
+      controller.abort();
+      await cancelled;
+      const original = await read(requestPath(f, input.id));
+      if (admit) {
+        assert.ok(original.packet);
+        assert.equal(
+          await optional(join(f.root, "receipts", `${input.id}.json`)),
+          null,
+        );
+        await f.dispatch("/v1/harness/result", f.result(original.packet));
+        assert.equal((await logWork(f.root, input)).status, "acknowledged");
+      } else {
+        assert.equal(original.packet, null);
+        // A server that processes the packet after cancellation cannot admit it.
+        await f.dispatch("/v1/harness/log", packet);
+        assert.equal(
+          (await logWork(f.root, input)).reason,
+          "helper_unavailable",
+        );
+      }
+      assert.deepEqual(await read(requestPath(f, input.id)), original);
+      assert.equal((await readdir(join(f.root, "requests"))).length, 1);
+      assert.deepEqual(await readdir(join(f.root, "pending")), []);
+    });
+  }
+});
+
+test("stalled HTTP retains the three-second budget and an admitted write remains recoverable", async (t) => {
+  const f = await setup(t);
+  await f.dispatch("/v1/harness/poll", f.poll());
+  const { received } = await stalledAdmission(t, f, true);
+  const input = { id: randomUUID(), text: "Timeout after admission" };
+  const start = performance.now();
+  const waiting = logWork(f.root, input, { waitMs: 1 });
+  await received;
+  assert.equal((await waiting).status, "unconfirmed");
+  const elapsed = performance.now() - start;
+  assert.ok(elapsed >= 2900 && elapsed < 6000, `elapsed=${elapsed}`);
+  const original = await read(requestPath(f, input.id));
+  await f.dispatch("/v1/harness/result", f.result(original.packet));
+  assert.equal((await logWork(f.root, input)).status, "acknowledged");
+});
+
+test("SDK cancellation during acknowledgement waiting suppresses the response and permits a same-ID ACK retry", async (t) => {
+  const f = await setup(t);
+  const server = await serve(f.root);
+  t.after(() => {
+    server.close();
+    server.closeAllConnections();
+  });
+  const http = async (route, packet) => {
+    const response = await fetch(`${f.saved.endpoint}${route}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(packet),
+    });
+    assert.equal(response.status, 200);
+    return response.json();
+  };
+  await http("/v1/harness/poll", f.poll());
+  const handle = await readySession(t, f.root);
+  const input = { id: randomUUID(), text: "Private SDK cancellation" };
+  handle.send(toolCall(10, input));
+  const original = await eventually(() => optional(requestPath(f, input.id)));
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  await handle({
+    jsonrpc: "2.0",
+    method: "notifications/cancelled",
+    params: { requestId: 10, reason: "private abort reason" },
+  });
+  await handle({ jsonrpc: "2.0", id: 11, method: "ping" });
+  assert.equal(handle.replies.has(10), false);
+  assert.ok(original.packet);
+  await http("/v1/harness/result", f.result(original.packet));
+  const retry = await handle(toolCall(12, input));
+  assert.equal(retry.result.isError, false);
+  assert.equal(JSON.parse(retry.result.content[0].text).status, "acknowledged");
+  await handle.close();
+  assert.equal(handle.replies.has(10), false);
+  assert.deepEqual(await read(requestPath(f, input.id)), original);
+  assert.equal((await readdir(join(f.root, "requests"))).length, 1);
+});
+
+test("stdio close, EOF and stream failures interrupt admitted work and release listeners", async (t) => {
+  for (const mode of [
+    "close",
+    "EOF",
+    "input error",
+    "output error",
+    "output close",
+  ]) {
+    await t.test(mode, async (t) => {
+      const f = await setup(t);
+      const server = await serve(f.root);
+      t.after(() => {
+        server.close();
+        server.closeAllConnections();
+      });
+      const poll = await fetch(`${f.saved.endpoint}/v1/harness/poll`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(f.poll()),
+      });
+      assert.equal(poll.status, 200);
+      await poll.arrayBuffer();
+      const handle = await readySession(t, f.root);
+      const input = {
+        id: randomUUID(),
+        text: "Shutdown leaves this recoverable",
+      };
+      handle.send(toolCall(10, input));
+      const original = await eventually(() =>
+        optional(requestPath(f, input.id)),
+      );
+      const start = performance.now();
+      if (mode === "close") await handle.close();
+      else if (mode === "EOF") handle.input.end();
+      else if (mode === "input error")
+        handle.input.emit("error", new Error("private input failure"));
+      else if (mode === "output error")
+        handle.output.emit("error", new Error("private output failure"));
+      else handle.output.destroy();
+      await eventually(() => handle.input.listenerCount("data") === 0);
+      await handle.close();
+      assert.ok(performance.now() - start < 3000);
+      assert.equal(handle.input.listenerCount("end"), 0);
+      assert.equal(handle.input.listenerCount("close"), 0);
+      assert.equal(handle.input.listenerCount("error"), 0);
+      assert.ok(
+        handle.output.listenerCount("error") <= handle.clientErrorListeners,
+      );
+      assert.equal(handle.replies.has(10), false);
+      assert.ok(original.packet);
+      assert.deepEqual(await read(requestPath(f, input.id)), original);
+      assert.ok(await optional(join(f.root, "pending", `${input.id}.json`)));
+      assert.equal(
+        await optional(join(f.root, "receipts", `${input.id}.json`)),
+        null,
+      );
+    });
+  }
+});
+
 async function runMcpCli(t, entry, args, chunks, env = process.env) {
   const child = spawn(process.execPath, [entry, ...args], {
     env,
@@ -911,6 +1381,122 @@ async function runMcpCli(t, entry, args, chunks, env = process.env) {
   return { code: await closed, stdout, stderr };
 }
 const mcpEntry = fileURLToPath(new URL("./harness-mcp.mjs", import.meta.url));
+
+test("opt-in tracing stays on stderr and excludes notes, credentials, roots and arbitrary validation fields", async (t) => {
+  const f = await setup(t);
+  const privateText = "private diagnostic canary";
+  const input = { id: randomUUID(), text: privateText };
+  const result = await runMcpCli(
+    t,
+    mcpEntry,
+    ["--root", f.root],
+    [
+      `${[
+        initializeMessage(),
+        { jsonrpc: "2.0", method: "notifications/initialized" },
+        { jsonrpc: "2.0", id: 2, method: "tools/list" },
+        toolCall(3, input),
+        toolCall(4, { ...input, [privateText]: f.saved.key }),
+      ]
+        .map(JSON.stringify)
+        .join("\n")}\n`,
+    ],
+    { ...process.env, WELLSPENT_HARNESS_TRACE: "1" },
+  );
+  assert.equal(result.code, 0);
+  const replies = result.stdout.trim().split("\n").map(JSON.parse);
+  assert.equal(replies.length, 4);
+  assert.ok(replies.every((reply) => reply.jsonrpc === "2.0"));
+  const records = result.stderr.trim().split("\n").map(JSON.parse);
+  for (const name of [
+    "mcp.log_work",
+    "harness.log_work",
+    "harness.discover",
+    "harness.native",
+  ]) {
+    assert.ok(
+      records.some((record) => record.span === name),
+      name,
+    );
+  }
+  assert.ok(
+    records.some((record) => record.errorTag === "ConnectionUnavailable"),
+  );
+  for (const secret of [
+    privateText,
+    f.saved.key,
+    f.root,
+    f.saved.endpoint,
+    f.saved.connectionID,
+  ]) {
+    assert.equal(result.stdout.includes(secret), false);
+    assert.equal(result.stderr.includes(secret), false);
+  }
+  assert.equal(result.stderr.includes(input.id), false);
+  for (const record of records) {
+    assert.ok(
+      Object.keys(record).every((key) =>
+        ["span", "durationMs", "status", "errorTag"].includes(key),
+      ),
+    );
+  }
+});
+
+test("CLI EOF and SIGTERM stop stalled HTTP only after durable rejection bookkeeping", async (t) => {
+  for (const mode of ["EOF", "SIGTERM"]) {
+    await t.test(mode, async (t) => {
+      const f = await setup(t);
+      const { received } = await stalledAdmission(t, f, false);
+      const input = { id: randomUUID(), text: "Private shutdown canary" };
+      const child = spawn(process.execPath, [mcpEntry, "--root", f.root], {
+        stdio: ["pipe", "pipe", "pipe"],
+      });
+      t.after(() => child.kill());
+      let stdout = "";
+      let stderr = "";
+      child.stdout.setEncoding("utf8").on("data", (chunk) => {
+        stdout += chunk;
+      });
+      child.stderr.setEncoding("utf8").on("data", (chunk) => {
+        stderr += chunk;
+      });
+      const closed = new Promise((resolve, reject) => {
+        child.once("error", reject);
+        child.once("close", (code, signal) => resolve({ code, signal }));
+      });
+      child.stdin.write(
+        `${[
+          initializeMessage(),
+          { jsonrpc: "2.0", method: "notifications/initialized" },
+          toolCall(2, input),
+        ]
+          .map(JSON.stringify)
+          .join("\n")}\n`,
+      );
+      await received;
+      const start = performance.now();
+      if (mode === "EOF") child.stdin.end();
+      else child.kill("SIGTERM");
+      assert.deepEqual(await closed, { code: 0, signal: null });
+      assert.ok(performance.now() - start < 2500);
+      assert.equal(stderr, "");
+      assert.equal(stdout.includes(input.text), false);
+      assert.ok(
+        stdout
+          .trim()
+          .split("\n")
+          .map(JSON.parse)
+          .every((reply) => reply.id !== 2),
+      );
+      assert.equal((await receipt(f, input.id)).reason, "helper_unavailable");
+      const original = await read(requestPath(f, input.id));
+      assert.equal(original.packet, null);
+      await f.dispatch("/v1/harness/poll", f.poll());
+      await f.dispatch("/v1/harness/log", f.note(input));
+      assert.deepEqual(await read(requestPath(f, input.id)), original);
+    });
+  }
+});
 
 test("CLI --root and SDK framing handle coalesced lines and split Unicode without stdout diagnostics", async (t) => {
   const f = await setup(t);
@@ -970,8 +1556,11 @@ test("CLI rejects invalid argument combinations on stderr and no args opens DEFA
     { ...process.env, HOME: f.root },
   );
   assert.equal(result.code, 0);
-  assert.equal(result.stderr, "");
-  assert.deepEqual(JSON.parse(result.stdout).result, {});
+  assert.equal(result.stderr, "Local AI Harness unavailable.\n");
+  assert.deepEqual(JSON.parse(result.stdout).error, {
+    code: -32603,
+    message: "Internal server error",
+  });
   assert.ok(
     (
       await stat(join(f.root, ".config/wellspent/codex-harness/requests"))
@@ -995,6 +1584,17 @@ test("SDK owns malformed JSON, invalid envelopes and incomplete EOF behavior", a
   const replies = result.stdout.trim().split("\n").map(JSON.parse);
   assert.equal(replies.length, 1);
   assert.equal(replies[0].result.serverInfo.name, "wellspent-local");
+});
+
+test("SDK closes oversized input at the 128 KiB buffer limit without leaking content", async (t) => {
+  const f = await setup(t);
+  const oversized = `${JSON.stringify(toolCall(1, { id: randomUUID(), text: "private-fixture".repeat(10000) }))}\n`;
+  assert.ok(Buffer.byteLength(oversized) > 128 * 1024);
+  const result = await runMcpCli(t, mcpEntry, ["--root", f.root], [oversized]);
+  assert.equal(result.code, 0);
+  assert.equal(result.stdout, "");
+  assert.equal(result.stderr, "Local AI Harness unavailable.\n");
+  assert.deepEqual(await readdir(join(f.root, "requests")), []);
 });
 
 test("macOS resource helper and MCP bundles run under Node without checkout dependencies", async (t) => {

@@ -6,5 +6,5 @@
     "types": ["node"],
     "lib": ["ES2024"]
   },
-  "include": ["harness-dev.ts", "harness-helper.ts", "harness-mcp.ts"]
+  "include": ["harness-*.ts"]
 }
